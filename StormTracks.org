@@ -1,0 +1,90 @@
+#+TITLE: Bay of Bengal storm tracks & moorings
+#+AUTHOR: Deepak Cherian
+
+#+BEGIN_SRC ipython :session :tangle yes :exports none :eval never-export :results none
+import matplotlib.dates as dt
+import netCDF4 as nc
+
+fname = "../tracks/Basin.NI.ibtracs_all.v03r09.nc"
+tracks = nc.Dataset(fname)
+
+t0 = dt.date2num(dt.datetime.datetime(1858,11,17,0,0,0));
+time = tracks['source_time'][:] + t0
+lon = tracks['lon_for_mapping'][:]
+lat = tracks['lat_for_mapping'][:]
+
+rama = dict()
+rama['lon'] = np.array([90, 90, 90]);
+rama['lat'] = np.array([12, 15, 18]);
+
+nrl = dict()
+nrl['lon'] = np.array([85.511, 85.5, 85.5, 86.990, 88.5, 87])
+nrl['lat'] = np.array([5.009, 6.5, 8, 7.992, 7.983, 6.5])
+
+## filtering
+# time
+tstart = dt.date2num(dt.datetime.datetime(2013, 11, 25, 0, 0, 0))
+tstop  = dt.date2num(dt.datetime.datetime(2015, 8, 15, 0, 0, 0))
+
+inds = np.where(np.logical_and((time[:, 0] > tstart),
+                               (time[:, 0] < tstop)))[0]
+
+# location
+lonmin = 75
+lonmax = 105
+latmax = 20
+ind = []
+for index, ii in enumerate(inds):
+    if np.logical_and(np.logical_and(np.any(lon[ii, :] > lonmin),
+                      np.any(lon[ii, :] < lonmax)),
+                      np.any(lat[ii, :] < latmax)):
+        ind.append(ii)
+
+#+END_SRC
+
+* Map
+
+#+BEGIN_SRC ipython :session :tangle yes :exports results :eval never-export :file images/temp/py3095658q.png
+import cartopy.crs as ccrs
+import cartopy.feature
+import matplotlib.pyplot as plt
+
+proj = ccrs.Mercator(min_latitude=0,
+                     max_latitude=25,
+                     central_longitude=80,
+                     latitude_true_scale=15)
+ax = plt.axes(projection=proj)
+
+scale = '110m'
+land = cartopy.feature.LAND
+ocean = cartopy.feature.OCEAN
+
+land.scale=scale; ocean.scale=scale;
+ax.add_feature(land)
+ax.add_feature(ocean)
+ax.coastlines(resolution=scale, color='k')
+ax.set_extent([75, 95, 0, 25])
+
+for ii in ind:
+    ax.plot(lon[ii,:], lat[ii,:], 'b',
+            transform=ccrs.PlateCarree())
+    name = np.chararray.tostring(tracks['name'][ii,:]).rstrip(b'\0')
+    ax.text(lon[ii,1], lat[ii,1], name,
+            transform=ccrs.PlateCarree())
+
+plt.plot(rama['lon'], rama['lat'], 'o', label='RAMA',
+         transform=ccrs.PlateCarree())
+plt.plot(nrl['lon'],   nrl['lat'], 'o', label='EBoB',
+         transform=ccrs.PlateCarree())
+
+plt.legend()
+plt.show()
+#+RESULTS
+
+#+END_SRC:
+[[file:images/temp/py3095658q.png]]
+Todo:
+ - [ ] add bathymetry
+ - [ ] color by classification
+ - [ ] add timestamps
+ - [ ] check deployment timestamps
