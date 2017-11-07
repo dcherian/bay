@@ -5,101 +5,44 @@
 [[file:../images/MixingmapASIRIPiston.png]]
 * Summary
 ** Seasonal patterns
-*** halocline uplift
+*** "halocline uplift"
 It is quite hard to see if there is a semi-regular period.
+
+This could be the large-scale ∇S being advected back and forth across the mooring.
 1. At 12N, it happens in Jul-2014, Jul-2015
-#+call: read-rama-array()
-#+name: rama-sal-mosaic
-#+BEGIN_SRC ipython :session :results none :var lat=12
-os.chdir('/home/deepak/bay/scripts/')
-S = rama.SelectVar('S', region=dict(lon=90, lat=lat))
-
-f, ax = plt.subplots(11,1)
-for idx, (label, grp) in enumerate(S.groupby('time.year')):
-    (grp.plot.contourf(x='time', y='depth',
-                       cmap=mpl.cm.RdYlBu_r,
-                       levels=40, add_colorbar=False,
-                       vmin=32, vmax=35,
-                       robust=True, ax=ax[idx]))
-
-    ax[idx].text(0.1, 0.1, label,
-                 horizontalalignment='center',
-                 verticalalignment='center',
-                 transform=ax[idx].transAxes,
-                 bbox=dict(facecolor='k', alpha=0.05))
-
-    if idx > 0:
-        ax[idx].set_title('')
-
-plt.gcf().autofmt_xdate()
-plt.gcf().set_size_inches((8.5, 15))
-
-plt.savefig('images/'+str(lat)+'n-sal.png', bbox_inches='tight')
-#+END_SRC
-
-#+call: rama-sal-mosaic(lat=12)
-#+call: rama-sal-mosaic(lat=15)
 [[file:images/12n-sal.png]]
 
 [[file:images/15n-sal.png]]
-
-#+BEGIN_SRC ipython :session :file images/temp/img3907Zeq.png
-S = rama.SelectVar('S', region=dict(lon=90, depth=-40))
-
-grps = S.sel(lat=[4,8,12,15]).groupby('lat')
-
-for idx, (label, unit) in enumerate(grps):
-    (unit + 1.8*idx ).plot(label=label)
-
-plt.legend()
-
-plt.xlim(['2014', '2016'])
-#+END_SRC
 
 #+RESULTS:
 [[file:images/temp/img3907Zeq.png]]
 
 *** K_T variations
-#+BEGIN_SRC ipython :session :file images/rama12n-kt-boxplot.png
-fl = None
-
-plt.figure(figsize=(8.5, 5.5))
-
-ax0 = plt.subplot(121)
-ra12.ChipodSeasonalSummary(pods=[526, 527], ax=ax0, filter_len=fl)
-ax0.set_title('RAMA 12N 2014')
-
-ax1 = plt.subplot(122, sharey=ax0)
-ra12.ChipodSeasonalSummary(pods=[810, 811], ax=ax1, filter_len=fl)
-ax1.set_ylabel('')
-ax1.set_title('RAMA 12N 2015')
-
-plt.tight_layout()
-#+END_SRC
-
 #+CAPTION: Distribution of 5 minute averages of K_T.
 #+RESULTS:
 [[file:../images//rama12n-kt-boxplot.png]]
 
 ** MISO signals?
 *** Summary
-
 cite:Sobel2010 show large TRMM 30-90 day variance between May and October in the Bay.
 [[file:../images//sobel-trmm-variance.png]]
 
+#+CAPTION: Subsurface anomalies line up with northward propagating features in SST, LWR.
+#+RESULTS:
+[[file:images/bandpass-90e-2014.png]]
+
+#+CAPTION: Southward propagating signals in 2011-Nov/Dec!
+#+RESULTS:
+[[file:images/bandpass-90e-2011.png]]
+
+**** old :noexport:
 I see northward propagating "anomalies" in Tropflux SWR.
 [[file:images/90e-swr-anom.png]]
-
-Spectra of SWR and CMC SST show ISO variability.
-
-[[file:../images/cmc-spectra-RAMA-line.png]]
-[[file:images/90e-swr-spec.png]]
-
-What about subsurface T?
-
-
 *** in mixing
 **** RAMA 12N
+***** Coherence
+- Note sure coherence is the way to do this given short records
+
 The next figure shows coherence between Jq0 and  Jqt at 15m, 30m at the RAMA 12N mooring for the year 2014. Signs for all fluxes are such that +ve warms the surface.
 Looks like we have significant coherence in the 20-60day band between daily averaged Jq0 and Jqt at 15m.
 The 180 phase difference looks stable, is apparent in the filtered time series and seems to make physical sense (more surface heating → increases T_z → reduces J_q^t and vice versa).
@@ -110,7 +53,66 @@ Nothing at 30m
 
 #+CAPTION: (Top left) Band-passed time series. (bottom left) PSD for the unfiltered time series. (Right) coherence amplitude and phase between J_q^0 and J_q^t at both depths. Significance level marked by horizontal line. Pass band marked by vertical lines.
 file:rama/images/ra12-jq0-jqt-coherence.png
-*** long-term temp / salinity record
+*** temp / salinity record
+**** Stratification T_z
+Filtered T_z?
+#+BEGIN_SRC ipython :session :file images/ra12n-bandpass-strat.png
+from dcpy.plots import offset_line_plot
+f, ax = plt.subplots(4, 1, sharex=True)
+
+trange = slice('2014-06', '2014-08')
+T = rama.SelectVar('T', dict(lon=90))
+Tz = (T.sel(lat=12)
+      .dropna(dim='depth', how='all')
+      .drop(-13, dim='depth')
+      .diff(dim='depth'))
+Tz /= Tz.sel(time=trange).std(dim='time')
+Tzbp = (Tz.pipe(BandPassButter, freqs, dt=1, dim='time'))
+Tzbp /= Tzbp.sel(time=trange).std(dim='time')
+
+S = rama.SelectVar('S', dict(lon=90))
+Sz = (S.sel(lat=12)
+      .dropna(dim='depth', how='all')
+      .diff(dim='depth'))
+Sz /= Sz.sel(time=trange).std(dim='time')
+Szbp = (Sz.pipe(BandPassButter, freqs, dt=1, dim='time'))
+Szbp /= Szbp.sel(time=trange).std(dim='time')
+
+dcpy.plots.offset_line_plot(
+    Tz.dropna(dim='time', how='all')
+    .sel(depth=[-20, -40], time=trange),
+    x='time', y='depth', offset=0, ax=ax[0])
+
+dcpy.plots.offset_line_plot(
+    Tzbp.dropna(dim='time', how='all')
+    .sel(depth=[-20, -40], time=trange),
+    x='time', y='depth', offset=0, ax=ax[1])
+
+dcpy.plots.offset_line_plot(
+    Sz.dropna(dim='time', how='all')
+    .sel(depth=[-20, -40], time=trange),
+    x='time', y='depth', offset=0, ax=ax[2])
+
+dcpy.plots.offset_line_plot(
+    Szbp.dropna(dim='time', how='all')
+    .sel(depth=[-20, -40], time=trange),
+    x='time', y='depth', offset=0, ax=ax[3])
+
+ax[0].set_ylabel('$ΔT$')
+ax[1].set_ylabel('$ΔT$\'')
+ax[2].set_ylabel('$ΔS$')
+ax[3].set_ylabel('$ΔS$\'')
+
+dcpy.plots.liney(0, ax=ax[0])
+dcpy.plots.liney(0, ax=ax[1])
+
+plt.suptitle('10-80 day bandpass filtered at χpod depths / normalized by std.', y=1.0)
+plt.tight_layout()
+plt.gcf().autofmt_xdate()
+#+END_SRC
+
+#+RESULTS:
+[[file:images/ra12n-bandpass-strat.png]]
 **** Subsurface MISO signals?
 What am I looking for?
 1. northward propagation of MISO signal
@@ -156,17 +158,17 @@ def plot_temp_std_along_lon(Tfilt, inmask, lon):
         Tstd.name = '30d-90d std dev of temp'
 
         (Tstd.sel(lon=lon)
-             .dropna(dim='depth', how='all')
-             .dropna(dim='lat', how='all')
-             .plot(ax=ax[idx], cmap=mpl.cm.Reds))
+         .dropna(dim='depth', how='all')
+         .dropna(dim='lat', how='all')
+         .plot(ax=ax[idx], cmap=mpl.cm.Reds))
 
         # normalize at each lat,lon by maximum in depth
         Tnorm = Tstd / Tstd.max(dim='depth')
         Tnorm.name = 'normalized to \n show structure'
         (Tnorm.sel(lon=lon)
-             .dropna(dim='depth', how='all')
-             .dropna(dim='lat', how='all')
-             .plot(ax=ax[idx+2], cmap=mpl.cm.Reds))
+         .dropna(dim='depth', how='all')
+         .dropna(dim='lat', how='all')
+         .plot(ax=ax[idx+2], cmap=mpl.cm.Reds))
 
     ax[0].set_xlabel('')
     ax[0].set_title('May-Oct')
@@ -235,34 +237,16 @@ plt.gca().set_ylim([-140, 0])
 
 #+call: read-rama-array()
 #+BEGIN_SRC ipython :session :file images/temp/img9554Dcu.png
+from dcpy.plots import offset_line_plot
+
 T = rama.SelectVar('T', dict(lon=90.0))
 
 T = T.groupby('time.month') - T.groupby('time.month').mean(dim='time')
 Tclim = T.groupby('time.dayofyear').mean(dim='time')
 Tanom = T.groupby('time.dayofyear') - Tclim
 
-def PlotLines(da, x, y):
-    assert(da[y].ndim == 1)
 
-    axnum = da.get_axis_num(y)
-
-    if axnum == 0:
-        off = np.arange(da.shape[axnum])[:, np.newaxis]
-    else:
-        off = np.arange(da.shape[axnum])[np.newaxis, :]
-
-    # remove mean and add offset
-    daoffset = ((da.groupby(y)
-                 - da.groupby(y).mean())
-                + off)
-
-    if axnum == 0:
-        daoffset = daoffset.transpose()
-
-    plt.plot(daoffset[x], daoffset.values)
-    plt.legend([str(yy) for yy in da[y].values])
-
-PlotLines(T.sel(depth=-1)
+offset_line_plot(T.sel(depth=-1)
            .dropna(dim='time', how='all'),
           x='time', y='lat')
 plt.gca().set_xlim('2011', '2014')
@@ -274,6 +258,15 @@ plt.gcf().set_size_inches((8.5, 4.5))
 #+RESULTS:
 [[file:images/temp/img9554Dcu.png]]
 
+#+BEGIN_SRC ipython :session :file images/bandpass-90e-2014.png :noweb yes
+freqs = [1/10.0, 1/80.0]
+time = '2015'
+
+<<bandpass-mosaic>>
+#+END_SRC
+#+CAPTION: Southward propagating signals in 2011-Nov/Dec, but not so much in 2014?
+#+RESULTS:
+[[file:images/bandpass-90e-2014.png]]
 **** Spectra
 #+call: read-mur()
 
@@ -398,7 +391,6 @@ plt.tight_layout()
 [[file:../images//temp/py28335Frc.png]]
 
 *** winds at EBOB and rama
-
 #+BEGIN_SRC ipython :session :file images/bob-winds.png
 from scipy.interpolate import interpn
 
@@ -457,7 +449,6 @@ ax[3].axhline(0, color='gray')
 plt.gcf().autofmt_xdate()
 plt.tight_layout()
 #+END_SRC
-
 #+RESULTS:
 [[file:../images//bob-winds.png]]
 *** in SWR
@@ -465,10 +456,9 @@ Look at anomalies:
 1. Subtract yearly average.
 2. Subtract daily climatology (2001-2017)
 
-#+BEGIN_SRC ipython :session :file images/90e-swr-anom.png
+#+BEGIN_SRC ipython :session :file images/90e-swr-anom.png :noweb yes
 if 'swr' not in locals():
-    swr = xr.open_mfdataset('../datasets/tropflux/swr*.nc', autoclose=True)
-
+    <<read-tropflux-swr>>
 swr['swr'].load()
 
 grpstr = 'time.dayofyear'
@@ -508,8 +498,9 @@ plt.gcf().set_size_inches((8.5, 4.5))
 [[file:images/90e-swr-anom.png]]
 
 Let's try 10-80day filter like cite:Sengupta2001a
+#+BEGIN_SRC ipython :session :file images/bandpass-SWR.png
+from dcpy.ts import BandPassButter
 
-#+BEGIN_SRC ipython :session :file images/temp/img9554x5S.png
 freqs = [1/10.0, 1/80.0]
 
 if 'swr' not in locals():
@@ -517,7 +508,20 @@ if 'swr' not in locals():
 
 swr['swr'].load()
 
+bp = (
+    swr['swr'].sel(longitude=[85, 90], method='nearest')
+    .pipe(BandPassButter, freqs, dt=1, dim='time')
+)
+
+bp.sel(time='2014').plot(x='time', row='longitude')
+
+plt.gca().set_ylim((0, 22))
+plt.gcf().suptitle('[10, 80] day bandpass filtered', y=1.1)
+plt.gcf().set_size_inches((8.5, 3.5))
 #+END_SRC
+#+CAPTION: bandpass filter yields same results as above (slightly smoother).
+#+RESULTS:
+[[file:images/bandpass-SWR.png]]
 
 #+BEGIN_SRC ipython :session :file images/90e-swr-spec.png
 dcpy.ts.PlotSpectrum(swr['swr'].sel(latitude=[15, 12, 8], longitude=90, method='nearest'), multitaper=True, nsmooth=5, scale=5)
@@ -530,33 +534,6 @@ plt.legend(('15N', '12N', '8N'))
 [[file:images/90e-swr-spec.png]]
 
 *** SST analysis
-#+NAME: read-mur
-#+BEGIN_SRC ipython :session :results none
-os.chdir('/home/deepak/bay/')
-%matplotlib inline
-
-if 'mur' in locals():
-    mur.close()
-    del mur
-
-mur = xr.open_mfdataset('./datasets/mur/*.nc', autoclose=True)
-mur.rename({'analysed_sst': 'sst'}, inplace=True)
-# sst = mur.sst.chunk({'time':365})
-#+END_SRC
-
-#+NAME: read-cmc
-#+BEGIN_SRC ipython :session :results none
-os.chdir('/home/deepak/bay/')
-%matplotlib inline
-
-if 'mur' in locals():
-    mur.close()
-    del mur
-
-cmc = xr.open_mfdataset('./datasets/cmc/*.nc', autoclose=True)
-cmc.rename({'analysed_sst': 'sst'}, inplace=True)
-sst = cmc['sst'].where(cmc.mask == 1)
-#+END_SRC
 **** test snapshot
 #+CALL: read-mur()
 #+BEGIN_SRC ipython :session :file images/temp/img3907o-U.png
@@ -609,6 +586,25 @@ plt.legend()
 #+RESULTS:
 [[file:images/cmc-spectra-RAMA-line.png]]
 
+#+BEGIN_SRC ipython :session :file images/bandpass-SST.png
+from dcpy.ts import BandPassButter
+
+freqs = [1/10.0, 1/80.0]
+
+
+(cmc['sst'].sel(lon=[85, 90], method='nearest')
+           .where(cmc.mask == 1)
+           .pipe(BandPassButter, freqs, dt=1, dim='time')
+           .sel(time='2014')
+           .plot(x='time', row='lon'))
+
+plt.gca().set_ylim((0, 22))
+plt.gcf().suptitle('[10, 80] day bandpass filtered', y=1.1)
+plt.gcf().set_size_inches((8.5, 3.5))
+#+END_SRC
+
+#+RESULTS:
+[[file:images/bandpass-SST.png]]
 **** SST variance map
 #+BEGIN_SRC ipython :session :results none
 freqs = [1/30.0, 1/90.0]
@@ -778,6 +774,35 @@ dcpy.plots.linex(1/periods)
 #+RESULTS:
 [[file:../images//temp/img3907IKt.png]]
 * Read data :noexport:
+#+NAME: read-mur
+#+BEGIN_SRC ipython :session :results none
+os.chdir('/home/deepak/bay/')
+%matplotlib inline
+
+if 'mur' in locals():
+    mur.close()
+    del mur
+
+mur = xr.open_mfdataset('./datasets/mur/*.nc', autoclose=True)
+mur.rename({'analysed_sst': 'sst'}, inplace=True)
+# sst = mur.sst.chunk({'time':365})
+#+END_SRC
+
+#+NAME: read-cmc
+#+BEGIN_SRC ipython :session :results none
+os.chdir('/home/deepak/bay/')
+%matplotlib inline
+
+if 'mur' in locals():
+    mur.close()
+    del mur
+
+cmc = xr.open_mfdataset('./datasets/cmc/*.nc', autoclose=True)
+cmc.rename({'analysed_sst': 'sst'}, inplace=True)
+sst = cmc['sst'].where(cmc.mask == 1).load()
+sst.name = 'CMC SST'
+#+END_SRC
+
 #+NAME: read-rama-array
 #+BEGIN_SRC ipython :session :results none
 os.chdir('/home/deepak/bay/')
@@ -788,4 +813,13 @@ rama = moorarr.moorarr('RAMA',
                        'rama/data/s_xyzt_dy.cdf',
                        'rama/data/cur_xyzt_dy.cdf')
 #+END_SRC
-***
+
+#+NAME: read-tropflux-swr
+#+BEGIN_SRC ipython :session :results none
+swr = xr.open_mfdataset('../datasets/tropflux/swr*.nc', autoclose=True)
+#+END_SRC
+
+#+NAME: read-tropflux-lwr
+#+BEGIN_SRC ipython :session :results none
+lwr = xr.open_mfdataset('../datasets/tropflux/lwr*.nc', autoclose=True)
+#+END_SRC
