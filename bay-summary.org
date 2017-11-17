@@ -5,7 +5,7 @@
 [[file:../images/MixingmapASIRIPiston.png]]
 * Summary
 ** Seasonal patterns
-*** "halocline uplift"
+*** "pycnocline uplift"
 It is quite hard to see if there is a semi-regular period.
 
 This could be the large-scale ∇S being advected back and forth across the mooring.
@@ -123,8 +123,8 @@ if 'rama' not in locals():
      print('reading rama')
      <<read-rama-array>>
 
-flen = np.array([30.0, 60.0])
-hdl, var = rama.hov('T', region=dict(lon=90, depth=[1, 10, 20]),
+flen = np.array([10.0, 80.0])
+hdl, var = rama.hov('T', region=dict(lon=90, depth=[-1, -10, -20]),
                     row='depth', filt='bandpass',
                     filter_len=flen*86400)
 
@@ -133,17 +133,18 @@ plt.gca().set_xlim(['2011-01-01', '2013-07-01'])
 plt.gcf().autofmt_xdate()
 # plt.gcf().suptitle('bandpass ' + str(flen) + 'days')
 #+END_SRC
-#+CAPTION: Hovmöller plot of RAMA 90E data | Bandpassed 30, 60 days. Looks like _southward_ propagation at times.
+#+CAPTION: Hovmöller plot of RAMA 90E data | Bandpassed 10, 80 days. Looks like _southward_ propagation in Nov/Dec 2011.
 #+RESULTS:
-[[file:../images//temp/asd02j.png]]
+[[file:images/temp/asd02j.png]]
 #+BEGIN_SRC ipython :session :file images/rama-iso-T-std.png :noweb yes
 if 'rama' not in locals():
     <<read-rama-array>>
 
-freqs = [1/30.0, 1/90.0]
+from dcpy.ts import BandPassButter
 
-if 'Tfilt' not in locals():
-    Tfilt =  bandpass(rama.T.where(rama.T < 40), freqs=freqs)
+freqs = [1/10.0, 1/80.0]
+
+Tfilt = BandPassButter(rama.T.where(rama.T < 40), freqs=freqs, dim='time')
 
 MayToOct = np.logical_and(Tfilt.time.dt.month >=5,
                           Tfilt.time.dt.month <= 10)
@@ -181,7 +182,7 @@ plot_temp_std_along_lon(Tfilt, MayToOct, lon=90)
 #+RESULTS:
 [[file:images/rama-iso-T-std.png]]
 
-#+BEGIN_SRC ipython :session :file images/temp/img3907E7w.png
+#+BEGIN_SRC ipython :session :file images/iso-T-std-lat-lon-map.png
 def plot_temp_std_lat_lon(Tfilt, inmask):
     ''' Takes max. std along depth and plots in (lon, lat) space'''
     f, ax = plt.subplots(2, 1, sharex=True, sharey=True)
@@ -206,7 +207,7 @@ plot_temp_std_lat_lon(Tfilt, MayToOct)
 #+END_SRC
 #+CAPTION: Taking max(std) along depth → (lon, lat) map. Some sign of near-equatorial maxima.
 #+RESULTS:
-[[file:../images//temp/img3907E7w.png]]
+[[file:images/iso-T-std-lat-lon-map.png]]
 
 
 #+call: read-rama-array()
@@ -740,6 +741,7 @@ plt.legend()
 ** ARGO data : S_min and S_max
 [[file:../images//argo-smin-smax.png]]
 ** sampling considerations
+*** ISO signals
 Can I  see a 10/20/30/50/60/90 day peak confidently in a year-long record?
 #+BEGIN_SRC ipython :session :file images/temp/img3907IKt.png
 dt = 1  # day
@@ -770,56 +772,81 @@ plt.legend()
 # dcpy.ts.PlotSpectrum(ts, nsmooth=smth, multitaper=True)
 dcpy.plots.linex(1/periods)
 #+END_SRC
+#+CAPTION: Can I see a 10/20/30/50/60/90 day peak confidently in a year-long record?
+#+RESULTS:
+[[file:../images//temp/img3907IKt.png]]o
+*** χpod depths for RAMA17
+
+#+name: read-rama-10m
+#+BEGIN_SRC ipython :session :results none
+import xarray as xr
+import pandas as pd
+
+rama10 = xr.open_mfdataset('rama/data/t*90e_10m.cdf', autoclose=True)
+salhr = xr.open_mfdataset('rama/data/s[0-9]*90e_hr.cdf', autoclose=True)
+
+newtrange = pd.date_range(start=rama10.time.values.min(),
+                          end=rama10.time.values.max(), freq='10min')
+#+END_SRC
+
+#+call: read-rama-10m()
+
+#+BEGIN_SRC ipython :session :file images/temp/img10427kYC.png
+# ra12 = xr.open_dataset('rama/data/t12n90e_10m.cdf', autoclose=True)
+T = rama10.T_20.sel(depth=[10, 20, 40, 60])
+T = T.reindex({'time': newtrange})
+T = T.where(T < 40).squeeze()
+Tz = -T.diff(dim='depth')/T.depth.diff(dim='depth')
+Tz['depth'] = (T.depth.values[:-1] + T.depth.values[1:])/2
+Tz.name = '$T_z$'
+
+S = salhr.S_41.sel(lat=12, depth=[10, 20, 40, 60])
+S = S.reindex({'time': pd.date_range(start=S.time.values.min(),
+                                     end=S.time.values.max(), freq='1H')})
+S = S.where(S < 40).squeeze()
+Sz = -S.diff(dim='depth')/S.depth.diff(dim='depth')
+Sz.name = '$S_z$'
+
+N2 = -9.81 * (-1.7e-4 * Tz + 7.6e-4 * Sz)
+#+END_SRC
 
 #+RESULTS:
-[[file:../images//temp/img3907IKt.png]]
-* Read data :noexport:
-#+NAME: read-mur
-#+BEGIN_SRC ipython :session :results none
-os.chdir('/home/deepak/bay/')
-%matplotlib inline
+[[file:images/temp/img10427kYC.png]]
 
-if 'mur' in locals():
-    mur.close()
-    del mur
+#+BEGIN_SRC ipython :session :file images/min-Tz-rama.png
+min_Tz = 1e-3
 
-mur = xr.open_mfdataset('./datasets/mur/*.nc', autoclose=True)
-mur.rename({'analysed_sst': 'sst'}, inplace=True)
-# sst = mur.sst.chunk({'time':365})
+def count(x):
+    return (x.where(np.abs(x) < 1e-3).count(dim='time'))/x.count(dim='time')*100
+
+lat = [15, 12, 8, 4, 0]
+
+f, ax = plt.subplots(len(lat), 1, sharex=True, sharey=True)
+
+for (axx, ll) in zip(ax, lat):
+    dcpy.plots.offset_line_plot(Tz.sel(lat=ll)
+                                .groupby('time.dayofyear')
+                                .apply(count),
+                                x='dayofyear', y='depth',
+                                offset=0, remove_mean=False, ax=axx)
+    axx.set_title(str(ll)+'N')
+
+f.suptitle('% observations in a day with $T_z$ < 1e-3', y=1.05)
+ax[0].set_ylim([0, 100])
+
+ax[-1].set_xlabel('day of year')
+
+plt.tight_layout()
+plt.gcf().set_size_inches((6.5, 6.5))
 #+END_SRC
+#+CAPTION: How likely is it that we can compute χ for an instrument at 30m vs instrument at 45m
+#+RESULTS:
+[[file:images/min-Tz-rama.png]]
 
-#+NAME: read-cmc
-#+BEGIN_SRC ipython :session :results none
-os.chdir('/home/deepak/bay/')
-%matplotlib inline
+[[file:images/li-et-al-may-oct-mld.png]]
 
-if 'mur' in locals():
-    mur.close()
-    del mur
+#+call: read-ra12()
 
-cmc = xr.open_mfdataset('./datasets/cmc/*.nc', autoclose=True)
-cmc.rename({'analysed_sst': 'sst'}, inplace=True)
-sst = cmc['sst'].where(cmc.mask == 1).load()
-sst.name = 'CMC SST'
-#+END_SRC
+#+BEGIN_SRC ipython :session :file images/temp/img10427SMu.png
 
-#+NAME: read-rama-array
-#+BEGIN_SRC ipython :session :results none
-os.chdir('/home/deepak/bay/')
-moorarr = importlib.reload(moorarr)
-
-rama = moorarr.moorarr('RAMA',
-                       'rama/data/t_xyzt_dy.cdf',
-                       'rama/data/s_xyzt_dy.cdf',
-                       'rama/data/cur_xyzt_dy.cdf')
-#+END_SRC
-
-#+NAME: read-tropflux-swr
-#+BEGIN_SRC ipython :session :results none
-swr = xr.open_mfdataset('../datasets/tropflux/swr*.nc', autoclose=True)
-#+END_SRC
-
-#+NAME: read-tropflux-lwr
-#+BEGIN_SRC ipython :session :results none
-lwr = xr.open_mfdataset('../datasets/tropflux/lwr*.nc', autoclose=True)
 #+END_SRC
