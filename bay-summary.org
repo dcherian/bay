@@ -850,3 +850,18 @@ plt.gcf().set_size_inches((6.5, 6.5))
 #+BEGIN_SRC ipython :session :file images/temp/img10427SMu.png
 
 #+END_SRC
+
+** using pressure instead of accelerometer
+
+Tested with RAMA14-810
+#+CAPTION: Δp is quantized! Bit resolution ≈ 2 cm. I smooth over 0.5 seconds.
+[[file:images/810-p-velz-a-velz.png]]
+
+#+ATTR_HTML: :width 50%
+#+CAPTION: Agrees with Perlin & Moum (2012), though here $dp/dt$ is smaller.
+[[file:images/810-compare-spd.png]]
+#+CAPTION: mean/median larger by a factor of 2 (only tested for 20-Feb-2015)
+[[file:images/810-compare-chi-eps.png]]
+
+#+CAPTION: slope ≈ 1.5 (only tested for 20-Feb-2015)
+[[file:images/810-compare-hist2-chi-eps.png]]
