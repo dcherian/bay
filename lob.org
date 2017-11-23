@@ -60,7 +60,8 @@ tropflux = xr.merge([swr, lwr, tau , taux, tauy, net])
 #+NAME: read-tropflux-lwr
 #+BEGIN_SRC ipython :session :results none
 #+END_SRC
-* read χpod
+* read χpod moorings
+** RAMA
 #+NAME: read-ra12
 #+BEGIN_SRC ipython :session :results none
 %matplotlib inline
@@ -157,4 +158,61 @@ import importlib
 chipy = importlib.reload(chipy)
 
 c527 = chipy.chipod('../RAMA13/data/', '527', '2017-08-15.mat', best='mm', depth=15)
+#+END_SRC
+
+** EBOB
+#+NAME: read-nrl1
+#+BEGIN_SRC ipython :session :results none
+%matplotlib inline
+moor = importlib.reload(moor)
+chipy = importlib.reload(chipy)
+
+import os
+if 'ebob' not in os.getcwd():
+    os.chdir('/home/deepak/ebob/scripts/')
+
+nrl1 = moor.moor(85.5, 5.5, 'NRL1', '../')
+nrl1.AddChipod(500, depth=56, best='mm', fname='Turb.mat')
+nrl1.AddChipod(501, depth=76, best='mm1', fname='Turb.mat')
+nrl1.CombineTurb()
+nrl1.ReadCTD('NRL1', FileType='ebob')
+nrl1.ReadTropflux('../tropflux/')
+#+END_SRC
+
+#+NAME: read-nrl3
+#+BEGIN_SRC ipython :session :results none
+%matplotlib inline
+
+import moor.moor as moor
+import chipy.chipy as chipy
+importlib.reload(moor)
+importlib.reload(chipy)
+
+import os
+if 'ebob' not in os.getcwd():
+    os.chdir('/home/deepak/ebob/scripts/')
+
+nrl3 = moor.moor(85.5, 8, 'NRL3', '../')
+nrl3.AddChipod(505, 28, 'mm', 'Turb.mat')
+nrl3.ReadCTD('NRL3', FileType='ebob')
+nrl3.ReadTropflux('../tropflux/')
+#+END_SRC
+
+#+NAME: read-nrl5
+#+BEGIN_SRC ipython :session :results none
+import moor.moor as moor
+import chipy.chipy as chipy
+
+importlib.reload(moor)
+importlib.reload(chipy)
+
+import os
+if 'ebob' not in os.getcwd():
+    os.chdir('/home/deepak/ebob/scripts/')
+
+nrl5 = moor.moor(88.5, 8, 'NRL5', '../')
+nrl5.AddChipod(518, depth=84, best='mm', fname='Turb.mat')
+nrl5.AddChipod(519, depth=104, best='mm', fname='Turb.mat')
+nrl5.ReadCTD('NRL5', FileType='ebob')
+nrl5.ReadTropflux('../tropflux/')
 #+END_SRC
