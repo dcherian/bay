@@ -1,0 +1,352 @@
+#+TITLE: Testing out my spectra code
+#+SETUPFILE: ~/org/notebook.org
+
+* Test out python functions
+** Try multiple subsets of a time series
+- [X] generate synthetic time series
+- [X] add gaps
+- [X] plot spectrum for longest segment
+- [X] given a freq band for which I want spectrum
+  - calculate max averaging I can do to get lo-freq end
+  - shortest segment to get hi-freq end
+- [X] do averaging and supply segment length to plot spectrum.
+
+BAH! THIS GETS SCREWED BY ALIASING IF THERE ARE PEAKS
+
+#+BEGIN_SRC ipython :session :tangle yes :exports results :eval never-export :file images/temp/py2766UOs.png
+%matplotlib inline
+import matplotlib as mpl
+import matplotlib.pyplot as plt
+import numpy as np
+import sys
+import importlib
+
+if '/home/deepak/python/' not in sys.path:
+    sys.path.append('/home/deepak/python')
+    import dcpy.ts
+    import dcpy.util
+
+dcpy.ts = importlib.reload(dcpy.ts)
+dcpy.util = importlib.reload(dcpy.util)
+
+mpl.rcParams['savefig.transparent'] = True
+mpl.rcParams['figure.figsize'] = [6.5, 6.5]
+mpl.rcParams['figure.dpi'] = 180
+mpl.rcParams['axes.facecolor'] = 'None'
+
+dcpy.ts = importlib.reload(dcpy.ts)
+
+dt = 3600  # seconds
+nsmooth = 3
+
+ax1 = plt.subplot(211)
+ax2 = plt.subplot(212)
+
+# generate time series and plot actual spectrum
+y = dcpy.ts.synthetic(7000, dt, 1, -2)
+π = np.pi
+y += max(y) * np.sin(np.arange(len(y))*dt * 2*π/(12.42*3600) )
+y += max(y) * np.sin(np.arange(len(y))*dt * 2*π/(5*86400) )
+
+dcpy.ts.PlotSpectrum(y, ax=ax2, dt=dt, nsmooth=nsmooth*4,
+                     zorder=-100, color='gray')
+# dcpy.ts.PlotSpectrum(y, ax=ax2, dt=dt, nsmooth=nsmooth,
+#                     SubsetLength=320)
+
+# Add gaps.
+ngaps = 40
+i0 = np.random.randint(0, len(y), ngaps)
+i1 = np.random.randint(0, len(y)/40, ngaps)
+for i00, i11 in zip(i0,i1):
+    y[i00:i00+i11] = np.nan
+
+ax1.plot(np.arange(len(y))*dt, y)
+
+# start, stop = dcpy.ts.FindSegments(y)
+# for [s0, s1] in zip(start, stop):
+#     ax1.axvline(s0*dt, color='g')
+#     ax1.axvline(s1*dt, color='r')
+
+# Plot spectrum of longest segment
+# dcpy.ts.PlotSpectrum(y, ax=ax2, dt=dt, nsmooth=nsmooth*4,
+#                     label='raw', zorder=10)
+
+def BreakSpectra(var, breakpoints, dt, ax1=None, ax2=None):
+    nsmooth = 4
+    start, stop = dcpy.ts.FindSegments(var)
+    MaxLength = max(stop-start)
+
+    if ax1 is None:
+        ax1 = plt.subplot(211)
+
+    if ax2 is None:
+        ax2 = plt.subplot(212)
+
+    for idx, bb in enumerate(breakpoints):
+        nn = bb/dt
+        SegmentLength = np.int(np.rint(min(nn * 2.5, MaxLength)))
+
+        if idx > 0:
+            navg = np.int(breakpoints[idx-1]/dt)
+            varavg = dcpy.util.MovingAverage(var, navg,
+                                             decimate=False,
+                                             min_count=1)
+            dtavg = dt #breakpoints[idx-1]
+        else:
+            varavg = var.copy()
+            dtavg = dt
+            navg = 1
+
+        ax1.plot(np.arange(len(varavg))*dt, varavg)
+
+        S, f, conf = dcpy.ts.SpectralDensity(
+            varavg, dt=dtavg, nsmooth=nsmooth,
+            SubsetLength=SegmentLength)
+
+        S[f > 1/navg/dt] = np.nan
+        ax2.loglog(f, S, label=str(breakpoints[idx]/dt),
+                   zorder=idx+1)
+
+breakpoints = np.array([5, 10, 15, 20, 40,
+                        100, 300, 700, 1000])*3600  # in seconds
+BreakSpectra(y, breakpoints, dt, ax1, ax2)
+plt.legend()
+plt.show()
+#+END_SRC
+
+#+RESULTS:
+[[file:images/temp/py2766UOs.png]]
+** aliasing in daily means
+
++I have some factor of 2 error in frequency returned from ~dcpy.ts.SpectralDensity~.+ ; _Using fft instead of rfft fixed it._
+
+Subsampled daily running means of M_2 tide alias to the usual alias frequency.
+
+Interesting!
+
+#+BEGIN_SRC ipython :session :tangle yes :exports results :eval never-export :file images/alias-daily-avg-test.png
+
+import numpy as np
+import matplotlib.pyplot as plt
+import dcpy.util
+import dcpy.ts
+
+dcpy.util = importlib.reload(dcpy.util)
+dcpy.ts = importlib.reload(dcpy.ts)
+from dcpy.util import MovingAverage
+from dcpy.ts import AliasFreq, SpectralDensity
+
+Tavg = 24
+π = np.pi
+TM2 = 12.42
+TM2alias = 1./AliasFreq(1./TM2, Tavg)
+
+t = np.arange(0, 10001)  # in hours
+M2 = 10*np.sin(2*π/TM2 * t)
+M2alias = 10*np.sin(2*π/TM2alias * t)
+
+tavg = MovingAverage(t, Tavg)
+M2avg = MovingAverage(M2, Tavg)
+
+plt.figure(figsize=(6.5, 3.4))
+plt.subplot(121)
+plt.plot(t, M2, label='pure M2')
+plt.plot(t[0::Tavg], M2[0::Tavg], label='M2 alias  to daily')
+plt.plot(tavg, 10* M2avg, label='10x daily average M2')
+plt.xlim([0, 1200])
+plt.ylim([-20, 20])
+plt.legend()
+
+plt.subplot(122)
+spec, freq, _ = SpectralDensity(M2, 1, nsmooth=1)
+plt.loglog(freq, spec, label='pure M2')
+
+spec, freq, _ = SpectralDensity(M2avg, Tavg, nsmooth=1)
+plt.loglog(freq, spec, label='daily average M2')
+
+spec, freq, _ = SpectralDensity(M2[0::Tavg], Tavg, nsmooth=1)
+plt.loglog(freq, spec, label='aliased M2')
+
+plt.legend()
+plt.axvline(1./TM2, color='k', zorder=-10, linewidth=0.4)
+plt.axvline(1./TM2alias, color='k', zorder=-10, linewidth=0.4)
+plt.axvline(1/2)
+plt.axvline(1/len(M2))
+plt.tight_layout()
+#+END_SRC
+
+#+RESULTS:
+[[file:images/alias-daily-avg-test.png]]
+** spectrogram
+
+#+BEGIN_SRC ipython :session :tangle yes :exports results :eval never-export :file images/temp/py30956RdR.png
+
+from scipy.signal import spectrogram
+
+ndays = 20
+f, t, Sxx = spectrogram(M2, fs=1, nperseg=ndays*24)
+
+import matplotlib.pyplot as plt
+plt.pcolormesh(t, f, np.log10(Sxx))
+plt.axhline(1/TM2, color='k')
+plt.yscale('log')
+plt.colorbar()
+plt.xlabel('Time (hours)')
+plt.ylabel('Frequency (cph)')
+plt.title('PSD')
+#+END_SRC
+
+#+RESULTS:
+[[file:images/temp/py30956RdR.png]]
+** band pass butterworth
+
+#+BEGIN_SRC ipython :session :file images/temp/py2833509E.png
+import dcpy.ts
+importlib.reload(dcpy.ts)
+import scipy.signal as signal
+
+π = np.pi
+dt = 4
+
+t = np.arange(0, 10001, dt)  # in days
+freqs = np.arange(5,100,10)
+peaks = np.sum(np.sin(2*π/np.reshape(freqs, (len(freqs), 1)) * t), axis=0)
+syn = dcpy.ts.synthetic(len(t), dt, 1, -5)
+syn/= syn.max()
+syn2 = dcpy.ts.synthetic(len(t), dt, 1, 5)
+syn2/= syn2.max()
+ts = 120*syn + peaks
+ts2 = syn2 + peaks
+
+filtered = dcpy.ts.BandPassButter(ts, 1/np.array([50, 40]), dt=dt,
+                                  order=2)
+
+ax = plt.subplot(211)
+dcpy.ts.PlotSpectrum(ts, dt=dt, nsmooth=3, ax=ax)
+dcpy.ts.PlotSpectrum(filtered, dt=dt, nsmooth=3, ax=ax)
+plt.axvline(1/45)
+
+mask = ~np.isnan(filtered)
+ax2 = plt.subplot(212, sharex=ax)
+f, Cxy, phase, siglevel = dcpy.ts.Coherence(ts[mask], filtered[mask],
+                                     dt=dt, nsmooth=4)
+plt.semilogx(f, Cxy, '.-')
+plt.axhline(siglevel, color='gray', linestyle='--', zorder=-1)
+#+END_SRC
+
+#+RESULTS:
+[[file:images/temp/py2833509E.png]]
+
+Impulse response:
+
+#+BEGIN_SRC ipython :session :file images/temp/py28335L2b.png
+dcpy.ts = importlib.reload(dcpy.ts)
+
+b, a = dcpy.ts.BandPassButter([], [1/30, 1/90], dt=1,
+                              order=1, returnba=True)
+
+dcpy.ts.ImpulseResponse(b, a, eps=5e-3)
+#+END_SRC
+
+#+RESULTS:
+[[file:images/temp/py28335L2b.png]]
+
+** Test coherence
+
+#+BEGIN_SRC ipython :session :file images/temp/py4372ZJA.png
+dcpy.plots.hist(np.concatenate(c), mark95=True)
+#+END_SRC
+
+#+RESULTS:
+[[file:images/temp/py4372ZJA.png]]
+
+#+BEGIN_SRC ipython :session :file images/temp/py28335N7U.png
+%matplotlib inline
+
+import numpy.random
+dcpy.ts = importlib.reload(dcpy.ts)
+
+y0 = np.random.randn(1000)
+y1 = np.random.randn(1000)
+
+dcpy.ts.PlotCoherence(y0, y1, multitaper=True)
+#+END_SRC
+
+#+RESULTS:
+[[file:images/temp/py28335N7U.png]]
+** multitaper vs. usual
+
+#+BEGIN_SRC ipython :session :file images/temp/py28335nlb.png
+dcpy.ts = importlib.reload(dcpy.ts)
+
+π = np.pi
+TM2 = 12.42
+
+t = np.arange(0, 10001)  # in hours
+M2 = 10*np.sin(2*π/TM2 * t)
+
+ax = plt.gca()
+dcpy.ts.PlotSpectrum(M2, nsmooth=4, multitaper=False, ax=ax)
+dcpy.ts.PlotSpectrum(M2, nsmooth=4, multitaper=True, ax=ax)
+dcpy.plots.linex(1/TM2)
+#+END_SRC
+
+#+RESULTS:
+[[file:images/temp/py28335nlb.png]]
+** sign of coherence phase
+#+BEGIN_SRC ipython :session :file images/temp/py29463xPN.png
+y0 = np.sin(np.arange(5000) * 2*np.pi/100) + np.random.randn(5000)
+y1 = np.sin(np.arange(5000) * 2*np.pi/100 + np.pi/4) + np.random.randn(5000)
+
+dcpy.ts.PlotCoherence(y0, y1, multitaper=True)
+dcpy.plots.linex([1/100.0, 1/200.0, 2*np.pi/100])
+plt.gca().set_xscale('log')
+#+END_SRC
+
+#+RESULTS:
+[[file:images/temp/py29463xPN.png]]
+** Test rotary spectra
+#+BEGIN_SRC ipython :session :file images/temp/py29463UuM.png
+t = np.arange(10001)
+π = np.pi
+w = np.cos(2*π/10 * t) + 1j * np.sin(2*π/10 * t) \
+    + np.cos(2*π/100 * t) - 1j * np.sin(2*π/100 * t)
+
+cw, ccw, freq, _, _ = dcpy.ts.RotaryPSD(w, multitaper=True)
+plt.loglog(freq, cw, freq, ccw)
+
+cw, ccw, freq, _, _ = dcpy.ts.RotaryPSD(w, multitaper=False)
+plt.loglog(freq, cw, freq, ccw)
+
+plt.legend(['cw', 'ccw'])
+dcpy.plots.linex([1/10, 1/100])
+#+END_SRC
+
+#+RESULTS:
+[[file:images/temp/py29463UuM.png]]
+** Test ~apply_along_axis~
+#+BEGIN_SRC ipython :session :file images/temp/img3907Ewz.png
+import dcpy.ts
+
+dt = 1
+t = np.arange(0, 10001, dt)  # in days
+freqs = np.arange(5,100,10)
+peaks = np.sum(np.sin(2*π/np.reshape(freqs, (len(freqs), 1)) * t), axis=0)
+syn = dcpy.ts.synthetic(len(t), dt, 1, -5)
+syn/= syn.max()
+syn2 = dcpy.ts.synthetic(len(t), dt, 1, 5)
+syn2/= syn2.max()
+ts = 120*syn + peaks
+ts2d = np.broadcast_to(ts, (13, 5, len(ts)))
+
+b, a = dcpy.ts.BandPassButter(ts, [1/30.0, 1/60.0], dt=dt, returnba=True)
+
+old = dcpy.ts.oldGappyFilter(ts, b, a, num_discard='auto')
+new = np.apply_along_axis(dcpy.ts.GappyFilter, -1, ts2d,
+                          b, a, num_discard='auto')[4, 4, :].squeeze()
+
+assert(np.all(np.equal(old[~np.isnan(old)], new[~np.isnan(new)])))
+#+END_SRC
+
+#+RESULTS:
+[[file:images/temp/img3907Ewz.png]]

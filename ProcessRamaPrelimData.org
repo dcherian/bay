@@ -1,0 +1,969 @@
+#+TITLE: Process preliminary RAMA data
+#+AUTHOR: Deepak Cherian
+#+OPTIONS: timestamp:nil title:t html5-fancy:t html-style:nil html-scripts:nil
+
+#+LATEX_CLASS: dcnotebook
+
+#+HTML_DOCTYPE: html5
+#+HTML_HEAD: <link rel="stylesheet" href="notebook.css" type="text/css" />
+* Info/emails
+** Quality Codes:
+
+  0 = datum missing
+
+  1 = highest quality; Pre/post-deployment calibrations agree to within
+  sensor specifications.  In most cases only pre-deployment calibrations
+  have been applied
+
+  2 = default quality; Pre-deployment calibrations applied.  Default
+  value for sensors presently deployed and for sensors which were either
+  not recovered or not calibratable when recovered.
+
+  3 = adjusted data; Pre/post calibrations differ, or original data do
+  not agree with other data sources (e.g., other in situ data or
+  climatology), or original data are noisy.  Data have been adjusted in
+  an attempt to reduce the error.
+
+  4 = lower quality; Pre/post calibrations differ, or data do not agree
+  with other data sources (e.g., other in situ data or climatology), or
+  data are noisy.  Data could not be confidently adjusted to correct
+  for error.
+
+  5 = sensor or tube failed
+
+** filtering salinity
+From https://www.pmel.noaa.gov/gtmba/sampling
+#+BEGIN_QUOTE
+To minimize spiking in the salinity record due to sensor response time mismatches, the internally recorded 10-minute conductivity and temperature values are smoothed with a 13-point Hanning filter and subsampled at hourly intervals. Salinities are calculated from the smoothed hourly conductivity and temperature values using the method of Fofonoff and Millard (1983). These hourly data constitute the high-resolution salinity time series in the data base. High-resolution temperatures are offered at their original 10-minute sampling increment.
+#+END_QUOTE
+** March 27, 2017 Sonya
+#+BEGIN_QUOTE
+
+Hi Deepak,
+
+I've placed two sets of pre-calibrated subsurface data into ftp://ftp.pmel.noaa.gov/OCRD/tao/ForDeepak/, as well as the post-calibrated salinity files from ra107 *(post cals are not available yet for the ra122 data)*. The ~.flg files are text files containing the data (with the pre or post-calibrations applied). The ~sum files are log files listing the instruments in each mooring along with some notes about them (we add more notes to these as we process the mooring). In the "postcal" directory you'll find, alongside the post-calibrated ~flg files, *two files containing the pre-cal and post-cal coefficients, in case you're curious (since they've already been applied, you most likely won't need them).* Note that in typical salinity processing,
+1. [X] I would first flag data that appeared bad and unfixable,
+2. [X] and then I'd apply a pre-to-post-cal linear interpolation across the data to correct for large-scale drifts (i.e. the first data value in the interpolated output would have a pre-cal applied, while the last value would have a post-cal applied, with the values interpolated in between).
+3. [X] After that I'd compare the end points with previous and subsequent moorings at the same site, as well as any available CTDs,
+4. [ ] and I'd check inter-depth differences for density inversions.
+5. [ ] Using these three pieces of information, I'd manually adjust the data as needed (sometimes with dozens of adjustments needed to eliminate large-scale density inversions and bring various depths back into the mixed layer) before filtering them (into hourly data) and releasing them.
+
+I hope this helps. Take care and please let me know if you need anything else, -Sonya
+
+p.s. The 10m current data will be posted later, - I'll let you know when those are posted as well....
+
+#+END_QUOTE
+* Functions           :noexport:
+
+#+BEGIN_SRC ipython :session :tangle yes :eval never-export :exports results
+  import numpy as np
+  import matplotlib as mpl
+  import matplotlib.pyplot as plt
+  import datetime as dt
+  import cmocean as cmo
+  import seawater as sw
+  import rama
+  import importlib
+  from rama import *
+  from copy import copy
+
+  mpl.rcParams['savefig.transparent'] = True
+  mpl.rcParams['figure.figsize'] = [6.5, 6.5]
+  mpl.rcParams['figure.dpi'] = 180
+  mpl.rcParams['axes.facecolor'] = 'None'
+#+END_SRC
+
+#+RESULTS:
+
+* Better method
+Rather than fitting tanh profiles,
+
+1. I manually go in and figure what linear trends in N² need to be subtracted out to minimize number of negative N² points at each depth.
+2. this ΔN² ≡ ΔS at depths between two instruments
+3. Form the system of linear equations for corrections at each depth : ε_i
+     ε_1 - ε_2 = ΔS_12
+     ε_2 - ε_3 = ΔS_23
+     ε_3 - ε_4 = ΔS_34
+5. Solving the least squares problem gives the corrections at each depth ε_i
+
+*** RAMA13
+#+CAPTION: For some reason 40m instrument is not corrected. Density differences between 40m and 60m instruments look fine, no negative N² so nothing obvious that needs to be corrected.
+[[file:../RamaPrelimProcessed/fixed-RAMA13-N2.png]]
+
+#+CAPTION: nothing obviously different in salinity contours. Overlaid black contour is the correction
+[[file:../RamaPrelimProcessed/fixed-RAMA13-sal.png]]
+
+*** RAMA14
+#+CAPTION: RAMA14
+[[file:../RamaPrelimProcessed/fixed-RAMA14-N2.png]]
+
+#+CAPTION: RAMA14
+[[file:../RamaPrelimProcessed/fixed-RAMA14-sal.png]]
+
+#+CAPTION: Whatever I'm doing is definitely reducing N² bias at all depths. Reduces salinity bias at [60m, 40m] and makes it worse at [10m, 20m]. Ideally, we want red line in second panel to be all 0s (last mooring timestep agrees perfectly with CTD downcast).
+[[file:../RamaPrelimProcessed/RAMA14-corrected-CTD.png]]
+* RAMA13 (ra-107)
+** Read data
+#+BEGIN_quote
+  I'd apply a /pre-to-post-cal linear interpolation/ across the data to correct for large-scale drifts (i.e. the first data value in the interpolated output would have a pre-cal applied, while the last value would have a post-cal applied, with the values interpolated in between).
+#+END_QUOTE
+
+#+BEGIN_SRC ipython :session :tangle yes :eval never-export :exports results
+rama = importlib.reload(rama)
+
+ra107 = rama.Initialize('RAMA13', '107')
+#+END_SRC
+
+#+RESULTS:
+** Property plots
+#+BEGIN_SRC ipython :session :tangle yes :exports results :eval never-export :file images/rama13-T-S-ρ.png
+PcolorAll(ra107, ylim=[-50, 0])
+#+END_SRC
+
+#+RESULTS:
+[[file:images/rama13-T-S-ρ.png]]
+** Density inversions
+*** How many exist in /10 minute/ data
+The percentage of valid data with N² < 0
+#+BEGIN_SRC ipython :session :eval never-export :exports results
+  MakeArrays(ra107)
+  dSdz, dTdz, N2ρ, p_ave = CalcGradients(ra107)
+  table = TabulateNegativeN2(p_ave, N2ρ, dSdz, dTdz)
+  table
+#+END_SRC
+
+#+RESULTS:
+| Depth (m)   |  6.0 | 15.0 | 30.0 | 50.0 | 81.0 |
+| % N² < 0    | 61.0 | 12.0 | 20.0 |  0.0 |  0.0 |
+| % dS/dz > 0 | 54.0 | 19.0 | 27.0 |  1.0 | 15.0 |
+| % dT/dz < 0 | 69.0 | 48.0 | 22.0 |  7.0 |  0.0 |
+*** How many exist in /filtered hourly/ data
+  #+BEGIN_SRC ipython :session :tangle yes :exports results :eval never-export
+    MakeArrays(ra107, '-hr')
+    dSdz, dTdz, N2ρhr, p_ave = CalcGradients(ra107)
+    table = TabulateNegativeN2(p_ave, N2ρhr, dSdz, dTdz)
+    table
+  #+END_SRC
+
+  #+RESULTS:
+  | Depth (m)   |  5.5 | 15.0 | 30.0 | 50.0 | 80.0 |
+  | % N² < 0    | 61.0 | 12.0 | 20.0 |  0.0 |  0.0 |
+  | % dS/dz > 0 | 54.0 | 19.0 | 27.0 |  1.0 | 15.0 |
+  | % dT/dz < 0 | 69.0 | 48.0 | 22.0 |  7.0 |  0.0 |
+
+*** Where do these occur?
+#+BEGIN_SRC ipython :session :tangle yes :exports results :eval never-export :file images/rama13-dens-inversion-zoom.png
+  tend = 500;
+  monthsFmt = mpl.dates.DateFormatter("%d-%m")
+
+  plt.plot(ra107['date'][0:tend],
+           ra107['dens']['20'][0:tend] - ra107['dens']['10'][0:tend], linewidth=1)
+  plt.axhline(0, color='k')
+  plt.ylabel('Δρ 20m-10m')
+  hax.xaxis.set_major_formatter(monthsFmt)
+  plt.show()
+#+END_SRC
+
+#+RESULTS:
+[[file:images/rama13-dens-inversion-zoom.png]]
+
+*** Funny density offset/trends appear to result from salinity.
+
+#+BEGIN_SRC ipython :session :tangle yes :eval never-export :exports results :file images/rama13-sal-diff.png
+  # N2 = np.zeros([2, len(ra107['sal']['10'])])
+  # N2[0,:] = -9.81/1028 * (ra107['sal']['10']-ra107['sal']['20'])/10
+  # N2[1,:] = -9.81/1028 * (ra107['sal']['20']-ra107['sal']['40'])/20
+
+  limy = [-0.2, 0.4]
+
+  tend = 500;
+  monthsFmt = mpl.dates.DateFormatter("%d-%m")
+
+  depths = list(ra107['sal'].keys())
+  for index, [d1, d2] in enumerate(zip(depths[0:-3], depths[1:-2])):
+      hax = plt.subplot(3,1,index+1)
+      plt.plot(ra107['date'],
+               ra107['sal'][d2] - ra107['sal'][d1], linewidth=1)
+      plt.plot(ra107['dy-time'],
+               ra107['sal-dy'][d2] - ra107['sal-dy'][d1], linewidth=1)
+      plt.axhline(0, color='k')
+      plt.ylabel('ΔS ' + d2 + 'm-' + d1 + 'm')
+      plt.ylim(limy)
+      hax.xaxis.set_major_formatter(monthsFmt)
+
+  plt.show()
+#+END_SRC
+
+#+RESULTS:
+[[file:images/rama13-sal-diff.png]]
+*** Contributors to negative N²
+Salinity appears to be the controlling factor generally.
+
+#+BEGIN_SRC ipython :session :tangle yes :exports results :eval never-export :file images/rama13-dρdz.png
+
+  class MidpointNormalize(mpl.colors.Normalize):
+      def __init__(self, vmin=None, vmax=None, midpoint=None, clip=False):
+          self.midpoint = midpoint
+          mpl.colors.Normalize.__init__(self, vmin, vmax, clip)
+
+      def __call__(self, value, clip=None):
+          # I'm ignoring masked values and all kinds of edge cases to make a
+          # simple example...
+          x, y = [self.vmin, self.midpoint, self.vmax], [0, 0.5, 1]
+          return np.ma.masked_array(np.interp(value, x, y))
+
+  tindex = np.arange(0,dSdz.shape[1])
+  # ra107['N2'][ra107['N2'] > 0.05] = np.nan;
+
+  MakeArrays(ra107)
+  hax = plt.subplot(311)
+  plt.pcolormesh(tindex, -ra107['presarr'],
+		 1e6*-7.6e-5*np.ma.masked_array(dSdz, np.isnan(dSdz)),
+		 norm=MidpointNormalize(midpoint=0.),
+		 cmap=cmo.cm.balance)
+  plt.title('β dS/dz * 1e6')
+  plt.clim(-3, 12)
+  plt.colorbar(extend='min')
+
+  hax = plt.subplot(312)
+  plt.pcolormesh(tindex, -ra107['presarr'],
+		 1e6*-1.7e-4*np.ma.masked_array(dTdz, np.isnan(dTdz)),
+		 norm=MidpointNormalize(midpoint=0.),
+		 cmap=cmo.cm.balance)
+  plt.colorbar(extend='min')
+  plt.clim(-3, 12)
+  plt.title('-α dT/dz * 1e6')
+
+  hax = plt.subplot(313)
+  mycmap = copy(cmo.cm.ice_r)
+  mycmap.set_bad(color='w')
+  mycmap.set_under(color='r')
+  mynorm = mpl.colors.Normalize(vmin=0., vmax=np.nanmax(ra107['N2']))
+
+  plt.pcolormesh(tindex, -ra107['presarr'],
+		 np.ma.masked_array(ra107['N2'], np.isnan(ra107['N2'])),
+		 cmap=mycmap, norm=mynorm)
+  plt.axhline(-15, color='k'); plt.axhline(-30, color='k')
+  plt.colorbar(extend='min')
+  plt.title('N² (negative in red)')
+
+  plt.tight_layout()
+  plt.show()
+
+#+END_SRC
+
+#+RESULTS:
+[[file:images/rama13-dρdz.png]]
+
+Let's try a better way.
+
+Looks like both dT/dz < 0, dS/dz > 0 (colder, saltier water on top) are responsible.
+
+Though most points have dS/dz > 0.
+
+#+BEGIN_SRC ipython :session :tangle yes :exports results :eval never-export :file images/rama13-neg-N²-scatter.png
+
+  for ii in [1,2]:
+      plt.subplot(1,2,ii)
+      mask = N2[ii,:] < 0
+      plt.hexbin(7.6e-1*dSdz[ii,mask], 1.7*dTdz[ii,mask], mincnt=10)
+      plt.axis('square')
+      plt.axhline(0, color='k', alpha=0.5);
+      plt.axvline(0, color='k', alpha=0.5)
+      if ii is 1:
+          plt.xlim([-0.005, 0.005]); plt.ylim([-0.005, 0.005])
+      if ii is 2:
+          plt.xlim([-0.0025, 0.0025]); plt.ylim([-0.0025, 0.0025])
+
+      plt.xlabel('β dS/dz * 1e4'); plt.ylabel('α dT/dz * 1e4')
+      plt.title(str(p_ave[ii,0]) + 'm')
+
+  plt.gcf().suptitle('N² < 0 points binned', y=0.75)
+  plt.tight_layout()
+  plt.show()
+#+END_SRC
+
+#+RESULTS:
+[[file:images/rama13-neg-N²-scatter.png]]
+
+** Salinity :noexport:
+*** Difference: pre- and post-salinity 10m, 20m.
+
+#+BEGIN_SRC ipython :session :tangle yes :eval never-export :exports results :file images/rama13-sal-pre-post-cal.png
+
+  ax1 = plt.subplot(211)
+  plt.plot_date(ra107['date'],
+		ra107['sal-post']['10'] - ra107['sal-pre']['10'], '-')
+  plt.ylabel('RAMA13 S_post - S_pre')
+  plt.title('10m')
+
+  ax2 = plt.subplot(212, sharex=ax1)
+  plt.plot_date(ra107['date'],
+		ra107['sal-post']['20'] - ra107['sal-pre']['20'], '-')
+  plt.ylabel('RAMA13 S_post - S_pre')
+  plt.title('20m')
+
+  plt.show()
+#+END_SRC
+
+#+RESULTS:
+[[file:images/rama13-sal-pre-post-cal.png]]
+*** Compare pre- and post-cal
+#+BEGIN_SRC ipython :session :tangle yes :eval never-export :exports results :file images/rama13-interp-pre-post-sal.png
+  depth = '10'
+  plt.figure()
+  plt.plot(ra107['sal'][depth] - ra107['sal-pre'][depth], label='interp-pre')
+  plt.plot(ra107['sal'][depth] - ra107['sal-post'][depth], label='interp-post')
+  plt.axhline(0, color='gray', zorder=-100)
+  plt.legend()
+  plt.title(depth + 'm depth')
+  plt.show()
+#+END_SRC
+
+#+RESULTS:
+[[file:images/rama13-interp-pre-post-sal.png]]
+
+Nothing crazy in the interpolated product. Spiky at the surface, perhaps that's expected.
+
+#+BEGIN_SRC ipython :session :tangle yes :eval never-export :exports results :file images/rama13-interp-salinity.png
+  plt.figure()
+
+  for depth in ra107['sal'].dtype.names:
+	plt.plot_date(ra107['date'][0:-1:6],
+                      ra107['sal'][depth][0:-1:6], '-',
+                      label=depth, linewidth=1)
+
+  plt.legend()
+  plt.title('ra-107 / RAMA13 interpolated pre-cal post-cal salinity product')
+
+#+END_SRC
+
+#+RESULTS:
+[[file:images/rama13-interp-salinity.png]]
+** Temperature :noexport:
+*** Read in netCDF 10 minute data                                :noexport:
+This is the same as date read from pre-cal .flg file.
+
+There is no post-cal for temperature.
+
+#+BEGIN_SRC ipython :session :tangle yes :eval never-export :exports none
+  tempfilename = '../t12n90e_10m.cdf'
+
+  import netCDF4 as nc
+
+  tempfile = nc.Dataset(tempfilename)
+
+  # t0 = np.datetime64(tempfile['time'].units[14:])
+  t0 = dt.datetime.strptime(tempfile['time'].units[14:],
+			    '%Y-%m-%d %H:%M:%S')
+  timevec = np.array([t0 + dt.timedelta(minutes=tt.astype('float')) \
+                      for tt in tempfile['time'][0:]])
+
+  ind107start = np.argmin(np.abs(timevec - ra107['date'][0]))
+  ind107stop = np.argmin(np.abs(timevec - ra107['date'][-1]))
+
+  temp_matrix = tempfile['T_20'][ind107start:ind107stop+1].squeeze()
+
+  # save processed temperature product
+  for index, zz in enumerate(np.int32(tempfile['depth'][:])):
+      ra107['temp-proc'][str(zz)] = temp_matrix[:,index]
+
+  # now for pre-calib temperature
+  cnv = {0:ProcessDate}
+  for jj in np.arange(1,14):
+      cnv[jj] = Clean;
+
+  ra107pre = np.loadtxt('../TAO_raw/temp107a.flg', skiprows=5, dtype=temp,
+			converters=cnv)
+
+  ra107['temp'] = ra107pre['temp']
+#+END_SRC
+
+#+RESULTS:
+*** Compare fully-processed and "preliminary" data = no difference :noexport:
+#+BEGIN_SRC ipython :session :tangle yes :eval never-export :exports none :file images/ra107-pre-proc-temp.png
+  for index, zz in enumerate(['1', '10', '20', '40']):
+      plt.subplot(4,1,index+1)
+      plt.plot_date(ra107['date'],
+                    ra107['temp-proc'][zz]-ra107['temp'][zz],
+                    '-', linewidth=1)
+#+END_SRC
+
+#+RESULTS:
+[[file:ra107-pre-proc-temp.png]]
+** 10 min vs. daily data
+*** Quality flags for daily data :noexport:
+Wut, nothing's been flagged as adjusted in the daily data? ¯\ _(ツ)_/¯
+
+Quality flag = 2 = default quality; Pre-deployment calibrations applied.  Default value for sensors presently deployed and for sensors which were either not recovered or not calibratable when recovered.
+
+*The daily data are using pre-calibration coefficients*
+
+Looks like they depend on the Hanning filter to deal with spiking.
+
+#+BEGIN_SRC ipython :session :tangle yes :exports none :eval never-export :file images/rama13-quality-dy.png
+
+  plt.subplot(211)
+  plt.plot_date(ra107['dy-time'],
+		salfile['QS_5041'][ind107start:ind107stop+1,1:4].squeeze() , '-', linewidth=1)
+  plt.title('Sal')
+
+  plt.subplot(212)
+  plt.plot_date(ra107['dy-time'],
+		tempfile['QT_5020'][ind107start:ind107stop+1,1:4].squeeze() , '-', linewidth=1)
+  plt.title('Temp')
+  plt.show()
+#+END_SRC
+
+#+RESULTS:
+[[file:images/rama13-quality-dy.png]]
+
+*** Salinity
+#+BEGIN_SRC ipython :session :tangle yes :eval never-export :exports none :file images/rama13-sal-10m-dy.png
+Compare10mDy(ra107, 'sal', '')
+#+END_SRC
+
+#+RESULTS:
+[[file:images/rama13-sal-10m-dy.png]]
+
+
+#+BEGIN_SRC ipython :session :tangle yes :exports results :eval never-export :file images/rama13-sal-diff-10m-dy.png
+Compare10mDyDiff(ra107, 'sal', '')
+#+END_SRC
+
+#+RESULTS:
+[[file:images/rama13-sal-diff-10m-dy.png]]
+
+*** Temperature :noexport:
+#+BEGIN_SRC ipython :session :tangle yes :eval never-export :exports results :file images/rama13-temp-10m-dy.png
+Compare10mDy(ra107, 'temp')
+#+END_SRC
+
+#+RESULTS:
+[[file:images/rama13-temp-10m-dy.png]]
+
+
+#+BEGIN_SRC ipython :session :tangle yes :exports results :eval never-export :file images/rama13-temp-diff-10m-dy.png
+Compare10mDyDiff(ra107, 'temp')
+#+END_SRC
+
+#+RESULTS:
+[[file:images/rama13-temp-diff-10m-dy.png]]
+
+*** *Potential* Density
+Using density from .flg files is consistent. There seem be a lot of density inversions between 10m and 20m depths; especially at the beginning of the record.
+
+winter convection?
+
+#+BEGIN_SRC ipython :session :tangle yes :eval never-export :exports none :file images/rama13-dens-10m-dy.png
+ Compare10mDy(ra107, 'dens')
+#+END_SRC
+
+#+RESULTS:
+[[file:images/rama13-dens-10m-dy.png]]
+
+
+#+BEGIN_SRC ipython :session :tangle yes :exports results :eval never-export :file images/rama13-dens-diff-10m-dy.png
+Compare10mDyDiff(ra107, 'dens', '', filt=True, window_len=13)
+#+END_SRC
+
+#+RESULTS:
+[[file:images/rama13-dens-diff-10m-dy.png]]
+** Fit tanh to ρ
+
+Spline fits don't work well.
+#+BEGIN_SRC ipython :session :tangle yes :exports results :eval never-export :file images/N2-fit.png
+import rama
+rama = importlib.reload(rama)
+rama.MakeArrays(ra107)
+try:
+    dcpy.fits = importlib.reload(dcpy.fits)
+except:
+    pass
+
+var = 'densarr'
+# zarr = np.array([1.0, 10.0, 20.0, 40.0, 60.0, 100.0]) + 1e-5
+zarr = ra107['presarr'][:, 0]
+curve = 'tanh'
+plt.subplot(311)
+N2, N2z = rama.N2fit(ra107[var], zarr, tt=20290,
+		     depth0=15, doplot=True, curve=curve)
+
+plt.subplot(312)
+N2, N2z = rama.N2fit(ra107[var], zarr, tt=22130,
+		     depth0=15, doplot=True, curve=curve)
+
+plt.subplot(313)
+N2, N2z = rama.N2fit(ra107[var], zarr, tt=50400,
+		     depth0=15, doplot=True, curve=curve)
+
+plt.tight_layout()
+plt.show()
+#+END_SRC
+#+CAPTION: Doing fit and weighting differently according to season works well. The 60m is too strong a constraint.
+#+RESULTS:
+[[file:images/N2-fit.png]]
+
+
+#+BEGIN_SRC ipython :session :tangle yes :exports results :eval never-export
+  # do the calculation
+  rama = importlib.reload(rama)
+  dcpy.fits = importlib.reload(dcpy.fits)
+
+  # N²
+  # %time N2, N2z = rama.N2fit(ra107['densarr'][:, 0::1], ra107['presarr'][:, 0], depth0=[15, 30])
+
+  # ra107['N2fit'][0::1, :] = N2
+  # ra107['N2z'] = N2z
+
+  # dSdz
+  dSdz, Sz_z = rama.N2fit(ra107['salarr'][:, 0::2], ra107['presarr'][:, 0], depth0=[15, 30])
+#+END_SRC
+
+#+RESULTS:
+
+#+BEGIN_SRC ipython :session :tangle yes :exports results :eval never-export :file images/N2-fit-compare.png
+
+  import rama
+  rama = importlib.reload(rama)
+
+  CompareFit(ra107)
+#+END_SRC
+
+#+CAPTION: Hourly smoothed N² fit.
+#+RESULTS:
+[[file:images/N2-fit-compare.png]]
+
+** Save data :noexport:
+
+#+BEGIN_SRC ipython :session :tangle yes :exports results :eval never-export
+rama = importlib.reload(rama)
+rama.MakeArrays(ra107)
+rama.SaveRama(ra107)
+#+END_SRC
+
+#+RESULTS:
+* RAMA14 - 12N (ra-122)
+** Read data
+#+BEGIN_SRC ipython :session :tangle yes :eval never-export :exports results
+  rama = importlib.reload(rama)
+
+  ra122 = rama.Initialize('RAMA14', '122')
+
+  # ra122read = np.loadtxt('../TAO_raw/sal122a.flg', skiprows=5, dtype=sal,
+  # 		       converters={0:ProcessDate,
+  # 			           1:Clean,
+  # 			           2:Clean,
+  # 			           3:Clean,
+  # 			           4:Clean,
+  # 			           5:Clean,
+  # 			           6:Clean})
+
+  # ra122 = dict([])
+  # ra122['date'] = ra122read['date']
+  # ra122['name'] = 'RAMA14'
+
+  # ra122['sal'] = dict([])
+  # for depth in ra122read['sal'].dtype.names:
+  #     ra122['sal'][depth] = ra122read['sal'][depth]
+
+  # var = 'temp'
+  # ra122read = np.loadtxt('../TAO_raw/temp122a.flg', skiprows=5, dtype=temp,
+  # 		       converters={0:ProcessDate,
+  # 			           1:Clean,
+  # 			           2:Clean,
+  # 			           3:Clean,
+  # 			           4:Clean,
+  # 			           5:Clean,
+  # 			           6:Clean})
+  # ra122[var] = dict([])
+  # for depth in ra122read[var].dtype.names:
+  #     ra122[var][depth] = ra122read[var][depth]
+
+  # var = 'dens'
+  # ra122read = np.loadtxt('../TAO_raw/dens122a.flg', skiprows=5, dtype=dens,
+  # 		       converters={0:ProcessDate,
+  # 			           1:Clean,
+  # 			           2:Clean,
+  # 			           3:Clean,
+  # 			           4:Clean,
+  # 			           5:Clean,
+  # 			           6:Clean})
+  # ra122[var] = dict([])
+  # for depth in ra122read[var].dtype.names:
+  #     ra122[var][depth] = ra122read[var][depth] + 1000
+
+
+  # ReadDailyData(ra122)
+#+END_SRC
+
+#+RESULTS:
+
+New version
+** Property plots
+#+BEGIN_SRC ipython :session :tangle yes :exports results :eval never-export :file images/rama14-T-S-ρ.png
+  PcolorAll(ra122, ylim=[-50, 0])
+#+END_SRC
+
+#+RESULTS:
+[[file:images/rama14-T-S-ρ.png]]
+
+** Salinity
+#+BEGIN_SRC ipython :session :tangle yes :eval never-export :exports results :file images/rama14-pre-cal-salinity.png
+  plt.figure()
+
+  for depth in ['10', '20', '40']:
+	plt.plot_date(ra122['date'][0:-1:6],
+		      ra122['sal'][depth][0:-1:6], '-',
+		      label=depth, linewidth=1)
+
+  plt.legend()
+  plt.title('ra-122 / RAMA14 pre-cal salinity product')
+  plt.show()
+#+END_SRC
+
+#+RESULTS:
+[[file:images/rama14-pre-cal-salinity.png]]
+
+#+BEGIN_SRC ipython :session :tangle yes :exports results :eval never-export :file images/RAMA14-sal-diff.png
+Compare10mDyDiff(ra122, 'sal', '')
+#+END_SRC
+
+#+RESULTS:
+[[file:images/RAMA14-sal-diff.png]]
+
+** Density
+#+BEGIN_SRC ipython :session :tangle yes :exports results :eval never-export :file images/RAMA14-dens-diff.png
+Compare10mDyDiff(ra122, 'dens', '')
+#+END_SRC
+
+#+RESULTS:
+[[file:images/RAMA14-dens-diff.png]]
+
+** Fit tanh
+ #+BEGIN_SRC ipython :session :tangle yes :exports results :eval never-export :file images/rama14-ρ-fit.png
+
+   import rama
+   rama = importlib.reload(rama)
+   rama.MakeArrays(ra122)
+   try:
+      dcpy.fits = importlib.reload(dcpy.fits)
+   except:
+      pass
+
+   rama.TestFit(ra122, tindices=[34298, 24400, 7001*6], depth0=30)
+#+END_SRC
+
+#+RESULTS:
+[[file:images/rama14-ρ-fit.png]]
+
+#+BEGIN_SRC ipython :session :tangle yes :exports results :eval never-export
+  # do the calculation
+  rama = importlib.reload(rama)
+
+  # N²
+  %time N2, N2z = rama.N2fit(ra122['densarr'][:, 0::1], ra122['presarr'][:, 0], name=ra122['name'], depth0=[15, 30])
+
+  ra122['N2fit'] = N2
+  ra122['N2z'] = N2z
+
+  # dSdz
+  #dSdz, Sz_z = rama.N2fit(ra107['salarr'][:, 0::2], ra107['presarr'][:, 0], depth0=[15, 30])
+#+END_SRC
+
+#+RESULTS:
+
+
+#+BEGIN_SRC ipython :session :tangle yes :exports results :eval never-export :file images/ra122-compare-fit.png
+  rama = importlib.reload(rama)
+
+  rama.CompareFit(ra122)
+  plt.show()
+#+END_SRC
+
+#+CAPTION: This doesn't seem to do well at 15m. But 30m should be usable.
+#+RESULTS:
+[[file:images/ra122-compare-fit.png]]
+
+** Save
+#+BEGIN_SRC ipython :session :tangle yes :exports results :eval never-export
+  rama = importlib.reload(rama)
+  rama.SaveRama(ra122)
+#+END_SRC
+
+#+RESULTS:
+
+* RAMA14 - 15N (ra-123)
+** Email from Sonya
+#+BEGIN_QUOTE
+Hi Deepak,
+
+Thank you for the data and notes you sent! I'm planning to be away from the office for the next 2 weeks, but will compare them after I return. I just looked for the ra122 post calibration files and they're unfortunately not available yet, but the CTDs are, so I'll send you the CTDs at least. I don't work with the current meter data, so I just asked my colleague and he checked into it and found that we do have velocity data from ra122 and ra123, but he hasn't processed them yet. With your request, he has them on his list now and will get them to you within the next month or two...
+
+Regarding the ra123 (15n90e, 12/2014-3/2016) data, I checked and there are no postcals yet (the instruments often remain in India for over a year before they're sent back to us and we can post cal them). There are also no CTDs yet. However, at an urgent request earlier this year, I'd already gone ahead and processed the data without CTDs and post cals, so I can send the results to you if you'd like them. Alternatively I can just send you the initial pre-calibrated files if you'd prefer to process them yourself... Actually, since I won't be here for the next 2 weeks, I'll just post all of the files (precal and final) on the same ftp site so you can download any of them. The final files we release are hourly salc~.hry and daily salc~.davg files, and I'll also post the adjusted ~.adj 10-minute data (which are created prior to 13-point hanning filtering that converts them to hourly). I'll put them into a "final_but_no_postcals" folder under the main site:
+ ftp://ftp.pmel.noaa.gov/OCRD/tao/ForDeepak/July21_2017/
+I just posted them all, so you should be able to retrieve them now...
+
+Take care and I hope you'll have a good weekend!
+
+-Sonya
+#+END_QUOTE
+
+The adjusted data looks good at the χpod depths.
+#+CAPTION: N² using adjusted data from Sonya.
+[[file:../images/RAMA14-15N-N2.png]]
+#+CAPTION:The corrections are all over the place!
+[[file:../images/RAMA14-15N-corrections.png]]
+* RAMA13 & RAMA14
+** Property plots
+
+#+BEGIN_SRC ipython :session :tangle yes :exports results :eval never-export :file images/rama1314-T-s-ρ.png
+
+ramafull = RamaStitch(ra107, ra122)
+PcolorAll(ramafull, ylim=[-50,0])
+#+END_SRC
+
+#+RESULTS:
+[[file:images/rama1314-T-s-ρ.png]]
+
+** Scatter TS
+
+TS scatter plots change dramatically between 2014 and 2015.
+
+#+BEGIN_SRC ipython :session :tangle yes :exports results :eval never-export :file images/rama1314-TS.png
+  woa = do.ReadWoa(90, 12, 'seasonal')
+
+  tlim = mpl.dates.date2num([dt.datetime(2014, 1, 1),
+                             dt.datetime(2014, 12, 31)]);
+  # tlim = None
+  ax1 = plt.subplot(221)
+  ScatterTS(ra107, '10', tlim, woa)
+  ax2 = plt.subplot(223, sharex=ax1, sharey=ax1)
+  ScatterTS(ra107, '20', tlim, woa)
+  plt.tight_layout()
+
+  tlim = mpl.dates.date2num([dt.datetime(2015, 1, 1),
+                             dt.datetime(2015, 12, 31)]);
+  # tlim=None
+  ax3 = plt.subplot(222, sharex=ax1, sharey=ax1)
+  ScatterTS(ra122, '10', tlim, woa)
+  ax4 = plt.subplot(224, sharex=ax1, sharey=ax1)
+  ScatterTS(ra122, '20', tlim, woa)
+  plt.tight_layout()
+  plt.show()
+#+END_SRC
+
+#+CAPTION: Small dots are RAMA daily data scattered between 1-Jan-2014/2015 to 31-Dec-2014/2015. Big circles are WOA seasonal climatology colored in the same way as the daily RAMA data. Looks like there's generally spread outside climatological range.
+#+RESULTS:
+[[file:images/rama1314-TS.png]]
+** What are the differences between end of RAMA13 and start of RAMA14
+
+#+BEGIN_SRC ipython :session :tangle yes :eval never-export :exports results
+  ramadiff = np.dtype([('depth', np.int32),
+                       ('ΔS', np.float32),
+                       ('Δt', dt.timedelta)])
+
+  diff = np.zeros((6,), dtype=ramadiff)
+
+  for index,depth in enumerate(ra107['sal'].keys()):
+      r13 = ra107['sal'][depth]
+      sal13 = r13[~np.isnan(r13)]
+      date13 = ra107['date'][~np.isnan(r13)]
+
+      diff[index] = (int(depth),
+                     ra122['sal'][depth][6] - r13[-1],
+                     ra122['date'][0] - date13[-1])
+
+  diff
+#+END_SRC
+
+#+RESULTS:
+: array([(1, nan, datetime.timedelta(27, 61200)),
+:        (10, 0.042999267578125, datetime.timedelta(0, 46200)),
+:        (20, 0.036998748779296875, datetime.timedelta(0, 46200)),
+:        (40, 0.006000518798828125, datetime.timedelta(0, 46200)),
+:        (60, -0.004001617431640625, datetime.timedelta(0, 46200)),
+:        (100, 0.02300262451171875, datetime.timedelta(0, 46200))],
+:       dtype=[('depth', '<i4'), ('ΔS', '<f4'), ('Δt', 'O')])
+
+(depth, ΔS, Δtime)
+
+ra107 surface instrument failed a month before recovery.
+
+The rest seem OK except for the 40m instrument: during recovery/deployment there is a big jump of 0.5 psu; but that might be noise at the first time step of RAMA14.
++No, 0.24 psu jump to RAMA14.+ An hour after deployment, difference is 0.01psu; so probably not bad.
+
+#+BEGIN_SRC ipython :session :tangle yes :eval never-export :exports results :file images/ra07-ra122-switch-period.png
+  for index, depth in enumerate(ra107['sal'].keys()):
+      if index == 0:
+          continue
+
+      hax = plt.subplot(6,1,index+1)
+
+      plt.plot_date(ra107['date'][-100:-1],
+	            ra107['sal'][depth][-100:-1],
+	            'k*-', linewidth=1)
+      plt.plot_date(ra122['date'][0:100],
+	            ra122['sal'][depth][0:100],
+	            'k*-', linewidth=1)
+
+      if index < 5:
+          hax.set_xticklabels([], visible=False)
+
+      plt.title(depth+'m')
+
+  plt.tight_layout()
+#+END_SRC
+
+#+RESULTS:
+[[file:images/ra07-ra122-switch-period.png]]
+
+** Plot full record - 10 min salinity
+
+#+BEGIN_SRC ipython :session :tangle yes :eval never-export :exports results :file images/rama13-rama14-full-salinity.png
+
+  dtime = 1
+  for index, depth in enumerate(ra107['sal'].keys()):
+       hax = plt.subplot(6,1,index+1)
+       rama = ra107
+       plt.plot_date(rama['date'][0:-1:dtime],
+	             rama['sal'][depth][0:-1:dtime], 'k-',
+	             label=depth, linewidth=1)
+
+       rama = ra122
+       plt.plot_date(rama['date'][0:-1:dtime],
+	             rama['sal'][depth][0:-1:dtime], 'k-',
+	             label=depth, linewidth=1)
+       plt.title(depth + 'm')
+       if index == 0:
+           plt.title('RAMA 13 & 14 salinity | 1m')
+
+       plt.ylim([31.5, 35.5])
+       if index < 5:
+            hax.set_xticklabels(labels=[], visible=False)
+
+  plt.tight_layout()
+#+END_SRC
+
+#+CAPTION: 40m and 60m instruments seem to be a lot noisier! Emily thinks this is because of the thermocline being sloshed up and down by internal waves.
+#+RESULTS:
+[[file:images/rama13-rama14-full-salinity.png]]
+
+let's check distribution / variances - variances are only slightly higher.
+
+#+BEGIN_SRC ipython :session :tangle yes :eval never-export :exports results :file images/rama13-rama14-sal-histograms.png
+  def dcHist(var, bins=100, **kwargs):
+    import numpy as np
+    mpl.rcParams['figure.facecolor'] = 'None'
+    plt.hist(var[~np.isnan(var)], bins,
+             normed=True, alpha=0.7, **kwargs)
+
+  for index, depth in enumerate(ra107['sal'].dtype.names):
+    plt.subplot(3,2,index+1)
+    dcHist(ra107['sal'][depth], label='13/107')
+    dcHist(ra122['sal'][depth], label='14/122')
+    plt.title(depth + 'm | var = '
+              + str(np.nanvar(ra107['sal'][depth]))[0:5]
+              + ' | var = '
+              + str(np.nanvar(ra122['sal'][depth]))[0:5])
+    if index == 0:
+      plt.legend()
+
+  plt.suptitle('Normalized histogram for 10min salinity', va='bottom')
+  plt.tight_layout()
+
+#+END_SRC
+
+#+RESULTS:
+[[file:images/rama13-rama14-sal-histograms.png]]
+* Full 12n90e record (daily netcdf)
+
+#+BEGIN_SRC ipython :session :tangle yes :exports results :eval never-export
+import netCDF4 as nc
+import seawater as sw
+
+ramaT = nc.Dataset('../t12n90e_dy.cdf')
+ramaS = nc.Dataset('../s12n90e_dy.cdf')
+
+zind = [np.where(ramaT['depth'][:] == d)[0][0] for d in ramaS['depth'][:]]
+S = ramaS['S_41'][:].squeeze()
+T = ramaT['T_20'][:-1, zind, :, :].squeeze()
+z = ramaS['depth'][:]
+ρ = sw.pden(S, T, z)
+t = ramaS['time'][:] + mpl.dates.date2num(dt.datetime(2007, 11, 16, 12, 00, 00))
+
+#+END_SRC
+
+#+RESULTS:
+
+#+BEGIN_SRC ipython :session :tangle yes :exports results :eval never-export :file images/rama12n90e-drho.png
+  plt.plot_date(t, ρ[:,2] - ρ[:,1], '-',
+		linewidth=1, label='Δρ 20m - 10m')
+  plt.plot_date(t, ρ[:,3] - ρ[:,2], '-',
+		linewidth=1, label='Δρ 40m - 20m')
+  plt.xlim([dt.datetime(2012, 12, 1), dt.datetime(2016, 12, 31)])
+  plt.legend()
+  plt.axhline(0, linestyle='--', color='gray', zorder=-10)
+  plt.gcf().autofmt_xdate()
+  plt.show()
+
+#+END_SRC
+#+CAPTION: Looks like there's a jump in Δρ at 15m at the end of RAMA14 to the next deployment. I should be able to use this to fix RAMA14 somewhat.
+#+RESULTS:
+[[file:images/rama12n90e-drho.png]]
+
+** Differences in daily average values
+
+#+BEGIN_SRC ipython :session :tangle yes :exports none :eval never-export
+  import datetime as dt
+  tdeploy = [[dt.datetime(2013, 11, 30, 12, 00), dt.datetime(2014, 12,  4, 12, 00)],
+             [dt.datetime(2014, 12,  6, 12, 00), dt.datetime(2016,  2, 19, 12, 00)],
+             [dt.datetime(2016,  3, 11, 12, 00), None]]
+
+  diff = dict()
+  diff['0-labels'] = [['ΔT', 'ΔS', 'Δρ']]
+
+  for tt in range(0,2):
+      for zz in range(1,4):
+          if tt == 0:
+	      dep = 'rama13-end'
+          else:
+	      dep = 'rama14-end'
+
+          start = np.where(t == mpl.dates.date2num(tdeploy[tt+1][0]))[0][0]
+          stop  = np.where(t == mpl.dates.date2num(tdeploy[tt][1]))[0][0]
+          dT = T[start,zz] - T[stop,zz]
+          dS = S[start,zz] - S[stop-1,zz]
+          dρ = ρ[start,zz] - ρ[stop-1,zz]
+          diff[str(z[zz]) + '-' + dep] = [dT, dS, dρ]
+
+  diff
+#+END_SRC
+
+#+RESULTS:
+| 0-labels | : | ((ΔT ΔS Δρ)) | 10.0-rama13-end | : | (-0.020000458 -0.7179985 -0.49914551) | 10.0-rama14-end | : | (-0.030000687 -1.6980019 -1.2579956) | 20.0-rama13-end | : | (-0.069999695 -0.56999969 -0.38153076) | 20.0-rama14-end | : | (-0.099998474 -1.5480003 -1.1229248) | 40.0-rama13-end | : | (0.19000053 0.069000244 0.10101318) | 40.0-rama14-end | : | (1.3799992 -0.041999817 -0.23547363) |
+
+
+There is a 3-week gap between end of RAMA14 and next deployment so that jumps are bigger ╮(╯_╰)╭
+
+(This is from released daily data i.e. pre-calib information for RAMA13)
+| 0-labels        | (ΔT ΔS Δρ)             |
+|-----------------+------------------------|
+| 10.0-rama13-end | (-0.020 -0.717 -0.499) |
+| 10.0-rama14-end | (-0.030 -1.698 -1.257) |
+|-----------------+------------------------|
+| 20.0-rama13-end | (-0.069 -0.569 -0.381) |
+| 20.0-rama14-end | (-0.099 -1.548 -1.122) |
+|-----------------+------------------------|
+| 40.0-rama13-end | (0.190 0.069 0.101)    |
+| 40.0-rama14-end | (1.379 -0.042 -0.235)  |
+|-----------------+------------------------|
+* Argo profiles
+** 5904313 aoml
+
+#+BEGIN_SRC ipython :session :tangle yes :exports results :eval never-export :file images/aoml-argo.png
+ArgoPlot(ra107, mpl.dates.datetime.datetime(2014, 11, 24), '59043413')
+#+END_SRC
+
+#+RESULTS:
+[[file:images/aoml-argo.png]]

@@ -1,0 +1,364 @@
+#+TITLE: EBoB: χ-estimates
+
+#+OPTIONS: html-link-use-abs-url:nil html-postamble:auto
+#+OPTIONS: html-preamble:t html-scripts:nil html-style:nil
+#+OPTIONS: html5-fancy:t tex:t broken-links:mark H:5
+#+OPTIONS: toc:2
+#+STARTUP: hideblocks
+#+HTML_DOCTYPE: html5
+#+HTML_CONTAINER: div
+#+LATEX_CLASS: dcnotebook
+#+HTML_HEAD: <link rel="stylesheet" href="notebook.css" type="text/css" />
+
+* Instrument table
+
+MicroCATs every 15m  starting 5m from top.
+
+CTD at surface and 250m.
+
+Emily: /A lot of these χ-pods did not have pitots installed/
+
+#+CAPTION: χ-pod locations.
+|-----+------+-----------+------------+----------------+---------------+----------------+--------------------+--------------------|
+| NRL | χpod | Depth (m) | Location   | Start Date     | End Date      | Disturbances   | T1/T2 status       | Pitot              |
+|-----+------+-----------+------------+----------------+---------------+----------------+--------------------+--------------------|
+|   1 |  500 | 54 (110)  | 5N 85.5E   | 19-Dec-13      | 24-Apr-15     | 30-Dec-14      | T2 dies earlier    | unusable drift     |
+|     |  501 | 74 (130)  | 5N 85.5E   | 19-Dec-13      | 4-Feb-15      | 29-Jan-15      | bad disk. july-oct | flatline. unusable |
+|-----+------+-----------+------------+----------------+---------------+----------------+--------------------+--------------------|
+|   2 |  503 | 49 (110)  | 6.5N 85.5E | BAD            | BAD           | BAD            |                    |                    |
+|     |  504 | 69 (130)  | 6.5N 85.5E | 19-Dec-13      | 25-Apr-15     | 3/11/15 5:29   |                    |                    |
+|-----+------+-----------+------------+----------------+---------------+----------------+--------------------+--------------------|
+|   3 |  505 | 26 (110)  | 8N 85.5E   | 12/20/13 13:10 | 4/26/15 23:29 | 12/13/14 4:29  |                    |                    |
+|     |  511 | 46 (130)  | 8N 85.5E   | 12/20/13 13:12 | 4/26/15 23:29 | 12/29/14 18:29 |                    |                    |
+|-----+------+-----------+------------+----------------+---------------+----------------+--------------------+--------------------|
+|   4 |  514 | 55 (110)  | 8N 87E     | 12/21/13 4:34  | 4/27/15 23:29 | 12/28/14 17:29 |                    |                    |
+|     |  516 | 75 (130)  | 8N 87E     | 12/21/13 4:34  | 4/26/15 23:29 | 2/9/15 2:29    |                    |                    |
+|-----+------+-----------+------------+----------------+---------------+----------------+--------------------+--------------------|
+|   5 |  518 | 82 (110)  | 8N 88.5E   | 12/21/13 16:07 | 7/19/15 11:29 | 1/28/15 20:29  |                    |                    |
+|     |  519 | 102 (130) | 8N 88.5E   | 12/21/13 16:07 | 7/19/15 11:29 | 2/20/15 20:29  |                    |                    |
+|-----+------+-----------+------------+----------------+---------------+----------------+--------------------+--------------------|
+
+#+CAPTION: χpod locations for ASIRI/EBOB/MesoBOB
+[[file:~/ebob/MixingmapASIRIPiston.png]]
+* NRL-1
+** full mooring
+Interestingly, there's not really a seasonal cycle in K_T!
+
+#+CALL: read-nrl1()
+
+#+BEGIN_SRC ipython :session :file images/temp/py28335p-H.png
+nrl1.PlotMetCoherence()
+#+END_SRC
+
+#+RESULTS:
+[[file:images/temp/py28335p-H.png]]
+
+#+BEGIN_SRC ipython :session :file images/TS-nrl1.png
+nrl1.TSPlot(varname='KT', varmin=1e-3, filter_len=43200)
+plt.xlim([33.5, 36])
+#+END_SRC
+
+#+RESULTS:
+[[file:images/TS-nrl1.png]]
+
+#+BEGIN_SRC ipython :session :file images/nrl1-kt-boxplot-10min.png
+[h,l,p] = nrl1.ChipodSeasonalSummary(filter_len=3600)
+plt.show()
+#+END_SRC
+
+#+RESULTS:
+[[file:images/nrl1-kt-boxplot-10min.png]]
+
+#+BEGIN_SRC ipython :session :file images/nrl1-kt-boxplot.png
+[h,l,p] = nrl1.ChipodSeasonalSummary()
+plt.show()
+#+END_SRC
+#+CAPTION: Box and whisker plots of K_T from both χ-pods on NRL1; grouped by season.
+#+RESULTS:
+[[file:images/nrl1-kt-boxplot.png]]
+
+#+BEGIN_SRC ipython :session :file images/nrl1-summary.png
+ax = nrl1.Plotχpods()
+ax['T'].set_ylim([-250, -44])
+ax['Jq'].set_ylim([-100, 20])
+plt.show()
+#+END_SRC
+
+#+RESULTS:
+[[file:images/nrl1-summary.png]]
+
+#+CALL: read-nrl1()
+#+BEGIN_SRC ipython :session :file images/nrl1-new-summary.png
+ax = nrl1.Plotχpods(TSkind='pcolor')
+# ax['T'].set_ylim([190, 44])
+
+ax['Jq'].set_ylim([-100, 20])
+plt.show()
+#+END_SRC
+
+#+RESULTS:
+[[file:images/nrl1-new-summary.png]]
+
+** 500
+#+CAPTION: Comparing chipod-body motion velocities (v_x, v_y) with background flow measurement. Looks like horizontal motion of the χpod is not large enough for flushing to be ineffective.
+[[file:images/500-ax-ay-moor-vel.png]]
+
+#+BEGIN_SRC ipython :session :file images/nrl1-500-summary.png
+nrl1.χpod[500].Summarize(filter_len=43200)
+#+END_SRC
+
+#+CAPTION: Half-daily averaged quantities for unit 500 on NRL-1.
+#+RESULTS:
+[[file:images/nrl1-500-summary.png]]
+
+
+#+BEGIN_SRC ipython :session :file images/nrl1-500-chi.png
+nrl1.χpod[500].CompareEstimates('chi', 'mm1', 'mm2')
+#+END_SRC
+
+#+RESULTS:
+[[file:images/nrl1-500-chi.png]]
+
+
+
+#+BEGIN_SRC ipython :session :file images/nrl1-500-KT.png
+nrl1.χpod[500].CompareEstimates('KT', 'mm1', 'mm2')
+#+END_SRC
+
+#+RESULTS:
+[[file:images/nrl1-500-KT.png]]
+** 501
+#+BEGIN_SRC ipython :session :file images/nrl1-501-summary.png
+nrl1.χpod[501].Summarize(filter_len=43200)
+#+END_SRC
+
+#+CAPTION: Half-Daily averaged quantities for unit 501 on NRL-1.
+#+RESULTS:
+[[file:images/nrl1-501-summary.png]]
+* NRL-3
+** 505
+#+CALL: read-nrl3()
+
+#+BEGIN_SRC ipython :session :file images/nrl3-summary.png
+ax = nrl3.Plotχpods()
+ax['S'].set_ylim([32.5, 36])
+#+END_SRC
+
+#+RESULTS:
+[[file:images/nrl3-summary.png]]
+* NRL 5
+
+#+CALL: read-nrl5()
+
+#+BEGIN_SRC ipython :session :file images/TS-nrl5.png
+nrl5.TSPlot()
+plt.xlim([33.5, 36])
+#+END_SRC
+
+#+RESULTS:
+[[file:images/TS-nrl5.png]]
+
+#+BEGIN_SRC ipython :session :file images/nrl5-proto-spectra.png
+dcpy.ts = importlib.reload(dcpy.ts)
+
+ticks = np.array([1/24, 1/12, 1/3, 1/2, 1, 2, 5, 10, 20, 30])
+# varname = 'chi'
+# ax, ax2 = nrl5.χpod[518].PlotSpectrum(varname, filter_len=3600*5,
+#                                       nsmooth=2, SubsetLength=30*86400,
+#                                       ticks=ticks)
+#ax = nrl5.χpod[518].PlotSpectrum(varname, filter_len=3600*1,
+#                                 nsmooth=3, SubsetLength=13*86400,
+#                                 ticks=ticks)
+nrl5.PlotSpectrum('chi', filter_len=3600, nsmooth=4,
+                  SubsetLength=13*86400, ticks=ticks)
+#+END_SRC
+
+#+RESULTS:
+[[file:images/nrl5-proto-spectra.png]]
+
+#+BEGIN_SRC ipython :session :file images/temp/py27662Vq.png
+importlib.reload(moor)
+importlib.reload(chipy)
+
+import os
+if 'ebob' not in os.getcwd():
+    os.chdir('/home/deepak/ebob/scripts/')
+
+nrl5 = moor.moor(88.5, 8, 'NRL5', '../')
+nrl5.AddChipod(518, depth=84, best='mm')
+nrl5.AddChipod(519, depth=104, best='mm')
+nrl5.ReadCTD('NRL5', FileType='ebob')
+nrl5.ReadMet(FileType='sat')
+nrl5.DepthPlot('KT', filter_len=86400)
+plt.ylim([-200, -70])
+#+END_SRC
+
+#+CAPTION: Attempt to show χ variability along with mooring motion.
+#+RESULTS:
+[[file:images/temp/py27662Vq.png]]
+
+
+#+BEGIN_SRC ipython :session :file images/nrl5-summary.png
+nrl5.Plotχpods()
+#+END_SRC
+
+#+RESULTS:
+[[file:images/nrl5-summary.png]]
+
+
+#+BEGIN_SRC ipython :session :file images/nrl5-boxplot.png
+nrl5.ChipodSeasonalSummary(filter_len=3600)
+#+END_SRC
+
+#+RESULTS:
+[[file:images/nrl5-boxplot.png]]
+
+** 518
+#+BEGIN_SRC ipython :session :file images/518-chi.png
+nrl5.χpod[518].CompareEstimates('chi', 'mm1', 'mm2')
+#+END_SRC
+
+#+RESULTS:
+[[file:images/518-chi.png]]
+** 519
+#+BEGIN_SRC ipython :session :file images/519-chi.png
+nrl5.χpod[519].CompareEstimates('chi', 'mm1', 'mm2')
+#+END_SRC
+
+#+RESULTS:
+[[file:images/519-chi.png]]
+* processing notes
+** code
+
+#+BEGIN_SRC ipython :session :tangle yes :exports results :eval never-export
+%matplotlib inline
+import numpy as np
+import matplotlib as mpl
+import matplotlib.pyplot as plt
+
+import sys
+if '/home/deepak/python/' not in sys.path:
+      sys.path.append('/home/deepak/python')
+
+mpl.rcParams['savefig.transparent'] = True
+mpl.rcParams['figure.figsize'] = [6.5, 6.5]
+mpl.rcParams['figure.dpi'] = 180
+mpl.rcParams['axes.facecolor'] = 'None'
+
+def PlotNRL(num, NRLpath='../ancillary/ctd/'):
+    from scipy.io import loadmat
+    import seawater as sw
+
+    num = str(num)
+    fname = NRLpath + 'NRL' + num + 'SP.mat'
+
+    mat = loadmat(fname, squeeze_me=True)
+
+    salt = mat['MMS_NRL' + num + 'A']
+    temp = mat['MMT_NRL' + num + 'A']
+    pres = mat['MMP_NRL' + num + 'A']
+    time = mat['MMTime_NRL' + num + 'A'][:, 0] - 367
+    rho = sw.pden(salt, temp, pres, 0)
+
+    ax = [0,1]
+    plt.figure(figsize=[8.5, 6.5])
+    for ind in [1, 2]:
+        dρ = rho[:, ind] - rho[:, ind-1]
+        dS = salt[:, ind] - salt[:, ind-1]
+
+        if ind == 1:
+            ax[0] = plt.subplot(2, 2, ind)
+        else:
+            ax[1] = plt.subplot(2, 2, ind, sharex=ax[0])
+
+        plt.plot(time, dρ, linewidth=0.5)
+        plt.plot(time[dρ < 0], dρ[dρ < 0], 'r.',
+                 markersize=2)
+        plt.axhline(0)
+        plt.title('NRL' + num + ' | χpod' + str(ind))
+        plt.ylabel('Δρ')
+        ax[ind-1].xaxis_date()
+        plt.gcf().autofmt_xdate()
+
+        plt.subplot(2, 2, ind+2, sharex=ax[0])
+        plt.plot(time, dS, linewidth=0.5)
+        plt.plot(time[dρ < 0], dS[dρ < 0], 'r.',
+                 markersize=2)
+        plt.ylabel('ΔS')
+        plt.axhline(0)
+        ax[ind-1].xaxis_date()
+        plt.gcf().autofmt_xdate()
+#+END_SRC
+
+#+RESULTS:
+
+** NRL1
+- apply 0.035 psu offset to salinity sensor 2. (reprocessed 500)
+- N² for 501 looks alright.
+- 501 T2P seems screwy
+
+#+BEGIN_SRC ipython :session :tangle yes :exports results :eval never-export :file images/nrl1-ctd-dρ.png
+PlotNRL(1)
+#+END_SRC
+
+#+RESULTS:
+[[file:images/nrl1-ctd-dρ.png]]
+
+** NRL2
+- for sensors 1,2 (χpod 503) there's trouble. Not sure if 1 or 2 is bad. If 2, then that's what is screwing 504. _There seems to be a linear downward drift in salinity sensor 2_ (╯°□°）╯︵ ┻━┻
+
+- for sensors 2,3 (χpod 504) there's trouble
+
+#+BEGIN_SRC ipython :session :tangle yes :exports results :eval never-export :file images/nrl2-ctd-dρ.png
+PlotNRL(2)
+#+END_SRC
+
+#+RESULTS:
+[[file:images/nrl2-ctd-dρ.png]]
+
+*** old                                                          :noexport:
+depth = (T.P - 14.7)/14.7 in the code. Then things are correct.
+#+CAPTION: Do the χ-pods know where they are? Should be between the top 3 instruments. OK. Temperature records confirms they are where they should be.
+[[file:scripts/images/nrl1-depth-time-series.png]]
+
+[[file:scripts/images/nrl2-salinity-drift.png]]
+
+#+CAPTION: NRL-2 has density inversions (╯°□°）╯︵ ┻━┻
+[[file:scripts/images/nrl2-density-inversion.png]]
+** NRL3
+- sensor 2 drifts (negative N² at the end of the record)
+- sensor 4 has a constant offset. It is too dense all of the time. Salinity is in the 20s!!!
+#+BEGIN_SRC ipython :session :tangle yes :exports results :eval never-export :file images/nrl3-ctd-dρ.png
+PlotNRL(3)
+#+END_SRC
+
+#+RESULTS:
+[[file:images/nrl3-ctd-dρ.png]]
+
+** NRL4
+- N² for sensor 514 has some negative values.
+- sensor 2 sees fresh water come in between july and august 2014.
+- sensor 1 does not - inversion. which is screwed up?
+
+#+BEGIN_SRC ipython :session :tangle yes :exports results :eval never-export :file images/nrl4-ctd-dρ.png
+PlotNRL(4)
+#+END_SRC
+
+#+RESULTS:
+[[file:images/nrl4-ctd-dρ.png]]
+
+** NRL5
+- N² looks alright
+- T1 on χpod 518 dies early (´･_･`)
+- T2 on χpod 519 is offset! mean(T1-T2) ≈ 2.63C
+  - based on mooring CTDs, T2 is too low.
+
+[[file:scripts/images/519-T1-T2-offset.png]]
+
+
+#+BEGIN_SRC ipython :session :tangle yes :exports results :eval never-export :file images/nrl5-ctd-dρ.png
+PlotNRL(5)
+#+END_SRC
+
+#+RESULTS:
+[[file:images/nrl5-ctd-dρ.png]]

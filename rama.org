@@ -1,0 +1,1538 @@
+#+TITLE: RAMA: χ estimates
+#+AUTHOR: Deepak Cherian
+#+DATE: 14 Mar 2017
+#+SETUPFILE: ~/org/notebook.org
+
+* Map
+#+ATTR_HTML: :width 55%
+#+CAPTION: χpod locations for ASIRI/EBoB/MISOBOB
+[[file:~/ebob/MixingmapASIRIPiston.png]]
+* 12N full record
+** Summarize
+#+CALL: read-ra12()
+#+NAME: ra12-summary
+#+BEGIN_SRC ipython :session :file images/ra12-summary.png
+ax = ra12.Plotχpods(quiv=False, filt='hann', filter_len=5*86400.0,
+                    TSkind='pcolor', met='tropflux')
+ax['N2'].set_ylim([0, 8])
+#+END_SRC
+#+ATTR_HTML: :class full-width
+#+RESULTS: ra12-summary
+[[file:images/ra12-summary.png]]
+
+#+call: read-ra12()
+#+BEGIN_SRC ipython :session :file images/ra12-new-summary.png
+ax = ra12.Plotχpods(quiv=False, filt='hann', filter_len=5*86400.0,
+                    TSkind='pcolor', met='tropflux')
+ax['N2'].set_ylim([0, 8])
+ax['Jq'].set_ylim([-100, 100])
+#+END_SRC
+
+#+RESULTS:
+[[file:images/ra12-new-summary.png]]
+
+#+ATTR_HTML: :class full-width
+[[file:images/rama13-summary-miso.png]]
+
+#+CALL: read-ra12()
+#+BEGIN_SRC ipython :session :file images/rama12n-kt-boxplot.png
+fl = 86400
+
+plt.figure(figsize=(8.5, 5.5))
+
+ax0 = plt.subplot(121)
+ra12.ChipodSeasonalSummary(pods=[526, 810], ax=ax0,
+                           filter_len=fl, labels=['2014', '2015'])
+ax0.set_title('RAMA 12N 15m')
+
+ax1 = plt.subplot(122, sharey=ax0)
+ra12.ChipodSeasonalSummary(pods=[527, 811], ax=ax1,
+                           filter_len=fl, labels=['2014', '2015'])
+ax1.set_ylabel('')
+ax1.set_title('RAMA 12N 30m')
+
+plt.tight_layout()
+#+END_SRC
+#+CAPTION: Distribution of daily averages of K_T.
+#+RESULTS:
+[[file:images/rama12n-kt-boxplot.png]]
+
+
+- How much J_q^t is needed to satisfy 1D balance? O(100 W/m²)!
+
+#+BEGIN_SRC ipython :session :file images/temp/py29463EJl.png
+ra12.Budget()
+#+END_SRC
+
+#+RESULTS:
+[[file:images/temp/py29463EJl.png]]
+** Daily signals
+
+1. Tz, N² at 30m < that at 15m consistently
+2. This looks like turbulence mixing near-surface heat downward
+3. This does *not* support the idea that J_q^t is larger at 30m.
+4. There's a bias here because the 15m observes T_z > 1e-3 for much longer than the 30m instrument does. Taking nanmeans biases the daily average.
+5. For now, I am replacing NaNs with 0s; assuming that turbulent heat flux goes to 0 when T_z < 1e-3.
+
+#+CALL: read-ra12()
+#+BEGIN_SRC ipython :session :file images/temp/img246023Dvh.png
+TSkind = 'contour'
+Tlim = [25, 28.1]
+Slim = [32, 35.5]
+t0 = dt.date2num(dt.datetime.datetime(2014, 1, 27))
+t1 = dt.date2num(dt.datetime.datetime(2014, 1, 29))
+
+ax = ra12.Plotχpods(quiv=False, filt='hann', filter_len=1*3600,
+                    TSkind=TSkind, t0=t0, t1=t1)
+
+ax['Jq'].set_ylim([-100, 100])
+ax['N2'].set_ylim([0, 0.5])
+ax['met'].set_xlim([t0, t1])
+
+if TSkind is 'timeseries':
+    ax['T'].set_ylim(Tlim)
+    ax['S'].set_ylim(Slim)
+
+if TSkind is 'pcolor':
+#    ax['Tplot'].set_clim(Tlim)
+    ax['Splot'].set_clim(Slim)
+
+#+END_SRC
+#+ATTR_HTML: :class full-width
+#+RESULTS:
+[[file:images/temp/img246023Dvh.png]]
+
+#+BEGIN_SRC ipython :session :file images/ra12-2014-daily-zoomin.png
+TSkind = 'contour'
+Tlim = [25, 28.1]
+Slim = [32, 35.5]
+t0 = dt.date2num(dt.datetime.datetime(2014, 1, 27))
+t1 = dt.date2num(dt.datetime.datetime(2014, 2, 5))
+
+ax = ra12.Plotχpods(quiv=False, filt='hann', filter_len=1*3600,
+                    TSkind=TSkind, t0=t0, t1=t1)
+
+ax['Jq'].set_ylim([-100, 100])
+ax['N2'].set_ylim([0, 0.5])
+ax['met'].set_xlim([t0, t1])
+
+if TSkind is 'timeseries':
+    ax['T'].set_ylim(Tlim)
+    ax['S'].set_ylim(Slim)
+
+if TSkind is 'pcolor':
+#    ax['Tplot'].set_clim(Tlim)
+    ax['Splot'].set_clim(Slim)
+
+#+END_SRC
+#+ATTR_HTML: :class full-width
+#+RESULTS:
+[[file:images/ra12-2014-daily-zoomin.png]]
+
+#+BEGIN_SRC ipython :session :file images/ra12-2014-winter.png
+TSkind = 'contour'
+Tlim = [25, 28.1]
+Slim = [32, 35.5]
+t0 = dt.date2num(dt.datetime.datetime(2013, 12, 29))
+t1 = dt.date2num(dt.datetime.datetime(2014, 2, 8))
+
+ax = ra12.Plotχpods(quiv=False, filter_len=1*3600, filt='hann',
+                    TSkind=TSkind, t0=t0, t1=t1)
+
+ax['Jq'].set_ylim([-100, 100])
+ax['N2'].set_ylim([0, 2])
+ax['met'].set_xlim([t0, t1])
+
+if TSkind is 'timeseries':
+    ax['T'].set_ylim(Tlim)
+    ax['S'].set_ylim(Slim)
+
+if TSkind is 'pcolor':
+#    ax['Tplot'].set_clim(Tlim)
+    ax['Splot'].set_clim(Slim)
+
+#+END_SRC
+#+ATTR_HTML: :class full-width
+#+RESULTS:
+[[file:images/ra12-2014-winter.png]]
+
+#+CALL: read-ra12()
+#+BEGIN_SRC ipython :session :file images/ra12-daily.png
+import dcpy.ts
+
+ax = ra12.Plotχpods(filter_len=3600, pods=[526,527], filt='hann')
+
+ax['Jq0'].set_ylim([-500, 700])
+ax['Jq'].set_ylim([-100, 100])
+ax['T'].set_ylim([26.85, 27.75])
+ax['S'].set_ylim([33.5, 34])
+ax['N2'].set_ylim([0, 0.5])
+ax['Tz'].set_ylim([-1e-2, 1e-2])
+ax['Kt'].set_ylim([1e-6, 1e-2])
+ax['met'].set_xlim([dt.datetime.datetime(2014, 1, 25),
+                    dt.datetime.datetime(2014, 2, 3)])
+
+# ax['v'].cla()
+# ax['v'].plot(ra12.vel.time, spdband)
+# ax['v'].xaxis_date()
+# ax['v'].set_ylim([-0.1, 0.1])
+
+plt.gcf().autofmt_xdate()
+#+END_SRC
+#+ATTR_HTML: :class full-width
+#+RESULTS:
+[[file:images/ra12-daily.png]]
+
+#+BEGIN_SRC ipython :session :file images/rama13-vel-spectra.png
+import scipy.signal as signal
+from dcpy.util import find_approx
+
+fs = 1/2.0/24.0  # 30 min = 48 per day
+nyq = 0.5 * fs
+cutoff = (1/2.5) / nyq
+#b, a = signal.butter(4,1/cutoff, btype='high')
+#uhi = dcpy.ts.GappyFilter(ra12.vel.u, b, a, 30)
+#vhi = dcpy.ts.GappyFilter(ra12.vel.v, b, a, 30)
+#spdhi = dcpy.ts.GappyFilter(spd, b, a, 30)
+
+# spdband = dcpy.ts.BandPassButter(spd, [1/1.5, 1/0.7],
+#                                 dt=30.0/60.0/24.0, order=3)
+
+t0 = dt.date2num(dt.datetime.datetime(2013, 12, 1))
+t1 = dt.date2num(dt.datetime.datetime(2014, 12, 1))
+it0 = find_approx(ra12.vel.time, t0)
+it1 = find_approx(ra12.vel.time, t1)
+
+#dcpy.ts.PlotSpectrum(spd[it0:it1],
+#                     dt=30.0/24.0/60.0, nsmooth=[5, 10, 20, 40],
+#                     breakpts=[0.1, 2, 5, 10])
+#dcpy.ts.PlotSpectrum(spdband[it0:it1], ax=plt.gca(),
+#                     dt=30.0/24.0/60.0, nsmooth=5)
+
+w = ra12.vel.u + 1j * ra12.vel.v
+_, ax = dcpy.ts.PlotSpectrum(w[it0:it1], twoside=True,
+                             dt=30.0/24.0/60.0, nsmooth=5,
+                             multitaper=False, label='2014-2015',
+                             linewidth=0.5, scale=10)
+
+# maxlen = 20 * 86400 / (30*60)
+# w = dcpy.ts.FillGaps(ra12.vel.u, maxlen=maxlen) \
+#    + 1j * dcpy.ts.FillGaps(ra12.vel.v, maxlen=maxlen)
+
+t0 = dt.date2num(dt.datetime.datetime(2015, 1, 1))
+t1 = dt.date2num(dt.datetime.datetime(2016, 2, 1))
+it0 = find_approx(ra12.vel.time, t0)
+it1 = find_approx(ra12.vel.time, t1)
+
+dcpy.ts.PlotSpectrum(w[it0:it1], twoside=True,
+                     dt=30.0/24.0/60.0, ax=ax, nsmooth=3,
+                     multitaper=False, label='2015-2016',
+                     linewidth=0.5)
+
+dcpy.plots.linex([1/(12.42/24), 1.0, 1/(2.42),
+                  2/(12.42/24), 3/(12.42/24)], ax)
+
+dcpy.plots.FillRectangle([1/30.0, 1/60.0], ax=ax)
+
+plt.gcf().set_size_inches((8.5, 3))
+plt.legend()
+#+END_SRC
+#+CAPTION: Lines = f_0, daily, M_2, M_2*2, M_2*3, M_2*4. No obvious peaks between 10 and 100 days. There is a daily peak in spectra of speed for both deployments at 12N. Why does daily freq. look slighly polarized? Spectra are displaced.
+#+RESULTS:
+[[file:images/rama13-vel-spectra.png]]
+
+Try coherence with surface forcing : hmmm...
+There's no daily peak in speed spectra for the extracted time range.
+#+BEGIN_SRC ipython :session :file images/temp/py29463_0A.png
+from dcpy.util import find_approx
+from dcpy.ts import FillGaps
+
+jq0 = FillGaps(ra12.vel.time,
+               np.interp(ra12.vel.time , ra12.met.Jtime, ra12.met.Jq0))
+spd = np.hypot(ra12.vel.u, ra12.vel.v)
+spd = ra12.vel.v
+
+t0 = dt.date2num(dt.datetime.datetime(2014, 1, 22))
+t1 = dt.date2num(dt.datetime.datetime(2014, 2, 2))
+it0 = find_approx(ra12.vel.time, t0)
+it1 = find_approx(ra12.vel.time, t1)
+
+dcpy.ts.PlotCoherence(spd[it0:it1], -jq0[it0:it1]/100, nsmooth=4,
+                      dt=30/60.0/24.0, multitaper=True)
+
+plt.gca().set_xscale('log')
+plt.gca().set_title('+ve = speed leads Jq0')
+plt.gca().set_xlabel('freq (cpd)')
+plt.subplot(311).set_title('Speed vs. Jq0')
+# plt.plot(ra12.met.Jtime, ra12.met.Jq0)
+# plt.xlim([t0, t1])
+# plt.gca().xaxis_date()
+#+END_SRC
+
+#+RESULTS:
+[[file:images/temp/py29463_0A.png]]
+
+Make spectrogram of velocity instead:
+#+BEGIN_SRC ipython :session
+vf, vspec, vt = dcpy.ts.Spectrogram(FillGaps(ra12.vel.time,
+                                             ra12.vel.v),
+                                    20*24*60/30, 2*24*60/30,
+                                    time=ra12.vel.time,
+                                    multitaper=True)
+τf, τspec, τt = dcpy.ts.Spectrogram(FillGaps(ra12.met.τtime, ra12.met.τ),
+                                    20*24*60/10, 2*24*60/10,
+                                    time=ra12.met.τtime,
+                                    multitaper=True)
+#+END_SRC
+
+#+RESULTS:
+
+#+BEGIN_SRC ipython :session :file images/temp/py294633Ev.png
+ax1 = plt.subplot(211)
+plt.pcolormesh(vt, vf, np.log10(vspec.T))
+plt.gca().set_yscale('log')
+plt.colorbar()
+plt.gca().xaxis_date()
+plt.title('velocity')
+plt.gci().set_clim([-6, 2])
+
+plt.subplot(212, sharex=ax1)
+plt.pcolormesh(τt, τf, np.log10(τspec.T))
+plt.gci().set_clim([-6, -1])
+plt.gca().set_yscale('log')
+plt.colorbar()
+plt.title('Wind stress')
+plt.gca().xaxis_date()
+ax1.set_xlim(dt.date2num([dt.datetime.datetime(2013, 11, 29),
+                          dt.datetime.datetime(2014, 11, 29)]))
+plt.gcf().autofmt_xdate()
+plt.tight_layout()
+#+END_SRC
+
+#+RESULTS:
+[[file:images/temp/py294633Ev.png]]
+
+** Search for MISO event?
+#+BEGIN_SRC ipython :session :file images/temp/img3907och.png
+ra12.met.swr.resample('D', 'time', how='mean').plot()
+plt.gcf().set_size_inches((8.5, 3.5))
+plt.gca().set_xlim(ra12.season[526]['SW'])
+#+END_SRC
+#+CAPTION: Daily averaged shortwave radiation
+#+RESULTS:
+[[file:images/temp/img3907och.png]]
+*** pycnocline uplift
+There are a few high-SSS events during the monsoon
+#+call: read-ra12()
+#+BEGIN_SRC ipython :session :file images/sw-2014.png
+ax = ra12.Plotχpods(quiv=False, filt='hann', met='tropflux',
+                    filter_len=1.0*86400.0, TSkind='pcolor')
+plt.gca().set_xlim([dt.datetime.datetime(2014, 5, 1),
+                    dt.datetime.datetime(2015, 1, 1)])
+
+ax['Jq'].set_ylim([-60, 60])
+#+END_SRC
+#+RESULTS:
+[[file:images/sw-2014.png]]
+
+#+BEGIN_SRC ipython :session :file images/sw-2015.png
+ax = ra12.Plotχpods(quiv=False, filt='hann', met='tropflux',
+                    filter_len=1.2*86400.0, TSkind='pcolor')
+plt.gca().set_xlim(ra12.season[811]['SW'])
+ax['Jq'].set_ylim([-60, 60])
+#+END_SRC
+#+RESULTS:
+[[file:images/sw-2015.png]]
+*** Cross-correlations
+Current understanding:
+1. cite:Vecchi2002 - Cool SST precedes monsoon breaks by 7-10 days (they subtract out 50day mean)
+2. Amplitude of SST fluctuations is larger in the north where mixed layers are smaller.
+
+#+call: read-cmc()
+#+call: read-tropflux()
+#+call: read-rama-array()
+#+BEGIN_SRC ipython :session :file images/2015-miso-surface-subsurface.png
+def calc_anom(ds):
+    from dcpy.util import smooth
+    ds.load()
+    ds.values = smooth(ds.values, window_len=7)
+    return (ds - ds.rolling(time=50).mean(dim='time'))
+
+def calc_anom(ds):
+    import dcpy.ts
+
+    ds.load()
+    return dcpy.ts.BandPassButter(ds, freqs=[1/10.0, 1/80.0], dim='time')
+
+ramaT = rama.SelectVar('T')
+
+subset = dict(longitude=90, latitude=12, time='2015', method='nearest')
+subset2 = dict(lon=90, lat=12, time='2015', method='nearest')
+
+f, ax = plt.subplots(4,1)
+
+calc_anom(tropflux.swr.sel(**subset)).plot(ax=ax[0], label='swr')
+calc_anom(tropflux.tau.sel(**subset)*1000).plot(ax=ax[0], label='tau')
+
+calc_anom(sst.sel(**subset2)).plot(ax=ax[1],
+                                   label='sat sst')
+calc_anom(ramaT.sel(depth=-1, **subset2)).plot(ax=ax[1],
+                                               label='RAMA SST')
+
+calc_anom(ramaT.sel(depth=-10, **subset2)).plot(ax=ax[2], label='10m')
+calc_anom(ramaT.sel(depth=-20, **subset2)).plot(ax=ax[2], label='20m')
+calc_anom(ramaT.sel(depth=-40, **subset2)).plot(ax=ax[2], label='40m')
+
+def filter_and_plot_jq(pod, ax):
+    import dcpy.ts
+    nday = 3
+    t, jq = pod.FilterEstimate('mean', pod.time, pod.Jq[pod.best],
+                               decimate=True, filter_len=86400.0*nday)
+
+    # jqf = dcpy.ts.BandPassButter(dcpy.ts.FillGaps(jq, t, maxlen=3),
+    #                              dt=1, freqs=[1/10.0, 1/80.0])
+
+    ax.plot_date(t, jq, '-', lw=1, label=str(pod.depth)+'m')
+    ax.set_ylim(dcpy.plots.robust_lim(jq))
+    ax.set_ylabel(str(nday) + ' day avg  $J_q^t$')
+
+
+filter_and_plot_jq(ra12.χpod[810], ax[-1])
+filter_and_plot_jq(ra12.χpod[811], ax[-1])
+
+f.set_size_inches((8.5, 6.5))
+
+for aa in ax:
+    aa.legend()
+
+dcpy.plots.liney(0, ax=list(ax))
+
+ax[1].set_title('')
+ax[2].set_title('')
+
+plt.tight_layout()
+#+END_SRC
+
+#+RESULTS:
+[[file:images/miso-surface-subsurface.png]]
+
+Let's try correlation between SST and OLR just as in cite:Vecchi2002
+#+BEGIN_SRC ipython :session :file images/temp/img6437URH.png
+olr = calc_anom(tropflux.olr.sel(**subset))
+#+END_SRC
+
+#+call: read-ra12()
+#+BEGIN_SRC ipython :session :file images/ra12-crosscorr-tau.png
+ra12.LagCorr(filter_len=86400.0, met='tropflux', metvar='tau',
+             freqs=np.array([1/20.0, 1/70.0])/86400)
+#+END_SRC
+#+CAPTION: Cross-correlation between band pass filtered daily-averaged met var. and J_q^t. x-axis is lag in days.
+#+RESULTS:
+[[file:images/ra12-crosscorr-tau.png]]
+
+This might make sense.
+1. The MISO anomaly is high wind stress anomaly.
+2. At the anomaly's edges there should be strong Ekman pumping lifting the thermocline up and increasing T_z at χpod depths? cite:Girishkumar2013 say local Ekman pumping is only part of the story. The rest should be remotely forced Rossby waves but complications with whether Rossby waves exist at these frequencies at these latitudes. Evanescent Rossby waves still have energy near generation region
+3. +ve corr at +ve lags → mixing now is correlated with wind stress later.
+
+#+BEGIN_SRC ipython :session :file images/ra12-crosscorr-curl.png
+ra12.LagCorr(filter_len=86400.0, met='tropflux', metvar='curl',
+             freqs=np.array([1/20.0, 1/70.0])/86400)
+#+END_SRC
+#+CAPTION: Cross-correlation between band pass filtered daily-averaged met var. and J_q^t. x-axis is lag in days.
+#+RESULTS:
+[[file:images/ra12-crosscorr-curl.png]]
+
+Compare τ, curl τ with thermocline depth?
+#+BEGIN_SRC ipython :session :file images/temp/img6437AdL.png
+trange = ra12.season[810]['SW']
+ra12.tropflux.curl.sel(time='2015').plot()
+ax = plt.gca()
+ax2 = ax.twinx()
+ax2.plot_date(ra12.ctd.time, ra12.ctd.temp[:, 3],
+              'r-', linewidth=1)
+ax.set_xlim('2015-05', '2015-09')
+#+END_SRC
+
+#+RESULTS:
+[[file:images/temp/img6437AdL.png]]
+
+** Compare 2014 to 2015
+#+CALL: read-ra12()
+
+#+BEGIN_SRC ipython :session :file images/ra12-15m-χ-summary.png
+ra12.χpod[526].Summarize(filter_len=86400)
+hf = plt.gcf()
+ra12.χpod[810].Summarize(filter_len=86400, est='mm1', hfig=hf, dt=365)
+
+hf.suptitle('RAMA 12N | 15m')
+#+END_SRC
+#+ATTR_HTML: :class full-width
+#+RESULTS:
+[[file:images/ra12-15m-χ-summary.png]]
+
+#+BEGIN_SRC ipython :session :file images/ra12-30m-χ-summary.png
+ra12.χpod[527].Summarize(filter_len=86400)
+hf = plt.gcf()
+ra12.χpod[811].Summarize(filter_len=86400, est='mm1', hfig=hf, dt=365)
+
+hf.suptitle('RAMA 12N | 30m')
+#+END_SRC
+#+ATTR_HTML: :class full-width
+#+RESULTS:
+[[file:images/ra12-30m-χ-summary.png]]
+* 15N 2015 (RAMA14/ra-123)
+#+CALL: read-ra15()
+** Summarize
+#+NAME: ra15-summary
+#+BEGIN_SRC ipython :session :file images/ra15-summary.png
+ax = ra15.Plotχpods(quiv=False, filt='hann', filter_len=3*86400.0,
+                    TSkind='pcolor')
+ax['Jq'].set_ylim([-100, 100])
+# ax['S'].set_ylim([30, 34])
+ax['N2'].set_ylim([0, 7])
+#+END_SRC
+#+ATTR_HTML: :class full-width
+#+RESULTS: ra15-summary
+[[file:images/ra15-summary.png]]
+
+#+CALL: read-ra15()
+#+BEGIN_SRC ipython :session :file images/rama15n-kt-boxplot.png
+ra15.ChipodSeasonalSummary(filter_len=None)
+#+END_SRC
+#+CAPTION: Distribution of 5 minute averages of K_T.
+#+RESULTS:
+[[file:images/rama15n-kt-boxplot.png]]
+
+Check if there's a bias in T_z for 2015. There is! 20m temp agrees very well with CTD downcast. Make T at 10m warmer by 0.05?
+
+#+BEGIN_SRC ipython :session :file images/ra15n-temp-offset.png
+plt.figure(figsize=(11.5, 4.5))
+ds = nc.Dataset('../data/t15n90e_10m.cdf')
+T = ds['T_20']
+time = ds['time'][:]/24/60 + dt.date2num(dt.datetime.datetime(2008,10,19,15,00,0))
+
+dT = (np.squeeze(T[:, 2, :, :] - T[:, 4, :, :]))
+dT[abs(dT) > 10] = np.nan
+
+for year in range(2012, 2016):
+    t0 = dt.date2num(dt.datetime.datetime(year, 1, 1, 0, 0, 0))
+    t1 = dt.date2num(dt.datetime.datetime(year+1, 1, 1, 0, 0, 0))
+
+    mask = np.logical_and(time <= t1, time >= t0)
+    plt.plot(time[mask][::24], dT[mask][::24]/10, linewidth=0.5)
+   #  dcpy.plots.hist(dT[mask], normed=True, label=str(year))
+
+plt.gca().xaxis_date()
+plt.title('RAMA 15N dT/dz = ($T_{10m} - T_{20m}$)/10')
+plt.ylim([-5e-2, 5e-2])
+dcpy.plots.liney([0, -5e-3])
+dcpy.plots.linex(dt.date2num(dt.datetime.datetime(2014, 12, 6)))
+#+END_SRC
+
+#+RESULTS:
+[[file:images/ra15n-temp-offset.png]]
+
+* 12N 2014 (RAMA13/ra-107)
+|------------+------------+-----------------+----------------+------+---------|
+| Section    | Dir        | Vel             | S              | Tz   | Compass |
+|------------+------------+-----------------+----------------+------+---------|
+| [[first try]]  | [[file:RAMA13/data/526/proc/first-try][first-try]]  | both            | daily          | both | ?       |
+| [[2017-04-07]] | [[file:RAMA13/data/526/proc/2017-04-07][2017-04-07]] | mooring         | 10m (pre-cal?) | off  | off     |
+|            | ---------- | changed masking | -------------- |      |         |
+| [[2017-04-12]] | [[file:~/rama/RAMA13/data/526/proc/2017-04-12][2017-04-12]] | mooring         | 10m (filt)     | both | off     |
+|            | ---------- | N² tanh fit     | -------------- |      |         |
+| [[2017-04-20]] |            | mooring         | N² fit         | both | off     |
+|------------+------------+-----------------+----------------+------+---------|
+
+Notes on above:
+- Unsure what salinity I used for 2017-04-07. The big difference between that and 2017-04-12 is the N² time series. N^2 drift screws up χ estimate
+
+- Very sure that 2017-04-12 used hourly filtered 10min salinity.
+** full mooring
+
+1. Looks like dS/dz is as important as dT/dz in N².
+2. For *30m* χpod, using *10m* mooring velocity instead of pitot makes basically no difference.
+
+#+CAPTION: Not recreating Sally's Hudhud results exactly; but very close. +Could be different N²+ My salinity & hence N² is at 10min resolution (noisier); hers is daily!
+[[file:images/cyclone-jq-sally-me.png]]
+
+#+BEGIN_COMMENT
+Try a stacked histogram like
+[[file:~/work/good-vis/joyplot.jpeg]]
+or
+[[file:~/work/good-vis/joyplot2.jpeg]]
+#+END_COMMENT
+
+#+CALL: read-ra12()
+
+#+BEGIN_SRC ipython :session :file images/temp/py3052_Zd.png
+pod = ra12.χpod[526];
+self = pod;
+varname = 'KT'
+est = 'best'
+
+var, titlestr, yscale, grdflag = self.ChooseVariable(varname, est)
+
+ax = plt.gca()
+from dcpy.util import ExtractSeason
+import calendar
+for mno, mmm in enumerate(calendar.month_abbr[1:]):
+    t, v = ExtractSeason(self.time, var, mmm)
+
+    if yscale == 'log':
+        var = np.log10(abs(var))
+        label = '$\log_{10}$(' + titlestr + ')'
+    else:
+        label = titlestr
+
+    hist, edges = np.histogram(var[np.isfinite(var)],
+                                  bins=40, density=True)
+    hist = hist/hist.max()
+    hist[hist < 0.05] = np.nan
+    ax.plot((edges[:-1]+edges[1:])/2,
+            hist + mon+1, color='gray')
+
+ax.set_xlabel(label)
+ax.set_yticks(range(1,13))
+ax.set_yticklabels(calendar.month_abbr[1:])
+ax.spines['left'].set_bounds(1, 12)
+# limx = ax.get_xticks()
+#ax.spines['bottom'].set_bounds(limx[1], limx[-2])
+#+END_SRC
+#+CAPTION: Try stacking histograms
+#+RESULTS:
+[[file:images/temp/py3052_Zd.png]]
+
+#+CALL: read-ra12()
+
+#+BEGIN_SRC ipython :session :file images/ra12-15m-χ-summary.png
+ra12.χpod[526].Summarize(filter_len=86400)
+hf = plt.gcf()
+ra12.χpod[810].Summarize(filter_len=86400, est='mm1', hfig=hf, dt=365)
+
+hf.suptitle('RAMA 12N | 15m')
+#+END_SRC
+#+ATTR_HTML: :class full-width
+#+RESULTS:
+[[file:images/ra12-15m-χ-summary.png]]
+
+#+BEGIN_SRC ipython :session :file images/ra12-30m-χ-summary.png
+ra12.χpod[527].Summarize(filter_len=86400)
+hf = plt.gcf()
+ra12.χpod[811].Summarize(filter_len=86400, est='mm1', hfig=hf, dt=365)
+
+hf.suptitle('RAMA 12N | 30m')
+#+END_SRC
+
+#+BEGIN_SRC ipython :session :file images/rama13-summary.png
+importlib.reload(chipy)
+
+filter_len = 3600*24
+ax = ra12.Plotχpods(filter_len=filter_len, quiv=False)
+
+# ax['χ'].set_ylim([1e-10, 1e-5])
+ax['Jq'].set_ylim([-100, 100])
+ax['met'].set_xlim(dt.datetime.datetime(2013, 12, 1),
+                   dt.datetime.datetime(2014, 12, 1))
+#+END_SRC
+#+CAPTION: Daily averages of τ, N², J_q; daily running median of χ, K_T. min N² = 3e-6. Green is χ calculated with pitot velocity.
+#+ATTR_HTML: :class full-width
+#+RESULTS:
+[[file:images/rama13-summary.png]]
+
+#+BEGIN_SRC ipython :session :file images/TS-rama13.png
+dcpy.util = importlib.reload(dcpy.util)
+ra12.TSPlot(varname='KT', varmin=1e-3, filter_len=3600*12)
+#+END_SRC
+#+CAPTION: TS plot for RAMA 12N (2013) - coloured by depth. S_max is at 60m generally, though sometimes it appears at 40m. High values of K_T are marked.
+#+RESULTS:
+[[file:images/TS-rama13.png]]
+
+#+BEGIN_SRC ipython :session :file images/ra12-temp-spectra.png
+import dcpy.ts
+import numpy as np
+import matplotlib.pyplot as plt
+dcpy.ts = importlib.reload(dcpy.ts)
+
+ticks = np.array([1/24, 1/12, 1/3, 12.42*3600/86400, 1, 2,
+                  5, 10, 20, 60])*86400
+# ax = ra12.χpod[526].PlotSpectrum('chi', filter_len=3600*12, nsmooth=3,
+#                                  SubsetLength=20*86400, ticks=None)
+
+breakpts = np.sort(1/np.array([30, 1, 0.33, 0.08, 0.02])/86400)
+nsmooth = [2, 5, 12, 35, 120]
+
+ra12.PlotSpectrum('T', filter_len=None, nsmooth=nsmooth,
+                  breakpts=breakpts, SubsetLength=None,
+                  ticks=ticks, norm=True)
+
+plt.show()
+#+END_SRC
+
+#+RESULTS:
+[[file:images/ra12-temp-spectra.png]]
+
+#+BEGIN_SRC ipython :session :file images/ra12-spectra.png
+
+dcpy.ts = importlib.reload(dcpy.ts)
+
+ticks = np.array([1/2, 1, 2, 5, 10, 20, 30])*86400
+
+# ra12.PlotAllSpectra(filter_len=3600, nsmooth=3,χpod[526].
+#                    SubsetLength=13*86400, ticks=ticks)
+
+# ra12.PlotSpectrum('χ', filter_len=3600*3, nsmooth=12,
+#                   SubsetLength=None, ticks=ticks[2:-2])
+ra12.PlotSpectrum('χ', filter_len=3600*12, nsmooth=4,
+                  SubsetLength=None, ticks=ticks[:-2],
+                  ax=plt.gca(), norm=True)
+#+END_SRC
+
+#+RESULTS:
+[[file:images/ra12-spectra.png]]
+
+[[file:images/rama13-T-S-ρ.png]]
+
+[[file:images/rama13-dens-diff-10m-dy.png]]
+
+#+BEGIN_SRC ipython :session :file images/ra12n-winds.png
+from scipy.interpolate import interpn
+
+met = nc.MFDataset('../tropflux/tau_tropflux*')
+lon = met['longitude'][:]
+lat = met['latitude'][:]
+time = met['time'][:]
+latm = 12;
+lonm = 90;
+τtrop = interpn((time, lat, lon),
+                met['tau'][:, :, :],
+                (time, 12, 90))
+ttrop = time \
+        + dt.date2num(dt.datetime.date(1950, 1, 1))
+
+plt.plot(ra12.met.τtime, ra12.met.τ)
+plt.plot(ttrop, τtrop)
+plt.plot(ra12.met.τtime, ra12.met.τ)
+plt.xlim([ra12.met.τtime[0], ra12.met.τtime[-1]])
+ax = plt.gca()
+ax.xaxis_date()
+ax.legend(['RAMA 12N', 'Tropflux daily'])
+#+END_SRC
+#+CAPTION: Let's compare tropflux winds with actual rama winds. Looks like spatial interpolation is working ok.
+#+RESULTS:
+[[file:images/ra12n-winds.png]]
+
+*** datashader test                                              :noexport:
+#+BEGIN_SRC ipython :session    :file images/temp/py12159_Dn.png
+
+# test out TS plot
+import dcpy.oceans
+import numpy as np
+
+importlib.reload(dcpy.oceans)
+
+S = ra12.ctd.sal.copy()
+T = ra12.ctd.temp.copy()
+P = np.tile(ra12.ctd.depth, [S.shape[1], 1]).T
+assert(P.shape == S.shape)
+
+import pandas as pd
+df = pd.DataFrame(
+    np.array([S.ravel(), T.ravel(), P.ravel()]).T,
+    index=np.arange(S.ravel().shape[0]),
+    columns=['S', 'T', 'P'])
+
+# dcpy.oceans.TSplot(ra12.ctd.sal[0, :],
+#                    ra12.ctd.temp[0, :],
+#                    ra12.ctd.depth[0], 0)
+
+import datashader as ds
+import datashader.transfer_functions as tf
+cvs = ds.Canvas(plot_height=400, plot_width=400)
+agg = cvs.points(df, 'S', 'T', ds.mean('P'))
+img = tf.shade(agg, cmap=['lightblue', 'darkblue'])
+#+END_SRC
+
+#+RESULTS:
+** MISO signals?
+#+CALL: read-ra12()
+#+BEGIN_SRC ipython :session :file images/rama13-summary-miso.png
+filter_len = np.array([10, 80])*86400
+dcpy.ts = importlib.reload(dcpy.ts)
+
+ax = ra12.Plotχpods(filt='bandpass',
+                    filter_len=filter_len,
+                    TSkind='pcolor', quiv=True,
+                    met='tropflux', fluxvar='lwr',
+                    tau='tropflux')
+
+ax['Kt'].set_ylim([-2.5e-3, 2.5e-3])
+#+END_SRC
+
+#+CAPTION: Band-pass filter looking for MISO signals. We don't lose edges when filtering J_q because it's a 3 year record from Tropflux. Looks like our 30m χpod is at a depth where the "mode structure" of subsurface temperature fluctuations has near-0 amplitude (at least while the instrument was alive - died in Sep-2014). Magnitude of temp anomaly fluctuations (1C) agrees with literature. Overlaid black contours are salinity fluctuations in the pass-band (dashed = negative).
+#+RESULTS:
+[[file:images/rama13-summary-miso.png]]
+
+The next figure shows coherence between Jq0 and  Jqt at 15m, 30m at the RAMA 12N mooring for the year 2014. Signs for all fluxes are such that +ve warms the surface.
+Looks like we have significant coherence in the 20-60day band between daily averaged Jq0 and Jqt at 15m.
+The 180 phase difference looks stable, is apparent in the filtered time series and seems to make physical sense (more surface heating → increases T_z → reduces J_q^t and vice versa).
+
+Nothing at 30m
+ - short(er) data record - instrument dies in september
+ - not much temp fluctuations at that depth while the instrument was alive (see above).
+
+#+BEGIN_SRC ipython :session :file images/ra12-jq0-jqt-coherence.png
+dcpy.util = importlib.reload(dcpy.util)
+dcpy.ts = importlib.reload(dcpy.ts)
+fbands = [1/90,  # 90 day resonance?
+          1/(2*np.pi/dcpy.oceans.inertial(12)/86400),  # f_0
+          dcpy.ts.AliasFreq(1/(12.42/24), 1), # M_2 alias
+          1/12,
+          1/2.15]
+ax = ra12.PlotMetCoherence(metvars=['','wind'], nsmooth=5, multitaper=True,
+                            filt='bandpass', fbands=fbands,
+                            filter_len=np.array([20, 60])*86400)
+#+END_SRC
+#+CAPTION: (Top left) Band-passed time series. (top right) PSD for the unfiltered time series. (bottom 4 panels) coherence amplitude and phase between J_q^0 or τ and J_q^t at both depths. Significance level marked by horizontal line. Vertical lines are frequencies: 90 days, 14.7 day M_2 alias, 12 day peak, inertial period = 2.4 days, 2.1 day peak.
+#+RESULTS:
+[[file:images/ra12-jq0-jqt-coherence.png]]
+
+#+BEGIN_SRC ipython :session :file images/temp/py2881575S.png
+dcpy.ts.PlotSpectrum(ra12.tropflux['netflux'], nsmooth=5)
+ax = plt.gca()
+dcpy.ts.PlotSpectrum(ra12.tropflux['netflux'], multitaper=True)
+plt.legend(['freq band avg', 'multitaper'])
+plt.title('Spectrum of $J_q^0$')
+#+END_SRC
+#+CAPTION: Test out multitaper spectra
+#+RESULTS:
+[[file:images/temp/py2881575S.png]]
+
+#+BEGIN_SRC ipython :session :file images/temp/img9554MtV.png
+ra12.PlotAllSpectra(filter_len=86400.0, multitaper=True)
+#+END_SRC
+
+#+RESULTS:
+[[file:images/temp/img9554MtV.png]]
+
+** Hudhud
+
+#+CAPTION: Different masking criteria...
+[[file:images/526-hudhud-masking.png]]
+
+#+CAPTION: ∫J_q^t over Hudhud is sensitive to averaging interval! Sally used T_z > 3e-4 & 1 min averages. With that I get ~ -220 W/m² compared to her -193 W/m² --- this difference is due to 10min vs. daily salinity (I think).
+[[file:images/526-hudhud-jqt-sensitivity.png]]
+
+** χ-pod 526
+*** Funny signals
+[[file:~/rama/images/526-funny-repeat-peaks.png]]
+*** Spectra
+**** Spectrogram
+
+#+BEGIN_SRC ipython :session
+χ = apr20.chi['mm']['chi']
+χ[np.isnan(χ)] = 0
+
+fs = np.round(86400/apr20.dt)  # samples/day
+ndays = 7
+
+TM2 = 12.42
+Tf0 = 2*np.pi/sw.f(ra12.lat)
+#+END_SRC
+
+#+RESULTS:
+
+#+BEGIN_SRC ipython :session    :file images/temp/py30956SXk.png
+S, f, conf = SpectralDensity(χ, dt=1/fs, nsmooth=None)
+plt.loglog(f, S)
+plt.axvline(1/TM2, color='k', linewidth=0.5)
+plt.axvline(1/Tf0, color='k', linewidth=0.5)
+#+END_SRC
+
+#+RESULTS:
+[[file:images/temp/py30956SXk.png]]
+
+#+CAPTION: spectrum of χ (gaps filled with 0)
+#+RESULTS:
+
+#+BEGIN_SRC ipython :session    :file images/temp/py30956fa2.png
+from dcpy.ts import SpectralDensity
+import scipy.signal as signal
+
+f, t, Sxx = signal.spectrogram(χ, fs=fs,
+                               nperseg=ndays*fs,
+                               noverlap=ndays/2*fs)
+
+# Sxx[Sxx < 1e-70] = np.nan
+plt.pcolormesh(f, t, np.log10(Sxx.T))
+plt.yscale('log')
+plt.colorbar()
+plt.clim([-30, -8.5])
+plt.axhline(24/12.42)
+#+END_SRC
+#+CAPTION: Spectrogram
+#+RESULTS:
+[[file:images/temp/py30956fa2.png]]
+
+**** Proto χ spectrum
+#+CAPTION: [Unit 526, RAMA 12N, 15m] Testing out ~gappy_psd.m~ with different windows. I'm using daily or half-daily means and *filling in 2 day gaps*
+[[file:images/526-chi-proto-spectra.png]]
+
+#+CAPTION: spectrogram of temp with N² overlaid.
+[[file:images/526-temp-spectrogram.png]]
+*** Choosing Tz
+
+#+BEGIN_SRC ipython :session    :file images/526-chi-change-Tz.png
+
+  import dcpy.plots
+  importlib.reload(dcpy.plots)
+
+  pod = ra12.χpod[526]
+
+  χ1 = pod.chi['mm1']['chi'][0]
+  χ2 = pod.chi['mm2']['chi'][0]
+
+  Tzm = pod.chi['mm1']['dTdz'][0]
+  Tzi1 = pod.chi['mi11']['dTdz'][0]
+  Tzi2 = pod.chi['mi22']['dTdz'][0]
+
+  Ktm1 = 0.5 * χ1 / (Tzm**2)
+  Ktm2 = 0.5 * χ2 / (Tzm**2)
+
+  Kti1 = 0.5 * χ1 / (Tzi1**2)
+  Kti2 = 0.5 * χ2 / (Tzi2**2)
+
+  min_dTdz = 1e-3
+  mask1 = abs(Tzi1) > min_dTdz;
+  mask2 = abs(Tzi2) > min_dTdz;
+
+  ax1 = plt.subplot(211)
+  dcpy.plots.hist(Ktm1[mask1], log=True, label='m1')
+  dcpy.plots.hist(Kti1[mask1], log=True, label='i1')
+  plt.legend()
+
+  plt.subplot(212, sharex=ax1)
+  dcpy.plots.hist(Ktm2[mask2], log=True, label='m2')
+  dcpy.plots.hist(Kti2[mask2], log=True, label='i2')
+  plt.legend()
+#+END_SRC
+#+CAPTION: Use χ calculated with mooring N². Calculate K_T with different dT/dz
+#+RESULTS:
+[[file:images/526-chi-change-Tz.png]]
+*** 2017-08-10
+*** 2017-07-09
+
+#+BEGIN_SRC ipython :session  :exports both
+import chipy
+import importlib
+chipy = importlib.reload(chipy)
+
+jul09 = chipy.chipod('../RAMA13/data/', '526', '2017-07-09.mat')
+jul09.LoadChiEstimates()
+jul09.LoadSallyChiEstimate('../sally/chi_analysis_bkgrnd_Feb5/deglitched/mean_chi_526_mindTdz3e-4.mat', 'sally')
+
+apr20 = chipy.chipod('../RAMA13/data/', '526', '2017-04-20.mat')
+apr20.LoadChiEstimates()
+#+END_SRC
+
+#+RESULTS:
+
+Change in skew is because I was using smoothed T_z earlier I think.
+#+BEGIN_SRC ipython :session :file images/temp/526-apr20-jul09.png
+est = 'mm1'
+plt.figure(figsize=(8, 3.5))
+plt.subplot(141)
+dcpy.plots.hist(apr20.chi[est]['chi'], log=True)
+dcpy.plots.hist(jul09.chi[est]['chi'], log=True)
+plt.title('$log_{10} χ$')
+
+plt.subplot(142)
+dcpy.plots.hist(apr20.chi[est]['eps'], log=True)
+dcpy.plots.hist(jul09.chi[est]['eps'], log=True)
+plt.title('$log_{10} ε$')
+
+plt.subplot(143)
+dcpy.plots.hist(apr20.KT[est], log=True)
+dcpy.plots.hist(jul09.KT[est], log=True)
+plt.title('K$ _T$')
+plt.legend(('apr20', 'jul09'))
+
+plt.subplot(144)
+dcpy.plots.hist(apr20.Jq[est], log=True)
+dcpy.plots.hist(jul09.Jq[est], log=True)
+plt.title('$log_{10}|J_q|$')
+
+plt.tight_layout()
+plt.show()
+
+#+END_SRC
+
+#+RESULTS:
+[[file:images/temp/526-apr20-jul09.png]]
+
+#+BEGIN_SRC ipython :session  :file images/compare-sally-summary.png
+
+est = 'mm1'
+plt.figure(figsize=(8, 3.5))
+plt.subplot(141)
+dcpy.plots.hist(jul09.chi[est]['chi'], log=True)
+dcpy.plots.hist(jul09.chi['sally1']['chi'], log=True)
+plt.title('χ')
+
+plt.subplot(142)
+dcpy.plots.hist(jul09.KT[est], log=True)
+dcpy.plots.hist(jul09.chi['sally1']['Kt1'], log=True)
+plt.title('$K_T$')
+
+plt.subplot(143)
+dcpy.plots.hist(jul09.chi[est]['dTdz'], log=True)
+dcpy.plots.hist(jul09.chi['sally1']['dTdz'], log=True)
+plt.title('$|T_z|$')
+plt.legend(('mine', 'sally'))
+
+plt.subplot(144)
+dcpy.plots.hist(jul09.Jq[est], log=True)
+dcpy.plots.hist(jul09.chi['sally1']['Jq1'], log=True)
+plt.title('$|J_q|$')
+
+plt.tight_layout()
+plt.show()
+#+END_SRC
+
+#+RESULTS:
+[[file:images/compare-sally-summary.png]]
+
+*** 2017-04-20
+
+[[file:images/N2-fit.png]]
+
+This estimate uses the tanh fit to determine N².
+#+CAPTION: Tuned tanh fit used to determine N² compared against simple difference (~diff~)
+[[file:images/N2-fit-compare.png]]
+
+*K_T:* ~mm1~, ~mm2~ agree well; Similarly ~mi11~ and ~mi22~ agree well.
+
++But there's a bias when comparing ~mm1~ with ~mi11~.+
+- Bias is "fixed" by using T-S relation from a mooring CTD sensor along with Tz_i somehow. See below.
+
+- Tz_i is calculated over 10 minutes
+
+- +I wonder if I should really fit salinity gradient instead of the backwards method I'm using currently.+
+
+Read data:
+#+BEGIN_SRC ipython :session  :exports both
+
+import chipy
+import importlib
+chipy = importlib.reload(chipy)
+
+apr20 = chipy.chipod('../RAMA13/data/', '526', '2017-04-20.mat')
+apr20.LoadChiEstimates()
+apr20.LoadSallyChiEstimate('../sally/chi_analysis_bkgrnd_Feb5/deglitched/mean_chi_526.mat', 'sally')
+apr20.CalcKT()
+#+END_SRC
+
+#+RESULTS:
+
+**** TS relation + Tz_i
+
+#+BEGIN_SRC ipython :session    :file images/temp/py30956onU.png
+apr20.CompareEstimates('chi', 'mm1', 'mi11');
+#+END_SRC
+**** Compare with sally's estimate - looks fine.
+Reasons for differences:
+1. N² drift + my N² is nearly 0 for large chunks of time due to the fitting.
+2. different T_z used for masking: +I always use internal.+ I think she's using mooring. There are differnces even if I match her ~min_dTdz=1e-3~
+3. She's NaNing some Jq and Kt values by hand.
+4. +Her J_q is calculated using 1-min averaged χ, I think. Mine are calculated using instantaneous χ and then averaged.+ Doesn't really matter
+
+#+BEGIN_SRC ipython :session    :file images/temp/py12676SIh.png
+
+apr20.CompareEstimates('chi', 'mm', 'sally1', 86400)
+plt.show()
+#+END_SRC
+
+#+RESULTS:
+[[file:images/temp/py12676SIh.png]]
+
+#+BEGIN_SRC ipython :session    :file images/temp/py12676AyD.png
+
+apr20.CompareEstimates('KT', 'mm', 'sally1', 86400)
+#+END_SRC
+
+#+RESULTS:
+[[file:images/temp/py12676AyD.png]]
+
+#+BEGIN_SRC ipython :session    :file images/temp/py12676vJw.png
+
+plt.plot_date(apr20.time, apr20.chi['mm1']['N2'].squeeze(),
+	      '-', linewidth=1, alpha=0.6)
+plt.plot_date(apr20.chi['sally1']['time'].squeeze(),
+	      apr20.chi['sally1']['N2'].squeeze(),
+              '-', linewidth=1, alpha=0.6)
+plt.legend('My N² (tanh fit)', 'sally N2')
+
+#+END_SRC
+#+CAPTION: Sally's N² has salinity drift.
+#+RESULTS:
+[[file:images/temp/py12676vJw.png]]
+
+
+#+BEGIN_SRC ipython :session    :file images/temp/py17170nPm.png
+
+apr20.Summarize(est='sally1', filter_len=86400)
+#+END_SRC
+
+#+BEGIN_SRC ipython :session    :file images/compare-sally-summary.png
+
+est = 'mm'
+plt.figure(figsize=(8, 3.5))
+plt.subplot(141)
+dcpy.plots.hist(apr20.chi[est]['chi'], log=True)
+dcpy.plots.hist(apr20.chi['sally1']['chi'], log=True)
+plt.title('χ')
+
+plt.subplot(142)
+dcpy.plots.hist(apr20.KT[est], log=True)
+dcpy.plots.hist(apr20.chi['sally1']['Kt1'], log=True)
+plt.title('$K_T$')
+
+plt.subplot(143)
+dcpy.plots.hist(apr20.chi[est]['dTdz'], log=True)
+dcpy.plots.hist(apr20.chi['sally1']['dTdz'], log=True)
+plt.title('$|T_z|$')
+plt.legend(('mine', 'sally'))
+
+plt.subplot(144)
+dcpy.plots.hist(apr20.Jq[est], log=True)
+dcpy.plots.hist(apr20.chi['sally1']['Jq1'], log=True)
+plt.title('$|J_q|$')
+
+plt.tight_layout()
+plt.show()
+#+END_SRC
+#+CAPTION: Sally seems to have NaN-ed out certain time instants by hand after using ~min_dTdz = 1e-3~. ~min_dTdz = 2e-3~ might be a good middle ground choice.
+#+RESULTS:
+[[file:images/compare-sally-summary.png]]
+
+*** 2017-04-12                                                   :noexport:
+#+BEGIN_SRC ipython :session
+
+import chipy
+
+apr07 = chipy.chipod('../RAMA13/data/', '526', '2017-04-07.mat')
+apr07.LoadChiEstimates()
+apr07.CalcKT()
+
+apr12 = chipy.chipod('../RAMA13/data/', '526', '2017-04-12.mat')
+apr12.LoadChiEstimates()
+apr12.CalcKT()
+#+END_SRC
+
+#+RESULTS:
+
+#+BEGIN_SRC ipython :session    :file images/chi-mm1-apr07-apr12.png
+
+  window=None
+
+  plt.subplot(2, 1, 1)
+  apr07.PlotEstimate('chi', 'mm1', filter_len=window);
+  apr12.PlotEstimate('chi', 'mm1', filter_len=window);
+
+  plt.subplot(2, 1, 2)
+  lv1 = np.log10(apr07.chi['mm1']['chi'])
+  lv2 = np.log10(apr12.chi['mm1']['chi'])
+
+  plt.hist(lv1[np.isfinite(lv1)], bins=40, normed=True, alpha=0.5)
+  plt.hist(lv2[np.isfinite(lv2)], bins=40, normed=True, alpha=0.5)
+  plt.legend(('apr07', 'apr12'))
+  plt.show()
+
+#+END_SRC
+#+CAPTION: These χ's are an order of magnitude higher than [[2017-04-07]] because of drift in N²
+#+RESULTS:
+[[file:images/chi-mm1-apr07-apr12.png]]
+
+Using mooring dT/dz to mask χ masks out 2.7% of estimates
+Using internal dT/dz to mask χ masks out 7% of estimates
+Using speed < 5cm/s masks out 0.35% estimates
+
+*masking does not change much at all*
+
+The difference is N² but why is χ higher for higher N^2?
+\[ k_b ∝ ε_χ ∝ N^2 \]
+
+
+#+BEGIN_SRC ipython :session    :file images/temp/py12676_n2.png
+
+  plt.plot_date(apr07.chi['mm1']['time'], apr07.chi['mm1']['N2'],
+		'-', linewidth=1)
+  plt.plot_date(apr12.chi['mm1']['time'], apr12.chi['mm1']['N2'],
+		'-', linewidth=1)
+  plt.ylabel('N²')
+  plt.legend('Apr 07', 'Apr 12')
+  plt.show()
+#+END_SRC
+
+#+RESULTS:
+[[file:images/temp/py12676_n2.png]]
+
+#+CAPTION: For Apr07 estimate, use_TS_slope = 1 i.e. using Johannes' method of fitting T-S slope. For Apr12, I was doing the simple difference.
+[[file:images/526-apr7-apr12-N2.png]]
+*** 2017-04-07                                                   :noexport:
+ | 10-min *unfiltered*  salinity | mooring dT/dz |
+
+#+BEGIN_SRC ipython :session
+c526 = chipy.chipod('../RAMA13/data/', '526', '2017-04-07')
+c526.LoadChiEstimates()
+c526.LoadSallyChiEstimate('../sally/chi_analysis_bkgrnd_Feb5/deglitched/mean_chi_526.mat', 'sally')
+#+END_SRC
+
+#+RESULTS:
+**** test filtering
+#+BEGIN_SRC ipython :session   :file images/temp/py172156XN.png
+
+  w, h = mpl.figure.figaspect(1/1.618)
+  plt.figure(figsize=(w,h))
+  c526.PlotEstimate('KT', 'mm1')
+  c526.PlotEstimate('KT', 'mm1', filter_len=24*60+1)
+#+END_SRC
+
+#+RESULTS:
+[[file:images/temp/py172156XN.png]]
+
+**** scatter χ vs. velocity
+
+#+BEGIN_SRC ipython :session    :file images/chi-velocity-526.png
+
+
+#+END_SRC
+**** ~mm1~ vs. sally
+
+Seems to agree fine. My estimates tend to be noisier; this is probably because of salinity spiking --- this estimate uses unfiltered 10-min salinity.
+#+BEGIN_SRC ipython :session    :file images/chi-526-prelimsal-mm1-sally.png
+  w, h = mpl.figure.figaspect(1/1.618)
+  plt.figure(figsize=(w,h))
+  c526.PlotEstimate('KT', 'mm1', filter_len=24*60+1)
+  c526.PlotEstimate('KT', 'sally', filter_len=24*60+1)
+
+#+END_SRC
+
+#+RESULTS:
+[[file:images/chi-526-prelimsal-mm1-sally.png]]
+**** ~mm1~ vs. ~mm2~
+#+BEGIN_SRC ipython :session    :file images/chi-526-prelimsal-mm1-mm2.png
+  c526.CompareEstimates('chi', 'mm1', 'mm2', filter_len=24*60+1)
+#+END_SRC
+
+#+RESULTS:
+[[file:images/chi-526-prelimsal-mm1-mm2.png]]
+
+**** Sally T1 vs. T2
+#+BEGIN_SRC ipython :session    :file images/chi-526-sally-mm1-mm2.png
+c526.CompareEstimates('chi', 'sally1', 'sally2', filter_len=5*24*6+1)
+#+END_SRC
+
+#+RESULTS:
+[[file:images/chi-526-sally-mm1-mm2.png]]
+
+**** Distributions
+
+#+BEGIN_SRC ipython :session    :file images/temp/py12676O0V.png
+
+chi = c526.chi['mm1']['chi'][:].squeeze()
+
+
+#+END_SRC
+*** first try                                                    :noexport:
+**** ~mm1~ and ~mi11~ agree really well.
+#+BEGIN_SRC ipython :session    :file images/RAMA13-chi-compare-526-mm1-mi11.png
+  c526.CompareEstimates('chi', 'mm1', 'mi11')
+#+END_SRC
+
+#+RESULTS:
+[[file:images/RAMA13-chi-compare-526-mm1-mi11.png]]
+
+#+BEGIN_SRC ipython :session  :file images/RAMA13-KT-compare-mm1-mi11.png
+c526.CompareEstimates('KT', 'mm1', 'mi11')
+#+END_SRC
+
+#+RESULTS:
+[[file:images/RAMA13-KT-compare-mm1-mi11.png]]
+
+**** ~mi11~ and ~mi22~ disagree quite a lot!
+#+BEGIN_SRC ipython :session    :file images/RAMA13-chi-compare-526-mi11-mi22.png
+
+c526.CompareEstimates('chi', 'mi11', 'mi22')
+
+#+END_SRC
+
+#+RESULTS:
+[[file:images/RAMA13-chi-compare-526-mi11-mi22.png]]
+#+BEGIN_SRC ipython :session  :file images/RAMA13-kt-compare-526-mi11-mi22.png
+
+c526.CompareEstimates('KT', 'mi11', 'mi22')
+
+#+END_SRC
+
+#+RESULTS:
+[[file:images/RAMA13-kt-compare-526-mi11-mi22.png]]
+
+**** ~mi11~ and ~pi11~ agree well - but pitot voltage drifts!
+This is with the 40-day high pass filtered pitot but I forgot to add back the 40-day mean.
+
+#+BEGIN_SRC ipython :session    :file images/RAMA13-chi-compare-526-mi11-pi11.png
+
+c526.CompareEstimates('chi', 'mi11', 'pi11', filter_len=24*60)
+
+#+END_SRC
+
+#+RESULTS:
+[[file:images/RAMA13-chi-compare-526-mi11-pi11.png]]
+
+#+BEGIN_SRC ipython :session  :file images/RAMA13-kt-compare-526-mi11-pi11.png
+
+c526.CompareEstimates('KT', 'mi11', 'pi11', filter_len=24*60)
+
+#+END_SRC
+
+#+RESULTS:
+[[file:images/RAMA13-kt-compare-526-mi11-pi11.png]]
+
+**** masking
+
+#+BEGIN_SRC ipython :session  :file images/temp/py172156XN.png
+
+  chi = c526.chi['mi11']
+  N2 = chi['N2'][:].squeeze()
+  Tz = chi['dTdz'][:].squeeze()
+  c = chi['chi'][:].squeeze()
+
+  c[Tz < -0.5] = np.nan
+  c[N2 > 1] = np.nan
+  plt.plot(c)
+  plt.yscale('log')
+
+  import scipy.ndimage as image
+
+  def dcmedianfilter(a):
+    return np.nanmedian(a)
+
+  # cfilt = image.generic_filter1d(c, dcmedianfilter, 10)
+  cfilt = image.median_filter(c, 5*24*60)
+  plt.plot(c, '-')
+  plt.plot(cfilt, '-')
+  plt.yscale('log')
+#+END_SRC
+
+#+RESULTS:
+[[file:images/temp/py172156XN.png]]
+** χ-pod 527
+
+#+CAPTION: Pitot tube dies in June and temperature dies by October  (;´༎ຶД༎ຶ`)
+[[file:~/rama/RAMA13/quick_summary/527/summary1_527.png]]
+
+#+CALL: read-527()
+
++zoom-in on "weird" stuff+ - this was because dT/dz masking was not right
+#+BEGIN_SRC ipython :session :file images/temp/py2766pu1.png
+chipy = importlib.reload(chipy)
+
+c527 = chipy.chipod('../RAMA13/data/', '527', 'Turb.mat', best='mm1')
+c527.Summarize(filter_len=86400)
+#+END_SRC
+
+#+RESULTS:
+[[file:images/temp/py2766pu1.png]]
+
+#+BEGIN_SRC ipython :session :file images/temp/py17346D9Q.png
+
+c527.CompareEstimates('chi', 'mm1', 'mm2', filter_len=3600)
+plt.show()
+#+END_SRC
+
+#+RESULTS:
+[[file:images/temp/py17346D9Q.png]]
+
+#+BEGIN_SRC ipython :session :file images/temp/py12676zpc.png
+c527.CompareEstimates('KT', 'mm1', 'mm2', filter_len=None)
+plt.show()
+#+END_SRC
+
+#+RESULTS:
+[[file:images/temp/py12676zpc.png]]
+
+
+#+BEGIN_SRC ipython :session :file images/temp/py12676aIv.png
+c527.CompareEstimates('KT', 'pm1', 'pm2', filter_len=86400)
+#+END_SRC
+
+#+RESULTS:
+[[file:images/temp/py12676aIv.png]]
+* 12N 2015 (RAMA14/ra-122)
+
+#+CALL: read-ra12-2015()
+
+#+BEGIN_SRC ipython :session :file images/temp/py10857uaM.png
+c810.CompareEstimates('χ', 'mm1', 'mm2', filter_len=86400)
+#+END_SRC
+
+#+CAPTION: 810 mm1/mm2 disagree near the end...
+#+RESULTS:
+[[file:images/temp/py10857uaM.png]]
+
+#+CALL: read-ra12-2015()
+
+#+BEGIN_SRC ipython :session :file images/temp/810-χ-summary.png
+tind = np.int32(np.array([-90, -10])*86400/600
+                + len(c810.chi['mm1']['time']))
+tind = range(tind[0], tind[1])
+tind = None
+
+c810.Summarize(est='mm1', tind=tind, filter_len=86400)
+hf = plt.gcf()
+c810.Summarize(est='mm2', tind=tind, filter_len=86400, hfig=hf)
+plt.show()
+#+END_SRC
+
+#+RESULTS:
+[[file:images/temp/810-χ-summary.png]]
+
+#+CALL: read-ra12-2015()
+
+#+BEGIN_SRC ipython :session :file images/temp/810-χ-debug.png
+tind = np.int32(np.array([-90, -10])*86400/600
+                + len(c810.chi['mm1']['time']))
+tind = range(tind[0], tind[1])
+tind = None
+
+debug=True
+
+c810.Summarize(est='mm1', tind=tind, filter_len=86400, debug=debug)
+hf = plt.gcf()
+c810.Summarize(est='mm2', tind=tind, filter_len=86400, hfig=hf, debug=debug)
+plt.show()
+#+END_SRC
+
+#+RESULTS:
+[[file:images/temp/810-χ-debug.png]]
+
+
+#+BEGIN_SRC ipython :session :file images/temp/rama14-χ-summary.png
+c810.Summarize(filter_len=86400)
+hf = plt.gcf()
+c811.Summarize(filter_len=86400, hfig=hf)
+plt.show()
+#+END_SRC
+
+#+RESULTS:
+[[file:images/temp/rama14-χ-summary.png]]
+
+ [[file:images/rama1314-T-s-ρ.png]]
+
+* xarray tests :noexport:
+#+BEGIN_SRC ipython :session :file images/temp/img13517bmT.png
+offset_line_plot(dcpy.ts.xfilter(ra12.χ.resample('3H', dim='time', how='mean'),
+                                 5*86400.0, 'hann', dim='time'),
+                 x='time', y='depth',
+                 remove_mean=False, offset=0)
+plt.gca().set_yscale('log')
+#+END_SRC
+
+#+RESULTS:
+[[file:images/temp/img13517bmT.png]]
+
+
+Test out dataset merging
+#+BEGIN_SRC ipython :session :file images/temp/img13517cna.png
+da526 = xr.DataArray(ra12.χpod[526].chi['mm1']['chi'][:-1,np.newaxis],
+                     dims=['time', 'depth'],
+                     coords=[ra12.χpod[526].time[:-1], [15]], name='χ')
+
+da527 = xr.DataArray(ra12.χpod[527].chi['mm1']['chi'][:,np.newaxis],
+                     dims=['time', 'depth'],
+                     coords=[ra12.χpod[527].time, [30]], name='χ')
+
+da810 = xr.DataArray(ra12.χpod[810].chi['mm1']['chi'][:, np.newaxis],
+                     dims=['time', 'depth'],
+                     coords=[ra12.χpod[810].time, [15]], name='χ')
+
+da811 = xr.DataArray(ra12.χpod[811].chi['mm1']['chi'][:, np.newaxis],
+                     dims=['time', 'depth'],
+                     coords=[ra12.χpod[811].time, [30]], name='χ')
+
+da812 = xr.DataArray(ra12.χpod[812].chi['mm2']['chi'][:-1, np.newaxis],
+                     dims=['time', 'depth'],
+                     coords=[ra12.χpod[812].time[:-1], [45]], name='χ')
+
+ds = xr.merge([da526, da527, da811, da810, da812])
+χ = ds.χ
+# np.log10(χ.rolling(time=1440, min_periods=1).mean()).plot()
+
+dcpy.plots.offset_line_plot(np.log10(χ.rolling(time=1440, min_periods=1).mean()),
+                            x='time', y='depth', offset=0, remove_mean=False)
+#+END_SRC
+
+#+RESULTS:
+[[file:images/temp/img13517cna.png]]
+
+
+
+#+BEGIN_SRC ipython :session :file images/xarray-1d-2d-plot.png
+f, ax = plt.subplots(2, 1, sharex=True)
+nrl1.ctd.S.plot(ax=ax[0])
+nrl1.ctd.S.plot(ax=ax[1], x='time', y='depth')
+f.autofmt_xdate()
+
+ax[0].set_title('da.plot()')
+ax[0].set_xlabel('')
+ax[1].set_title('da.plot(x=\'time\', y=\'depth\')')
+
+plt.tight_layout()
+#+END_SRC
+
+#+RESULTS:
+[[file:images/xarray-1d-2d-plot.png]]
+
+* Instrument processing notes
+** git strategy
+- clone chipod_gust repository
+- make DEPLOYMENT-INSTRUMENT branch (e.g. RAMA13-526)
+- make local changes.
+** using internal stratification
+we want to know stratification against which turbulence is acting. This is going to depend on size of turbulent overturns. (╯°□°）╯︵ ┻━┻
+
+N² and dT/dz are used in the iterative procedure as
+\[ ε_χ = \frac{N²Χ_T}{2Γ〈∂T/∂z〉²} \]
+I think I want the two to be consistent at that stage i.e. use values from the mooring. If not, dT/dz will be biased low relative to N² relative to higher values of ε.
+Ultimately, this determines the Batchelor wavenumber $k_b$.
+
+Uncertainty in χ due to the choice of N² or dT/dz is wrapped in $k_b$.
+
+Once χ has been estimated,
+K_T = 0.5χ_t/(<∂T/∂z>²)
+At this point, I think I can choose ∂T/∂z independently of the choice made earlier.
+
+** chipod 526
+- 526's pitot drifts away. 527 looks good. Going to high pass filter so as to remove low frequency drift. Seems to work decently.
+  [[file:images/526-pitot-high-pass.png]]
+
+- 40 days cutoff works better than 80 days, but histogram of velocity doesn't match too well.
+  [[file:RAMA13/data/526/pics/Pitot_vs_ADCP_V0_fit.png]]
+** rama 14 / ra122 data
+ - salinity at 40m shows a 0.5 psu jump between end of ra107 and beginning of ra122 (12 hour time period). Could be OK but NaNing out first 10 points anyway.
+  [[file:images/ra07-ra122-switch-period.png]]
+
+ - 40m and 60m instruments seem to be quite noisy in general. also true for rama13/ra107.
+   [[file:images/rama13-rama14-full-salinity.png]]
+
+ - no difference between released and pre-calib temperature. I checked the calibration coefficients; they don't change for temperature.
+* misc notes
+- The mooring diagram attached is for 15N.  12N is the same except that it does not have any instruments shallower than 10m.  The 8N site may or may not end up in either of our cruises, depending on ship schedules and cruise plans, so you probably should not plan on deploying at that site.
+  Each mooring has one current instrument (sontek), and in both cases they and their accompanying TC module occupy the space from 10m depth to 13.3m depth.  In the past, you've put chipods at 14m.  If you wanted to put a chipod above the sontek on the 12N buoy, it would need to be shallower than 6m, because the sontek is facing up, and we would not want any interference.  Please let us know what you think.
+* email to sonya
+** ra107
+
+* Sally's processing:
+1s estimate -> min_dTdz=1e-3 -> 1 minute averages
