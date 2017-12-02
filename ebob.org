@@ -77,6 +77,19 @@ plt.show()
 #+RESULTS:
 [[file:images/nrl1-kt-boxplot.png]]
 
+#+BEGIN_SRC ipython :session :file images/temp/img13517cTn.png
+import seaborn as sns
+
+df = np.log10(nrl1.KT).to_dataframe().reset_index()
+df['month'] = df['time'].dt.month
+sns.violinplot(data=df, x="month", y="KT", hue="depth",
+               scale="count", split=True)
+sns.despine(trim=True)
+#+END_SRC
+
+#+RESULTS:
+[[file:images/temp/img13517cTn.png]]
+
 #+BEGIN_SRC ipython :session :file images/nrl1-summary.png
 ax = nrl1.Plotχpods()
 ax['T'].set_ylim([-250, -44])
@@ -87,9 +100,11 @@ plt.show()
 #+RESULTS:
 [[file:images/nrl1-summary.png]]
 
+
 #+CALL: read-nrl1()
 #+BEGIN_SRC ipython :session :file images/nrl1-new-summary.png
-ax = nrl1.Plotχpods(TSkind='pcolor')
+ax = nrl1.Plotχpods(filt='hann', TSkind='timeseries')
+ax['Tz'].set_yscale('linear')
 # ax['T'].set_ylim([190, 44])
 
 ax['Jq'].set_ylim([-100, 20])
@@ -98,6 +113,14 @@ plt.show()
 
 #+RESULTS:
 [[file:images/nrl1-new-summary.png]]
+
+
+#+BEGIN_SRC ipython :session :file images/temp/img135175BP.png
+ra12.PlotCTD('S', kind='timeseries')
+#+END_SRC
+
+#+RESULTS:
+[[file:images/temp/img135175BP.png]]
 
 ** 500
 #+CAPTION: Comparing chipod-body motion velocities (v_x, v_y) with background flow measurement. Looks like horizontal motion of the χpod is not large enough for flushing to be ineffective.
