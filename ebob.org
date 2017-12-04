@@ -46,14 +46,14 @@ Interestingly, there's not really a seasonal cycle in K_T!
 
 #+CALL: read-nrl1()
 
-#+BEGIN_SRC ipython :session :file images/temp/py28335p-H.png
+#+BEGIN_SRC ipython :session :ipyfile images/temp/py28335p-H.png
 nrl1.PlotMetCoherence()
 #+END_SRC
 
 #+RESULTS:
 [[file:images/temp/py28335p-H.png]]
 
-#+BEGIN_SRC ipython :session :file images/TS-nrl1.png
+#+BEGIN_SRC ipython :session :ipyfile images/TS-nrl1.png
 nrl1.TSPlot(varname='KT', varmin=1e-3, filter_len=43200)
 plt.xlim([33.5, 36])
 #+END_SRC
@@ -61,7 +61,7 @@ plt.xlim([33.5, 36])
 #+RESULTS:
 [[file:images/TS-nrl1.png]]
 
-#+BEGIN_SRC ipython :session :file images/nrl1-kt-boxplot-10min.png
+#+BEGIN_SRC ipython :session :ipyfile images/nrl1-kt-boxplot-10min.png
 [h,l,p] = nrl1.ChipodSeasonalSummary(filter_len=3600)
 plt.show()
 #+END_SRC
@@ -69,7 +69,7 @@ plt.show()
 #+RESULTS:
 [[file:images/nrl1-kt-boxplot-10min.png]]
 
-#+BEGIN_SRC ipython :session :file images/nrl1-kt-boxplot.png
+#+BEGIN_SRC ipython :session :ipyfile images/nrl1-kt-boxplot.png
 [h,l,p] = nrl1.ChipodSeasonalSummary()
 plt.show()
 #+END_SRC
@@ -77,7 +77,7 @@ plt.show()
 #+RESULTS:
 [[file:images/nrl1-kt-boxplot.png]]
 
-#+BEGIN_SRC ipython :session :file images/temp/img13517cTn.png
+#+BEGIN_SRC ipython :session :ipyfile images/temp/img13517cTn.png
 import seaborn as sns
 
 df = np.log10(nrl1.KT).to_dataframe().reset_index()
@@ -90,7 +90,7 @@ sns.despine(trim=True)
 #+RESULTS:
 [[file:images/temp/img13517cTn.png]]
 
-#+BEGIN_SRC ipython :session :file images/nrl1-summary.png
+#+BEGIN_SRC ipython :session :ipyfile images/nrl1-summary.png
 ax = nrl1.Plotχpods()
 ax['T'].set_ylim([-250, -44])
 ax['Jq'].set_ylim([-100, 20])
@@ -102,7 +102,7 @@ plt.show()
 
 
 #+CALL: read-nrl1()
-#+BEGIN_SRC ipython :session :file images/nrl1-new-summary.png
+#+BEGIN_SRC ipython :session :ipyfile images/nrl1-new-summary.png
 ax = nrl1.Plotχpods(filt='hann', TSkind='timeseries')
 ax['Tz'].set_yscale('linear')
 # ax['T'].set_ylim([190, 44])
@@ -115,7 +115,7 @@ plt.show()
 [[file:images/nrl1-new-summary.png]]
 
 
-#+BEGIN_SRC ipython :session :file images/temp/img135175BP.png
+#+BEGIN_SRC ipython :session :ipyfile images/temp/img135175BP.png
 ra12.PlotCTD('S', kind='timeseries')
 #+END_SRC
 
@@ -126,7 +126,7 @@ ra12.PlotCTD('S', kind='timeseries')
 #+CAPTION: Comparing chipod-body motion velocities (v_x, v_y) with background flow measurement. Looks like horizontal motion of the χpod is not large enough for flushing to be ineffective.
 [[file:images/500-ax-ay-moor-vel.png]]
 
-#+BEGIN_SRC ipython :session :file images/nrl1-500-summary.png
+#+BEGIN_SRC ipython :session :ipyfile images/nrl1-500-summary.png
 nrl1.χpod[500].Summarize(filter_len=43200)
 #+END_SRC
 
@@ -135,7 +135,7 @@ nrl1.χpod[500].Summarize(filter_len=43200)
 [[file:images/nrl1-500-summary.png]]
 
 
-#+BEGIN_SRC ipython :session :file images/nrl1-500-chi.png
+#+BEGIN_SRC ipython :session :ipyfile images/nrl1-500-chi.png
 nrl1.χpod[500].CompareEstimates('chi', 'mm1', 'mm2')
 #+END_SRC
 
@@ -144,14 +144,14 @@ nrl1.χpod[500].CompareEstimates('chi', 'mm1', 'mm2')
 
 
 
-#+BEGIN_SRC ipython :session :file images/nrl1-500-KT.png
+#+BEGIN_SRC ipython :session :ipyfile images/nrl1-500-KT.png
 nrl1.χpod[500].CompareEstimates('KT', 'mm1', 'mm2')
 #+END_SRC
 
 #+RESULTS:
 [[file:images/nrl1-500-KT.png]]
 ** 501
-#+BEGIN_SRC ipython :session :file images/nrl1-501-summary.png
+#+BEGIN_SRC ipython :session :ipyfile images/nrl1-501-summary.png
 nrl1.χpod[501].Summarize(filter_len=43200)
 #+END_SRC
 
@@ -162,7 +162,7 @@ nrl1.χpod[501].Summarize(filter_len=43200)
 ** 505
 #+CALL: read-nrl3()
 
-#+BEGIN_SRC ipython :session :file images/nrl3-summary.png
+#+BEGIN_SRC ipython :session :ipyfile images/nrl3-summary.png
 ax = nrl3.Plotχpods()
 ax['S'].set_ylim([32.5, 36])
 #+END_SRC
@@ -173,7 +173,7 @@ ax['S'].set_ylim([32.5, 36])
 
 #+CALL: read-nrl5()
 
-#+BEGIN_SRC ipython :session :file images/TS-nrl5.png
+#+BEGIN_SRC ipython :session :ipyfile images/TS-nrl5.png
 nrl5.TSPlot()
 plt.xlim([33.5, 36])
 #+END_SRC
@@ -181,7 +181,7 @@ plt.xlim([33.5, 36])
 #+RESULTS:
 [[file:images/TS-nrl5.png]]
 
-#+BEGIN_SRC ipython :session :file images/nrl5-proto-spectra.png
+#+BEGIN_SRC ipython :session :ipyfile images/nrl5-proto-spectra.png
 dcpy.ts = importlib.reload(dcpy.ts)
 
 ticks = np.array([1/24, 1/12, 1/3, 1/2, 1, 2, 5, 10, 20, 30])
@@ -199,7 +199,7 @@ nrl5.PlotSpectrum('chi', filter_len=3600, nsmooth=4,
 #+RESULTS:
 [[file:images/nrl5-proto-spectra.png]]
 
-#+BEGIN_SRC ipython :session :file images/temp/py27662Vq.png
+#+BEGIN_SRC ipython :session :ipyfile images/temp/py27662Vq.png
 importlib.reload(moor)
 importlib.reload(chipy)
 
@@ -221,7 +221,7 @@ plt.ylim([-200, -70])
 [[file:images/temp/py27662Vq.png]]
 
 
-#+BEGIN_SRC ipython :session :file images/nrl5-summary.png
+#+BEGIN_SRC ipython :session :ipyfile images/nrl5-summary.png
 nrl5.Plotχpods()
 #+END_SRC
 
@@ -229,7 +229,7 @@ nrl5.Plotχpods()
 [[file:images/nrl5-summary.png]]
 
 
-#+BEGIN_SRC ipython :session :file images/nrl5-boxplot.png
+#+BEGIN_SRC ipython :session :ipyfile images/nrl5-boxplot.png
 nrl5.ChipodSeasonalSummary(filter_len=3600)
 #+END_SRC
 
@@ -237,14 +237,14 @@ nrl5.ChipodSeasonalSummary(filter_len=3600)
 [[file:images/nrl5-boxplot.png]]
 
 ** 518
-#+BEGIN_SRC ipython :session :file images/518-chi.png
+#+BEGIN_SRC ipython :session :ipyfile images/518-chi.png
 nrl5.χpod[518].CompareEstimates('chi', 'mm1', 'mm2')
 #+END_SRC
 
 #+RESULTS:
 [[file:images/518-chi.png]]
 ** 519
-#+BEGIN_SRC ipython :session :file images/519-chi.png
+#+BEGIN_SRC ipython :session :ipyfile images/519-chi.png
 nrl5.χpod[519].CompareEstimates('chi', 'mm1', 'mm2')
 #+END_SRC
 
@@ -320,7 +320,7 @@ def PlotNRL(num, NRLpath='../ancillary/ctd/'):
 - N² for 501 looks alright.
 - 501 T2P seems screwy
 
-#+BEGIN_SRC ipython :session :tangle yes :exports results :eval never-export :file images/nrl1-ctd-dρ.png
+#+BEGIN_SRC ipython :session :tangle yes :exports results :eval never-export :ipyfile images/nrl1-ctd-dρ.png
 PlotNRL(1)
 #+END_SRC
 
@@ -332,7 +332,7 @@ PlotNRL(1)
 
 - for sensors 2,3 (χpod 504) there's trouble
 
-#+BEGIN_SRC ipython :session :tangle yes :exports results :eval never-export :file images/nrl2-ctd-dρ.png
+#+BEGIN_SRC ipython :session :tangle yes :exports results :eval never-export :ipyfile images/nrl2-ctd-dρ.png
 PlotNRL(2)
 #+END_SRC
 
@@ -351,7 +351,7 @@ depth = (T.P - 14.7)/14.7 in the code. Then things are correct.
 ** NRL3
 - sensor 2 drifts (negative N² at the end of the record)
 - sensor 4 has a constant offset. It is too dense all of the time. Salinity is in the 20s!!!
-#+BEGIN_SRC ipython :session :tangle yes :exports results :eval never-export :file images/nrl3-ctd-dρ.png
+#+BEGIN_SRC ipython :session :tangle yes :exports results :eval never-export :ipyfile images/nrl3-ctd-dρ.png
 PlotNRL(3)
 #+END_SRC
 
@@ -363,7 +363,7 @@ PlotNRL(3)
 - sensor 2 sees fresh water come in between july and august 2014.
 - sensor 1 does not - inversion. which is screwed up?
 
-#+BEGIN_SRC ipython :session :tangle yes :exports results :eval never-export :file images/nrl4-ctd-dρ.png
+#+BEGIN_SRC ipython :session :tangle yes :exports results :eval never-export :ipyfile images/nrl4-ctd-dρ.png
 PlotNRL(4)
 #+END_SRC
 
@@ -379,7 +379,7 @@ PlotNRL(4)
 [[file:scripts/images/519-T1-T2-offset.png]]
 
 
-#+BEGIN_SRC ipython :session :tangle yes :exports results :eval never-export :file images/nrl5-ctd-dρ.png
+#+BEGIN_SRC ipython :session :tangle yes :exports results :eval never-export :ipyfile images/nrl5-ctd-dρ.png
 PlotNRL(5)
 #+END_SRC
 
