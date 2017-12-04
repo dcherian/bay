@@ -82,11 +82,11 @@ ra12.Budget()
 TSkind = 'contour'
 Tlim = [25, 28.1]
 Slim = [32, 35.5]
-t0 = dt.date2num(dt.datetime.datetime(2014, 1, 27))
-t1 = dt.date2num(dt.datetime.datetime(2014, 1, 29))
+t0 = (dt.datetime.datetime(2014, 1, 27))
+t1 = (dt.datetime.datetime(2014, 1, 29))
 
 ax = ra12.Plotχpods(quiv=False, filt='hann', filter_len=1*3600,
-                    TSkind=TSkind, t0=t0, t1=t1)
+                    TSkind=TSkind, region=dict(time=slice(t0, t1)))
 
 ax['Jq'].set_ylim([-100, 100])
 ax['N2'].set_ylim([0, 0.5])
@@ -103,7 +103,9 @@ if TSkind is 'pcolor':
 #+END_SRC
 #+ATTR_HTML: :class full-width
 #+RESULTS:
+:RESULTS:
 [[file:images/temp/img246023Dvh.png]]
+:END:
 
 #+BEGIN_SRC ipython :session :ipyfile images/ra12-2014-daily-zoomin.png
 TSkind = 'contour'
@@ -163,7 +165,7 @@ if TSkind is 'pcolor':
 #+BEGIN_SRC ipython :session :ipyfile images/ra12-daily.png
 import dcpy.ts
 
-ax = ra12.Plotχpods(filter_len=3600, pods=[526,527], filt='hann')
+ax = ra12.Plotχpods(filter_len=3600, filt='hann')
 
 ax['Jq0'].set_ylim([-500, 700])
 ax['Jq'].set_ylim([-100, 100])
@@ -489,15 +491,18 @@ hf.suptitle('RAMA 12N | 30m')
 ** Summarize
 #+NAME: ra15-summary
 #+BEGIN_SRC ipython :session :ipyfile images/ra15-summary.png
-ax = ra15.Plotχpods(quiv=False, filt='hann', filter_len=3*86400.0,
-                    TSkind='pcolor')
+ax = ra15.Plotχpods(quiv=False, filt='hann', filter_len=5*86400.0,
+                    TSkind='pcolor', met='tropflux')
 ax['Jq'].set_ylim([-100, 100])
 # ax['S'].set_ylim([30, 34])
 ax['N2'].set_ylim([0, 7])
 #+END_SRC
 #+ATTR_HTML: :class full-width
 #+RESULTS: ra15-summary
-[[file:images/ra15-summary.png]]
+:RESULTS:
+: (0, 7)
+1[[file:images/ra15-summary.png]]
+:END:
 
 #+CALL: read-ra15()
 #+BEGIN_SRC ipython :session :ipyfile images/rama15n-kt-boxplot.png
