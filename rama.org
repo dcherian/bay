@@ -102,9 +102,7 @@ if TSkind is 'pcolor':
 #+END_SRC
 #+ATTR_HTML: :class full-width
 #+RESULTS:
-:RESULTS:
 [[file:images/temp/img246023Dvh.png]]
-:END:
 
 #+BEGIN_SRC ipython :session :ipyfile images/ra12-2014-daily-zoomin.png
 TSkind = 'contour'
@@ -189,7 +187,94 @@ plt.gcf().autofmt_xdate()
 :RESULTS:
 [[file:images/ra12-daily.png]]
 :END:
+*** sampling statistics
 
+#+call: read-ra12()
+#+BEGIN_SRC ipython :session :ipyfile images/temp/img3291i_G.png
+var = ra12.χ
+
+frac_daily_samples = xr.apply_ufunc(np.sum,
+                                    np.logical_not(np.isnan(var)).groupby('time.dayofyear'),
+                                    input_core_dims=[['time']],
+                                    kwargs={'axis': -1})/144
+
+dcpy.plots.offset_line_plot(frac_daily_samples, x='dayofyear', y='depth',
+                            offset = 0, remove_mean=False)
+#+END_SRC
+#+RESULTS:
+:RESULTS:
+#+BEGIN_EXAMPLE
+[<matplotlib.lines.Line2D at 0x7f2855644048>,
+   <matplotlib.lines.Line2D at 0x7f2855644a20>,
+   <matplotlib.lines.Line2D at 0x7f28556440b8>]
+#+END_EXAMPLE
+[[file:images/temp/img3291i_G.png]]
+:END:
+
+#+call: read-ra12()
+#+BEGIN_SRC ipython :session :ipyfile images/ra12-jqt-sampling.png :results raw
+def summarize_sampling(var):
+    def calc_hourly(da, igrp, groupstr):
+        def calc_fraction_sampled(da):
+            # with Jq, nan → not deployed
+            #           0  → cannot use method
+            N = np.logical_not(np.isnan(da)).sum(dim='time')
+            Nsamp = np.logical_not(np.isnan(da.where(da != 0))).sum(dim='time')
+            return Nsamp/N
+
+        hourly = da.groupby('time.hour').apply(calc_fraction_sampled)
+        hourly.coords[groupstr] = igrp
+        hourly.name = 'Fraction sampled in an hour'
+        return hourly
+
+    groupstr = 'weekofyear'
+
+    yrfrac = []
+    for year, data in var.groupby('time.year'):
+        grouped = data.groupby('time.'+groupstr)
+        fr = (xr.concat([calc_hourly(da, igrp, groupstr) for igrp,da in grouped],
+                        dim=groupstr))
+        fr.coords['year'] = year
+        yrfrac.append(fr)
+
+    frac = xr.concat(yrfrac, dim='year').drop([2013, 2016], dim='year')
+    hdl = frac.plot(y='hour', row='year', col='depth', vmin=0, cmap=mpl.cm.Reds)
+    plt.gcf().suptitle(ra12.name, y=1.01)
+    return hdl
+
+hdl = summarize_sampling(ra12.Jq)
+#+END_SRC
+#+CAPTION: Distribution of samples by hour on y axis. and month varying in x.
+#+RESULTS:
+[[file:images/ra12-jqt-sampling.png]]
+
+#+BEGIN_SRC ipython :session :ipyfile images/ra12-jq0-N2-hourly.png
+def hourly_means(da):
+    return da.groupby('Jtime.hour').mean(dim='Jtime')
+
+hdl = (ra12.met.Jq0.groupby('Jtime.weekofyear')
+       .apply(hourly_means)
+       .plot(x='weekofyear', y='hour'))
+f = plt.gcf().set_size_inches((6.5, 3.5))
+#+END_SRC
+#+CAPTION: Net surface flux. Absolutely no change in time of solar forcing... Can see ISOs!
+#+RESULTS:
+[[file:images/ra12-jq0-N2-hourly.png]]
+
+#+BEGIN_SRC ipython :session :ipyfile images/temp/imgGSnYmU.png :results raw
+dcpy.plots.offset_line_plot(ra12.Tz.groupby('time.dayofyear').mean(dim='time'),
+                            x='dayofyear', y='depth', lw=0.5)
+plt.gca().set_yscale('symlog', linthreshy=1e-3, linscaley=0.5)
+plt.gcf().set_size_inches((7.5, 4))
+plt.gcf().autofmt_xdate()
+#+END_SRC
+#+CAPTION: N² as comparison
+#+RESULTS:
+[[file:images/temp/imgGSnYmU.png]]
+
+#+CAPTION: Plot $N²$ for comparison
+#+RESULTS:
+*** Velocity
 #+BEGIN_SRC ipython :session :ipyfile images/rama13-vel-spectra.png
 import scipy.signal as signal
 from dcpy.util import find_approx
