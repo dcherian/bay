@@ -60,7 +60,6 @@ plt.tight_layout()
 #+RESULTS:
 [[file:images/rama12n-kt-boxplot.png]]
 
-
 - How much J_q^t is needed to satisfy 1D balance? O(100 W/m²)!
 
 #+BEGIN_SRC ipython :session :ipyfile images/temp/py29463EJl.png
@@ -115,8 +114,9 @@ t0 = dt.date2num(dt.datetime.datetime(2014, 1, 27))
 t1 = dt.date2num(dt.datetime.datetime(2014, 2, 5))
 
 ax = ra12.Plotχpods(quiv=False, filt='hann', filter_len=1*3600,
-                    TSkind=TSkind, t0=t0, t1=t1)
+                    TSkind=TSkind)
 
+ax['met'].set_xlim([t0, t1])
 ax['Jq'].set_ylim([-100, 100])
 ax['N2'].set_ylim([0, 0.5])
 ax['met'].set_xlim([t0, t1])
@@ -186,7 +186,9 @@ plt.gcf().autofmt_xdate()
 #+END_SRC
 #+ATTR_HTML: :class full-width
 #+RESULTS:
+:RESULTS:
 [[file:images/ra12-daily.png]]
+:END:
 
 #+BEGIN_SRC ipython :session :ipyfile images/rama13-vel-spectra.png
 import scipy.signal as signal
@@ -316,6 +318,48 @@ plt.tight_layout()
 
 #+RESULTS:
 [[file:images/temp/py294633Ev.png]]
+** Events
+*** Hudhud
+#+BEGIN_SRC ipython :session :ipyfile images/ra12-hudhud.png
+ax = ra12.Plotχpods(event='Hudhud', filter_len=3600.0, filt='hann')
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+[[file:images/ra12-hudhud.png]]
+:END:
+
+
+*** Freshwater filaments?
+
+#+BEGIN_SRC ipython :session :ipyfile images/ra12-FW1.png
+ax = ra12.Plotχpods(event='FW1', filter_len=3600.0, filt='hann')
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+[[file:images/ra12-FW1.png]]
+:END:
+
+#+BEGIN_SRC ipython :session :ipyfile images/ra12-FW2.png
+ax = ra12.Plotχpods(met='tropflux', event='FW2',
+                    filter_len=3600.0, filt='hann')
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+[[file:images/ra12-FW2.png]]
+:END:
+
+#+BEGIN_SRC ipython :session :ipyfile images/ra12-FW3.png
+ax = ra12.Plotχpods(met='tropflux', event='FW3',
+                    filter_len=3600.0, filt='hann')
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+[[file:images/ra12-FW3.png]]
+:END:
 
 ** Search for MISO event?
 #+BEGIN_SRC ipython :session :ipyfile images/temp/img3907och.png
@@ -829,7 +873,7 @@ ra12.PlotAllSpectra(filter_len=86400.0, multitaper=True)
 #+CAPTION: Different masking criteria...
 [[file:images/526-hudhud-masking.png]]
 
-#+CAPTION: ∫J_q^t over Hudhud is sensitive to averaging interval! Sally used T_z > 3e-4 & 1 min averages. With that I get ~ -220 W/m² compared to her -193 W/m² --- this difference is due to 10min vs. daily salinity (I think).
+#+CAPTION: +∫J_q^t over Hudhud is sensitive to averaging interval! Sally used T_z > 3e-4 & 1 min averages. With that I get ~ -220 W/m² compared to her -193 W/m² --- this difference is due to 10min vs. daily salinity (I think).+ Better if I mask using averaged T_z used to calc K_t, Jqt
 [[file:images/526-hudhud-jqt-sensitivity.png]]
 
 ** χ-pod 526
