@@ -198,33 +198,26 @@ frac_daily_samples = xr.apply_ufunc(np.sum,
                                     input_core_dims=[['time']],
                                     kwargs={'axis': -1})/144
 
-dcpy.plots.offset_line_plot(frac_daily_samples, x='dayofyear', y='depth',
-                            offset = 0, remove_mean=False)
+_ = dcpy.plots.offset_line_plot(frac_daily_samples, x='dayofyear', y='depth',
+                                offset = 0, remove_mean=False)
 #+END_SRC
 #+RESULTS:
-:RESULTS:
-#+BEGIN_EXAMPLE
-[<matplotlib.lines.Line2D at 0x7f2855644048>,
-   <matplotlib.lines.Line2D at 0x7f2855644a20>,
-   <matplotlib.lines.Line2D at 0x7f28556440b8>]
-#+END_EXAMPLE
 [[file:images/temp/img3291i_G.png]]
-:END:
 
 #+call: read-ra12()
 #+BEGIN_SRC ipython :session :results none
-def summarize_sampling(var):
-    def calc_hourly(da, igrp, groupstr):
-        def calc_fraction_sampled(da):
-            # with Jq, nan → not deployed
-            #           0  → cannot use method
-            N = np.logical_not(np.isnan(da)).sum(dim='time')
-            Nsamp = np.logical_not(np.isnan(da.where(da != 0))).sum(dim='time')
-            return Nsamp/N
+def calc_fraction_sampled(da):
+    # with Jq, nan → not deployed
+    #           0  → cannot use method
+    N = np.logical_not(np.isnan(da)).sum(dim='time')
+    Nsamp = np.logical_not(np.isnan(da.where(da != 0))).sum(dim='time')
+    return Nsamp/N
 
-        hourly = da.groupby('time.hour').apply(calc_fraction_sampled)
+def summarize_by_hour(var, func, name, **kwargs):
+
+    def calc_hourly(da, igrp, groupstr, func):
+        hourly = da.groupby('time.hour').apply(func)
         hourly.coords[groupstr] = igrp
-        hourly.name = 'Fraction sampled in an hour'
         return hourly
 
     groupstr = 'weekofyear'
@@ -232,15 +225,19 @@ def summarize_sampling(var):
     yrfrac = []
     for year, data in var.groupby('time.year'):
         grouped = data.groupby('time.'+groupstr)
-        fr = (xr.concat([calc_hourly(da, igrp, groupstr) for igrp,da in grouped],
+        fr = (xr.concat([calc_hourly(da, igrp, groupstr, func) for igrp,da in grouped],
                         dim=groupstr))
         fr.coords['year'] = year
         yrfrac.append(fr)
 
     frac = xr.concat(yrfrac, dim='year').drop([2013, 2016], dim='year')
-    hdl = frac.plot(y='hour', row='year', col='depth', vmin=0, cmap=mpl.cm.Reds)
+    frac.name = name
+    hdl = frac.plot(y='hour', row='year', col='depth', **kwargs)
     plt.gcf().suptitle(ra12.name, y=1.01)
     return hdl
+
+def hourly_means(da):
+    return da.groupby('Jtime.hour').mean(dim='Jtime')
 
 def overlay(ax, var):
     tstr = ax.get_title()
@@ -257,18 +254,26 @@ def overlay(ax, var):
 #+END_SRC
 
 #+BEGIN_SRC ipython :session :ipyfile images/ra12-jqt-sampling.png :results raw
-hdl = summarize_sampling(ra12.Jq)
-_ = list(map(overlay, hdl.axes.ravel()[[0,1,3,4]], [ra12.met.swr]*4))
+hdl = summarize_by_hour(ra12.Jq, calc_fraction_sampled,
+                        'Fraction of hour sampled',
+                        cmap=mpl.cm.Reds)
+_ = [overlay(ax, ra12.met.swr) for ax in hdl.axes.ravel()[[0,1,3,4]]]
 #+END_SRC
 #+CAPTION: Distribution of samples by hour on y axis, and month varying in x. Overlaid is shortwave.
 #+ATTR_HTML: :class zoom
 #+RESULTS:
 [[file:images/ra12-jqt-sampling.png]]
 
-#+BEGIN_SRC ipython :session :ipyfile images/ra12-jq0-swr-hourly.png
-def hourly_means(da):
-    return da.groupby('Jtime.hour').mean(dim='Jtime')
 
+#+BEGIN_SRC ipython :session :ipyfile images/ra12-jqt-hourly-means.png
+hdl = summarize_by_hour(ra12.Jq, lambda da: da.mean(dim='time'),
+                        'Hourly mean $J_q^t$')
+#+END_SRC
+
+#+RESULTS:
+[[file:images/ra12-jqt-hourly-means.png]]
+
+#+BEGIN_SRC ipython :session :ipyfile images/ra12-jq0-swr-hourly.png
 f, ax = plt.subplots(2,1)
 (ra12.met.Jq0.groupby('Jtime.weekofyear')
          .apply(hourly_means)

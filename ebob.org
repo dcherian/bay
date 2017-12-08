@@ -40,6 +40,7 @@ Emily: /A lot of these χ-pods did not have pitots installed/
 
 #+CAPTION: χpod locations for ASIRI/EBOB/MesoBOB
 [[file:~/ebob/MixingmapASIRIPiston.png]]
+
 * NRL-1
 ** full mooring
 Interestingly, there's not really a seasonal cycle in K_T!
@@ -250,6 +251,8 @@ nrl5.χpod[519].CompareEstimates('chi', 'mm1', 'mm2')
 
 #+RESULTS:
 [[file:images/519-chi.png]]
+* deployment things
+[[file:images/ebob-pres-deployment.png]]
 * processing notes
 ** code
 
