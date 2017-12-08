@@ -212,7 +212,7 @@ dcpy.plots.offset_line_plot(frac_daily_samples, x='dayofyear', y='depth',
 :END:
 
 #+call: read-ra12()
-#+BEGIN_SRC ipython :session :ipyfile images/ra12-jqt-sampling.png :results raw
+#+BEGIN_SRC ipython :session :results none
 def summarize_sampling(var):
     def calc_hourly(da, igrp, groupstr):
         def calc_fraction_sampled(da):
@@ -242,24 +242,47 @@ def summarize_sampling(var):
     plt.gcf().suptitle(ra12.name, y=1.01)
     return hdl
 
-hdl = summarize_sampling(ra12.Jq)
+def overlay(ax, var):
+    tstr = ax.get_title()
+    xlab = ax.get_xlabel()
+    ylab = ax.get_ylabel()
+
+    (var.groupby('Jtime.weekofyear')
+     .apply(hourly_means)
+     .plot.contour(x='weekofyear', y='hour', colors='lightgray', levels=15, ax=ax))
+
+    ax.set_title(tstr)
+    ax.set_xlabel(xlab)
+    ax.set_ylabel(ylab)
 #+END_SRC
-#+CAPTION: Distribution of samples by hour on y axis. and month varying in x.
+
+#+BEGIN_SRC ipython :session :ipyfile images/ra12-jqt-sampling.png :results raw
+hdl = summarize_sampling(ra12.Jq)
+_ = list(map(overlay, hdl.axes.ravel()[[0,1,3,4]], [ra12.met.swr]*4))
+#+END_SRC
+#+CAPTION: Distribution of samples by hour on y axis, and month varying in x. Overlaid is shortwave.
+#+ATTR_HTML: :class zoom
 #+RESULTS:
 [[file:images/ra12-jqt-sampling.png]]
 
-#+BEGIN_SRC ipython :session :ipyfile images/ra12-jq0-N2-hourly.png
+#+BEGIN_SRC ipython :session :ipyfile images/ra12-jq0-swr-hourly.png
 def hourly_means(da):
     return da.groupby('Jtime.hour').mean(dim='Jtime')
 
-hdl = (ra12.met.Jq0.groupby('Jtime.weekofyear')
-       .apply(hourly_means)
-       .plot(x='weekofyear', y='hour'))
-f = plt.gcf().set_size_inches((6.5, 3.5))
+f, ax = plt.subplots(2,1)
+(ra12.met.Jq0.groupby('Jtime.weekofyear')
+         .apply(hourly_means)
+         .plot(x='weekofyear', y='hour', ax=ax[0]))
+
+(ra12.met.swr.groupby('Jtime.weekofyear')
+         .apply(hourly_means)
+         .plot(x='weekofyear', y='hour', ax=ax[1], cmap=mpl.cm.Reds))
+
+f.set_size_inches((6.5, 3.5))
 #+END_SRC
-#+CAPTION: Net surface flux. Absolutely no change in time of solar forcing... Can see ISOs!
+#+CAPTION: Net surface flux + SW radiation. Absolutely no change in time of solar forcing... Can see ISOs!
 #+RESULTS:
-[[file:images/ra12-jq0-N2-hourly.png]]
+[[file:images/ra12-jq0-swr-hourly.png]]
 
 #+BEGIN_SRC ipython :session :ipyfile images/temp/imgGSnYmU.png :results raw
 dcpy.plots.offset_line_plot(ra12.Tz.groupby('time.dayofyear').mean(dim='time'),
