@@ -54,14 +54,6 @@ nrl1.PlotMetCoherence()
 #+RESULTS:
 [[file:images/temp/py28335p-H.png]]
 
-#+BEGIN_SRC ipython :session :ipyfile images/TS-nrl1.png
-nrl1.TSPlot(varname='KT', varmin=1e-3, filter_len=43200)
-plt.xlim([33.5, 36])
-#+END_SRC
-
-#+RESULTS:
-[[file:images/TS-nrl1.png]]
-
 #+BEGIN_SRC ipython :session :ipyfile images/nrl1-kt-boxplot-10min.png
 [h,l,p] = nrl1.ChipodSeasonalSummary(filter_len=3600)
 plt.show()
@@ -104,9 +96,8 @@ plt.show()
 
 #+CALL: read-nrl1()
 #+BEGIN_SRC ipython :session :ipyfile images/nrl1-new-summary.png
-ax = nrl1.Plotχpods(filt='hann', TSkind='timeseries')
+ax = nrl1.Plotχpods(TSkind='timeseries')
 ax['Tz'].set_yscale('linear')
-# ax['T'].set_ylim([190, 44])
 
 ax['Jq'].set_ylim([-100, 20])
 plt.show()
@@ -123,6 +114,13 @@ ra12.PlotCTD('S', kind='timeseries')
 #+RESULTS:
 [[file:images/temp/img135175BP.png]]
 
+#+BEGIN_SRC ipython :session :ipyfile images/TS-nrl1.png
+nrl1.TSPlot(varname='KT', varmin=1e-3, filter_len=43200)
+plt.xlim([33.5, 36])
+#+END_SRC
+
+#+RESULTS:
+[[file:images/TS-nrl1.png]]
 ** 500
 #+CAPTION: Comparing chipod-body motion velocities (v_x, v_y) with background flow measurement. Looks like horizontal motion of the χpod is not large enough for flushing to be ineffective.
 [[file:images/500-ax-ay-moor-vel.png]]
@@ -160,16 +158,16 @@ nrl1.χpod[501].Summarize(filter_len=43200)
 #+RESULTS:
 [[file:images/nrl1-501-summary.png]]
 * NRL-3
-** 505
 #+CALL: read-nrl3()
 
 #+BEGIN_SRC ipython :session :ipyfile images/nrl3-summary.png
 ax = nrl3.Plotχpods()
-ax['S'].set_ylim([32.5, 36])
+_ = ax['S'].set_ylim([32.5, 36])
 #+END_SRC
 
 #+RESULTS:
 [[file:images/nrl3-summary.png]]
+* NRL-4
 * NRL 5
 
 #+CALL: read-nrl5()
@@ -319,6 +317,7 @@ def PlotNRL(num, NRLpath='../ancillary/ctd/'):
 #+RESULTS:
 
 ** NRL1
+- χpod 501 has gaps in the middle = bad data card?
 - apply 0.035 psu offset to salinity sensor 2. (reprocessed 500)
 - N² for 501 looks alright.
 - 501 T2P seems screwy
@@ -332,6 +331,15 @@ PlotNRL(1)
 
 ** NRL2
 - for sensors 1,2 (χpod 503) there's trouble. Not sure if 1 or 2 is bad. If 2, then that's what is screwing 504. _There seems to be a linear downward drift in salinity sensor 2_ (╯°□°）╯︵ ┻━┻
+
+- χpod 503 didn't work.
+
+- χpod 504 seems to have crap accelerometer data
+
+- Adding 15 to pressure data for sensor 2.
+
+#+CAPTION: sensor 2 seems to think it's 15m shallower than it actually is. Horizontal lines are nominal depths. Y-axis is distance from top of intrument chain.
+[[file:images/nrl2-pres.png]]
 
 - for sensors 2,3 (χpod 504) there's trouble
 
@@ -362,6 +370,8 @@ PlotNRL(3)
 [[file:images/nrl3-ctd-dρ.png]]
 
 ** NRL4
+- Subtracted linear trends based on differences with ship casts.-
+
 - N² for sensor 514 has some negative values.
 - sensor 2 sees fresh water come in between july and august 2014.
 - sensor 1 does not - inversion. which is screwed up?
@@ -379,8 +389,7 @@ PlotNRL(4)
 - T2 on χpod 519 is offset! mean(T1-T2) ≈ 2.63C
   - based on mooring CTDs, T2 is too low.
 
-[[file:scripts/images/519-T1-T2-offset.png]]
-
+[[file:~/bay/images/519-T1-T2-offset.png]]
 
 #+BEGIN_SRC ipython :session :tangle yes :exports results :eval never-export :ipyfile images/nrl5-ctd-dρ.png
 PlotNRL(5)
@@ -388,3 +397,10 @@ PlotNRL(5)
 
 #+RESULTS:
 [[file:images/nrl5-ctd-dρ.png]]
+** T1, T2 differing
+*** 511
+[[file:../ebob/data/511/pics/daily-average-summary.png]]
+[[file:../ebob/data/511/pics/Compare_Turb.png]]
+*** 516
+[[file:../ebob/data/516/pics/daily-average-summary.png]]
+[[file:../ebob/data/516/pics/Compare_Turb.png]]
