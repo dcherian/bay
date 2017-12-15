@@ -160,7 +160,7 @@ if TSkind is 'pcolor':
 [[file:images/ra12-2014-winter.png]]
 
 #+CALL: read-ra12()
-#+BEGIN_SRC ipython :session :ipyfile images/ra12-daily.png
+#+BEGIN_SRC ipython :session :ipyfile images/ra12-daily-sw.png
 import dcpy.ts
 
 ax = ra12.Plotχpods(filter_len=3600, filt='hann')
@@ -172,8 +172,8 @@ ax['S'].set_ylim([33.5, 34])
 ax['N2'].set_ylim([0, 0.5])
 ax['Tz'].set_ylim([-1e-2, 1e-2])
 ax['Kt'].set_ylim([1e-6, 1e-2])
-ax['met'].set_xlim([dt.datetime.datetime(2014, 1, 25),
-                    dt.datetime.datetime(2014, 2, 3)])
+ax['met'].set_xlim([dt.datetime.datetime(2014, 6, 25),
+                    dt.datetime.datetime(2014, 7, 3)])
 
 # ax['v'].cla()
 # ax['v'].plot(ra12.vel.time, spdband)
@@ -184,11 +184,31 @@ plt.gcf().autofmt_xdate()
 #+END_SRC
 #+ATTR_HTML: :class full-width
 #+RESULTS:
-:RESULTS:
-[[file:images/ra12-daily.png]]
-:END:
-*** sampling statistics
+*** alternative jqt calculation
+#+BEGIN_SRC ipython :session :ipyfile images/temp/imgClHRR7.png
+def trim_mean(da):
+    from scipy.stats import trim_mean
+    import xarray as xr
 
+    return xr.apply_ufunc(trim_mean, da, input_core_dims=[['time']],
+                      kwargs={'axis': -1, 'proportiontocut': 0.02})
+
+newJq = -1025 * 4200 * (ra12.KT.resample(time='2H').apply(trim_mean)
+                        * ra12.Tz.resample(time='1H').mean(dim='time'))
+
+def hist(jq, ax):
+    [(np.log10(np.abs(jq.where(jq != 0))).sel(depth=z)
+      .plot.hist(ax=axx, bins=np.arange(-3,5,0.05), alpha=0.4, normed=True))
+     for z, axx in zip(jq.depth, ax)]
+
+f, ax = plt.subplots(3,1)
+hist(ra12.Jq, ax)
+hist(newJq, ax)
+#+END_SRC
+
+#+RESULTS:
+[[file:images/temp/imgClHRR7.png]]
+*** sampling statistics
 #+call: read-ra12()
 #+BEGIN_SRC ipython :session :ipyfile images/temp/img3291i_G.png
 var = ra12.χ
@@ -206,21 +226,14 @@ _ = dcpy.plots.offset_line_plot(frac_daily_samples, x='dayofyear', y='depth',
 
 #+call: read-ra12()
 #+BEGIN_SRC ipython :session :results none
-def calc_fraction_sampled(da):
-    # with Jq, nan → not deployed
-    #           0  → cannot use method
-    N = np.logical_not(np.isnan(da)).sum(dim='time')
-    Nsamp = np.logical_not(np.isnan(da.where(da != 0))).sum(dim='time')
-    return Nsamp/N
-
-def summarize_by_hour(var, func, name, **kwargs):
+def summarize_by_hour(var, func, name, dropyear=None, **kwargs):
 
     def calc_hourly(da, igrp, groupstr, func):
         hourly = da.groupby('time.hour').apply(func)
         hourly.coords[groupstr] = igrp
         return hourly
 
-    groupstr = 'weekofyear'
+    groupstr = 'dayofyear'
 
     yrfrac = []
     for year, data in var.groupby('time.year'):
@@ -230,9 +243,21 @@ def summarize_by_hour(var, func, name, **kwargs):
         fr.coords['year'] = year
         yrfrac.append(fr)
 
-    frac = xr.concat(yrfrac, dim='year').drop([2013, 2016], dim='year')
+    frac = xr.concat(yrfrac, dim='year')
+    if dropyear is not None:
+        try:
+            frac = frac.drop(dropyear, dim='year')
+        except ValueError:
+            # unless those years are not present
+            pass
+
     frac.name = name
-    hdl = frac.plot(y='hour', row='year', col='depth', **kwargs)
+    if len(frac.year) == 1:
+        row = {'row': None}
+    else:
+        row = {'row': 'year'}
+
+    hdl = frac.plot(y='hour', col='depth', **row, **kwargs)
     plt.gcf().suptitle(ra12.name, y=1.01)
     return hdl
 
@@ -254,8 +279,16 @@ def overlay(ax, var):
 #+END_SRC
 
 #+BEGIN_SRC ipython :session :ipyfile images/ra12-jqt-sampling.png :results raw
+def calc_fraction_sampled(da):
+    # with Jq, nan → not deployed
+    #           0  → cannot use method
+    N = np.logical_not(np.isnan(da)).sum(dim='time')
+    Nsamp = np.logical_not(np.isnan(da.where(da != 0))).sum(dim='time')
+    return Nsamp/N
+
 hdl = summarize_by_hour(ra12.Jq, calc_fraction_sampled,
                         'Fraction of hour sampled',
+                        [2013, 2016],
                         cmap=mpl.cm.Reds)
 _ = [overlay(ax, ra12.met.swr) for ax in hdl.axes.ravel()[[0,1,3,4]]]
 #+END_SRC
@@ -265,13 +298,39 @@ _ = [overlay(ax, ra12.met.swr) for ax in hdl.axes.ravel()[[0,1,3,4]]]
 [[file:images/ra12-jqt-sampling.png]]
 
 
-#+BEGIN_SRC ipython :session :ipyfile images/ra12-jqt-hourly-means.png
-hdl = summarize_by_hour(ra12.Jq, lambda da: da.mean(dim='time'),
-                        'Hourly mean $J_q^t$')
+#+BEGIN_SRC ipython :session :ipyfile images/temp/imgeetOu9.png
+hdl = summarize_by_hour(ra12.Tz,
+                        lambda da: da.mean(dim='time'),
+                        'Hourly mean T_z',
+                        [2013, 2016],
+                        cmap=mpl.cm.RdBu_r)
+_ = [overlay(ax, ra12.met.swr) for ax in hdl.axes.ravel()[[0,1,3,4]]]
 #+END_SRC
 
 #+RESULTS:
+[[file:images/temp/imgeetOu9.png]]
+
+#+BEGIN_SRC ipython :session :ipyfile images/ra12-jqt-hourly-means.png
+hdl = summarize_by_hour(ra12.Jq.sel(time='2014'),
+                        lambda da: da.mean(dim='time'),
+                        'Hourly mean $J_q^t$',
+                        vmin=-100, vmax=100, cmap=mpl.cm.RdBu_r)
+#+END_SRC
+#+CAPTION: Summarize hourly averaged $J_q^t$ by hour of day, for all weeks in a year. +ve = heat upward. /Masked values are zeros, NaNs → instrument dead or not deployed/
+#+RESULTS:
 [[file:images/ra12-jqt-hourly-means.png]]
+
+#+BEGIN_SRC ipython :session :ipyfile images/ra12-Jqt-inferred.png
+Jqtinfer = ra12.Budget()
+
+hdl = summarize_by_hour(Jqtinfer.sel(time='2014'),
+                        lambda da: da.mean(dim='time'),
+                        'Hourly mean $J_q^t$',
+                        vmin=-1000, vmax=1000, cmap=mpl.cm.RdBu_r)
+#+END_SRC
+#+CAPTION: Required Jqt for 1D balance. Could be seeing M_2 sloshing. In general sloshing probably explains the factor of 10.
+#+RESULTS:
+[[file:images/ra12-Jqt-inferred.png]]
 
 #+BEGIN_SRC ipython :session :ipyfile images/ra12-jq0-swr-hourly.png
 f, ax = plt.subplots(2,1)
@@ -441,8 +500,6 @@ ax = ra12.Plotχpods(event='Hudhud', filter_len=3600.0, filt='hann')
 :RESULTS:
 [[file:images/ra12-hudhud.png]]
 :END:
-
-
 *** Freshwater filaments?
 
 #+BEGIN_SRC ipython :session :ipyfile images/ra12-FW1.png
