@@ -46,6 +46,16 @@ Emily: /A lot of these χ-pods did not have pitots installed/
 Interestingly, there's not really a seasonal cycle in K_T!
 
 #+CALL: read-nrl1()
+#+BEGIN_SRC ipython :session :ipyfile images/nrl1-summary.png
+ax = nrl1.Plotχpods(TSkind='timeseries', quiv=False)
+ax['Tz'].set_yscale('linear')
+
+ax['Jq'].set_ylim([-100, 20])
+plt.show()
+#+END_SRC
+
+#+RESULTS:
+[[file:images/nrl1-summary.png]]
 
 #+BEGIN_SRC ipython :session :ipyfile images/temp/py28335p-H.png
 nrl1.PlotMetCoherence()
@@ -82,29 +92,6 @@ sns.despine(trim=True)
 
 #+RESULTS:
 [[file:images/temp/img13517cTn.png]]
-
-#+BEGIN_SRC ipython :session :ipyfile images/nrl1-summary.png
-ax = nrl1.Plotχpods()
-ax['T'].set_ylim([-250, -44])
-ax['Jq'].set_ylim([-100, 20])
-plt.show()
-#+END_SRC
-
-#+RESULTS:
-[[file:images/nrl1-summary.png]]
-
-
-#+CALL: read-nrl1()
-#+BEGIN_SRC ipython :session :ipyfile images/nrl1-new-summary.png
-ax = nrl1.Plotχpods(TSkind='timeseries')
-ax['Tz'].set_yscale('linear')
-
-ax['Jq'].set_ylim([-100, 20])
-plt.show()
-#+END_SRC
-
-#+RESULTS:
-[[file:images/nrl1-new-summary.png]]
 
 
 #+BEGIN_SRC ipython :session :ipyfile images/temp/img135175BP.png
@@ -159,18 +146,31 @@ nrl1.χpod[501].Summarize(filter_len=43200)
 [[file:images/nrl1-501-summary.png]]
 * NRL-3
 #+CALL: read-nrl3()
-
 #+BEGIN_SRC ipython :session :ipyfile images/nrl3-summary.png
-ax = nrl3.Plotχpods()
+ax, hcbar = nrl3.Plotχpods()
 _ = ax['S'].set_ylim([32.5, 36])
 #+END_SRC
 
 #+RESULTS:
 [[file:images/nrl3-summary.png]]
 * NRL-4
-* NRL 5
+#+CALL: read-nrl4()
+#+BEGIN_SRC ipython :session :ipyfile images/nrl4-summary.png
+ax = nrl4.Plotχpods()
+#+END_SRC
 
+#+RESULTS:
+[[file:images/nrl4-summary.png]]
+
+* NRL 5
 #+CALL: read-nrl5()
+#+BEGIN_SRC ipython :session :ipyfile images/nrl5-summary.png
+ax = nrl5.Plotχpods()
+ax['Tz'].set_yscale('linear')
+#+END_SRC
+
+#+RESULTS:
+[[file:images/nrl5-summary.png]]
 
 #+BEGIN_SRC ipython :session :ipyfile images/TS-nrl5.png
 nrl5.TSPlot()
@@ -218,15 +218,6 @@ plt.ylim([-200, -70])
 #+CAPTION: Attempt to show χ variability along with mooring motion.
 #+RESULTS:
 [[file:images/temp/py27662Vq.png]]
-
-
-#+BEGIN_SRC ipython :session :ipyfile images/nrl5-summary.png
-nrl5.Plotχpods()
-#+END_SRC
-
-#+RESULTS:
-[[file:images/nrl5-summary.png]]
-
 
 #+BEGIN_SRC ipython :session :ipyfile images/nrl5-boxplot.png
 nrl5.ChipodSeasonalSummary(filter_len=3600)
@@ -384,6 +375,9 @@ PlotNRL(4)
 [[file:images/nrl4-ctd-dρ.png]]
 
 ** NRL5
+- 518:
+  - most of the masking is due to background velocity! 0.12% @ 5cm/s; 0.03% at 3cm/s
+  - and deglitching! 0.3%
 - N² looks alright
 - T1 on χpod 518 dies early (´･_･`)
 - T2 on χpod 519 is offset! mean(T1-T2) ≈ 2.63C
@@ -404,3 +398,38 @@ PlotNRL(5)
 *** 516
 [[file:../ebob/data/516/pics/daily-average-summary.png]]
 [[file:../ebob/data/516/pics/Compare_Turb.png]]
+* xarray :noexport:
+
+#+BEGIN_SRC ipython :session :ipyfile images/xarray-multiple-line.png
+f, ax = plt.subplots(2,1)
+
+nrl3.zχpod.plot(ax=ax[0])
+ax[0].set_title('da.plot()')
+
+nrl3.zχpod.plot.line(x='time', ax=ax[1])
+ax[1].set_title('da.plot.line(x=\'time\')')
+
+plt.tight_layout()
+#+END_SRC
+
+#+RESULTS:
+[[file:images/xarray-multiple-line.png]]
+[[file:images/xarray-multiple-line.png]]
+
+
+** test merging
+
+
+#+BEGIN_SRC ipython :session :ipyfile images/temp/imglGa4Eh.png
+tz1 = xr.DataArray(nrl5.χpod[518].chi['mm']['dTdz'],
+                   dims=['time'], coords=[nrl5.χpod[518].time],
+                   name='Tz')
+tz2 = xr.DataArray(nrl5.χpod[519].chi['mm']['dTdz'],
+                   dims=['time'], coords=[nrl5.χpod[519].time],
+                   name='Tz')
+
+tz = xr.merge([tz1.resample(time='10min').mean(),
+               tz2.resample(time='10min').mean()])
+#+END_SRC
+
+#+RESULTS:
