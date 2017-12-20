@@ -4,6 +4,34 @@
 #+CAPTION: χpod locations for ASIRI/EBOB/MesoBOB
 [[file:../images/MixingmapASIRIPiston.png]]
 * Summary
+** All χpods
+*** RAMA
+#+ATTR_HTML: :class full-width
+[[file:images/ra12-2014-summary.png]]
+
+#+ATTR_HTML: :class full-width
+[[file:images/ra12-2015-summary.png]]
+
+#+ATTR_HTML: :class full-width
+[[file:images/ra15-summary.png]]
+
+*** EBOB
+
+#+ATTR_HTML: :class full-width
+[[file:images/nrl1-summary.png]]
+
+#+ATTR_HTML: :class full-width
+[[file:images/nrl2-summary.png]]
+
+#+ATTR_HTML: :class full-width
+[[file:images/nrl3-summary.png]]
+
+#+ATTR_HTML: :class full-width
+[[file:images/nrl4-summary.png]]
+
+#+ATTR_HTML: :class full-width
+[[file:images/nrl5-summary.png]]
+
 ** Seasonal patterns
 *** "pycnocline uplift"
 It is quite hard to see if there is a semi-regular period.

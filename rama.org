@@ -12,27 +12,37 @@
 #+CALL: read-ra12()
 #+NAME: ra12-summary
 #+BEGIN_SRC ipython :session :ipyfile images/ra12-summary.png
+%matplotlib inline
 ax = ra12.Plotχpods(quiv=False, filt='hann', filter_len=5*86400.0,
                     TSkind='pcolor', met='tropflux')
-ax['N2'].set_ylim([0, 8])
+_ = ax['N2'].set_ylim([0, 8])
 #+END_SRC
 #+ATTR_HTML: :class full-width
 #+RESULTS: ra12-summary
 [[file:images/ra12-summary.png]]
 
-#+call: read-ra12()
-#+BEGIN_SRC ipython :session :ipyfile images/ra12-new-summary.png
-ax = ra12.Plotχpods(quiv=False, filt='hann', filter_len=5*86400.0,
-                    TSkind='pcolor', met='tropflux')
-ax['N2'].set_ylim([0, 8])
-ax['Jq'].set_ylim([-100, 100])
+
+#+BEGIN_SRC ipython :session :ipyfile images/ra12-2014-summary.png
+%matplotlib inline
+ax = ra12.Plotχpods(quiv=False, filt='mean', filter_len=3*86400.0,
+                    TSkind='pcolor', met='tropflux',
+                    region=dict(time='2014'))
+_ = ax['N2'].set_ylim([0, 8])
+#+END_SRC
+#+ATTR_HTML: :class full-width
+#+CAPTION: 2014 (RAMA13 deployment mostly)
+#+RESULTS:
+[[file:images/ra12-2014-summary.png]]
+
+#+BEGIN_SRC ipython :session :ipyfile images/ra12-2015-summary.png
+ax = ra12.Plotχpods(quiv=False, filt='mean', filter_len=3*86400.0,
+                    TSkind='pcolor', met='tropflux',
+                    region=dict(time='2015'))
+_ = ax['N2'].set_ylim([0, 8])
 #+END_SRC
 
 #+RESULTS:
-:RESULTS:
-: (-100, 100)
-[[file:images/ra12-new-summary.png]]
-:END:
+[[file:images/ra12-2015-summary.png]]
 
 #+ATTR_HTML: :class full-width
 [[file:images/rama13-summary-miso.png]]
@@ -233,7 +243,7 @@ def summarize_by_hour(var, func, name, dropyear=None, **kwargs):
         hourly.coords[groupstr] = igrp
         return hourly
 
-    groupstr = 'dayofyear'
+    groupstr = 'weekofyear'
 
     yrfrac = []
     for year, data in var.groupby('time.year'):
@@ -314,7 +324,7 @@ _ = [overlay(ax, ra12.met.swr) for ax in hdl.axes.ravel()[[0,1,3,4]]]
 hdl = summarize_by_hour(ra12.Jq.sel(time='2014'),
                         lambda da: da.mean(dim='time'),
                         'Hourly mean $J_q^t$',
-                        vmin=-100, vmax=100, cmap=mpl.cm.RdBu_r)
+                        vmin=-70, vmax=70, cmap=mpl.cm.RdBu_r)
 #+END_SRC
 #+CAPTION: Summarize hourly averaged $J_q^t$ by hour of day, for all weeks in a year. +ve = heat upward. /Masked values are zeros, NaNs → instrument dead or not deployed/
 #+RESULTS:
@@ -705,18 +715,15 @@ hf.suptitle('RAMA 12N | 30m')
 ** Summarize
 #+NAME: ra15-summary
 #+BEGIN_SRC ipython :session :ipyfile images/ra15-summary.png
-ax = ra15.Plotχpods(quiv=False, filt='hann', filter_len=5*86400.0,
+ax = ra15.Plotχpods(quiv=False, filt='mean', filter_len=86400.0,
                     TSkind='pcolor', met='tropflux')
 ax['Jq'].set_ylim([-100, 100])
 # ax['S'].set_ylim([30, 34])
-ax['N2'].set_ylim([0, 7])
+_ = ax['N2'].set_ylim([0, 7])
 #+END_SRC
 #+ATTR_HTML: :class full-width
 #+RESULTS: ra15-summary
-:RESULTS:
-: (0, 7)
-1[[file:images/ra15-summary.png]]
-:END:
+[[file:images/ra15-summary.png]]
 
 #+CALL: read-ra15()
 #+BEGIN_SRC ipython :session :ipyfile images/rama15n-kt-boxplot.png

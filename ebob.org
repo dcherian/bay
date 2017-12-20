@@ -46,6 +46,7 @@ Emily: /A lot of these χ-pods did not have pitots installed/
 Interestingly, there's not really a seasonal cycle in K_T!
 
 #+CALL: read-nrl1()
+#+NAME: nrl1-summary
 #+BEGIN_SRC ipython :session :ipyfile images/nrl1-summary.png
 ax = nrl1.Plotχpods(TSkind='timeseries', quiv=False)
 ax['Tz'].set_yscale('linear')
@@ -54,6 +55,10 @@ ax['Jq'].set_ylim([-100, 20])
 plt.show()
 #+END_SRC
 
+#+RESULTS: nrl1-summary
+[[file:images/nrl1-summary.png]]
+
+#+ATTR_HTML: :class full-width
 #+RESULTS:
 [[file:images/nrl1-summary.png]]
 
@@ -146,29 +151,45 @@ nrl1.χpod[501].Summarize(filter_len=43200)
 [[file:images/nrl1-501-summary.png]]
 * NRL-3
 #+CALL: read-nrl3()
+#+NAME: nrl3-summary
 #+BEGIN_SRC ipython :session :ipyfile images/nrl3-summary.png
-ax, hcbar = nrl3.Plotχpods()
+ax = nrl3.Plotχpods()
 _ = ax['S'].set_ylim([32.5, 36])
 #+END_SRC
 
+#+RESULTS: nrl3-summary
+[[file:images/nrl3-summary.png]]
+
+#+ATTR_HTML: :class full-width
 #+RESULTS:
 [[file:images/nrl3-summary.png]]
 * NRL-4
 #+CALL: read-nrl4()
+#+NAME: nrl4-summary
 #+BEGIN_SRC ipython :session :ipyfile images/nrl4-summary.png
 ax = nrl4.Plotχpods()
 #+END_SRC
 
+#+RESULTS: nrl4-summary
+[[file:images/nrl4-summary.png]]
+
+#+ATTR_HTML: :class full-width
 #+RESULTS:
 [[file:images/nrl4-summary.png]]
 
 * NRL 5
 #+CALL: read-nrl5()
+#+NAME: nrl5-summary
 #+BEGIN_SRC ipython :session :ipyfile images/nrl5-summary.png
 ax = nrl5.Plotχpods()
 ax['Tz'].set_yscale('linear')
+_ = ax['Jq'].set_ylim([-40, 0])
 #+END_SRC
 
+#+RESULTS: nrl5-summary
+[[file:images/nrl5-summary.png]]
+
+#+ATTR_HTML: :class full-width
 #+RESULTS:
 [[file:images/nrl5-summary.png]]
 
@@ -398,6 +419,38 @@ PlotNRL(5)
 *** 516
 [[file:../ebob/data/516/pics/daily-average-summary.png]]
 [[file:../ebob/data/516/pics/Compare_Turb.png]]
+* misc :noexport:
+
+#+NAME: ebob-summary
+#+BEGIN_SRC ipython :session :noweb yes
+<<nrl1-summary>>
+<<nrl3-summary>>
+<<nrl4-summary>>
+<<nrl5-summary>>
+#+END_SRC
+
+#+BEGIN_SRC ipython :session :ipyfile images/temp/img4hr35z.png :results drawer
+def ci(x):
+    import scikits.bootstrap as sb
+    err = xr.DataArray(sb.ci(x, np.nanmean)[np.newaxis], dims=['day', 'lh'])
+    return err
+
+KT = ra12.KT.sel(time='2014-06', depth=30)
+KT.plot.line(lw=0.5)
+
+day = KT.time.to_series().dt.floor('D').values
+grps = KT.groupby(xr.DataArray(day, dims=['time'], name='day'))
+
+# mean = grps.apply(ci)
+
+grps.mean().plot(color='k')
+err.plot.line('*', x='day')
+plt.gca().set_yscale('log')
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+:END:
 * xarray :noexport:
 
 #+BEGIN_SRC ipython :session :ipyfile images/xarray-multiple-line.png
