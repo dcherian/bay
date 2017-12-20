@@ -4,7 +4,7 @@
 #+NAME: read-mur
 #+BEGIN_SRC ipython :session :results none
 os.chdir('/home/deepak/bay/')
-%matplotlib inline
+
 
 if 'mur' in locals():
     mur.close()
@@ -18,7 +18,7 @@ mur.rename({'analysed_sst': 'sst'}, inplace=True)
 #+NAME: read-cmc
 #+BEGIN_SRC ipython :session :results none
 os.chdir('/home/deepak/bay/')
-%matplotlib inline
+
 
 if 'mur' in locals():
     mur.close()
@@ -53,18 +53,29 @@ tau = xr.open_mfdataset('../datasets/tropflux/tau_*.nc', autoclose=True)
 taux = xr.open_mfdataset('../datasets/tropflux/tauy_*.nc', autoclose=True)
 tauy = xr.open_mfdataset('../datasets/tropflux/taux_*.nc', autoclose=True)
 net = xr.open_mfdataset('../datasets/tropflux/netflux_*.nc', autoclose=True)
+sst = xr.open_mfdataset('../datasets/tropflux/sst_*.nc', autoclose=True)
 
-tropflux = xr.merge([swr, lwr, tau , taux, tauy, net])
+tropflux = xr.merge([swr, lwr, tau , taux, tauy, net, sst])
 #+END_SRC
 
 #+NAME: read-tropflux-lwr
 #+BEGIN_SRC ipython :session :results none
 #+END_SRC
 * read χpod moorings
+
+#+NAME: read-all-moorings
+#+BEGIN_SRC ipython :session :results none
+<<read-ra12>>
+<<read-ra15>>
+<<read-nrl1>>
+<<read-nrl3>>
+<<read-nrl4>>
+<<read-nrl5>>
+#+END_SRC
 ** RAMA
 #+NAME: read-ra12
 #+BEGIN_SRC ipython :session :results none
-%matplotlib inline
+
 
 import moor
 import chipy
@@ -98,7 +109,7 @@ ra12.AddEvents([810, 811, 812], 'FW3', '2015-Oct-28', '2015-Nov-05')
 
 #+NAME: read-ra15
 #+BEGIN_SRC ipython :session :results none
-%matplotlib inline
+
 
 import moor
 import chipy
@@ -148,7 +159,7 @@ c527 = chipy.chipod('../rama/RAMA13/data/', '527', '2017-08-15.mat', best='mm', 
 ** EBOB
 #+NAME: read-nrl1
 #+BEGIN_SRC ipython :session :results none
-%matplotlib inline
+
 moor = importlib.reload(moor)
 chipy = importlib.reload(chipy)
 
@@ -163,7 +174,7 @@ nrl1.ReadTropflux('../tropflux/')
 
 #+NAME: read-nrl3
 #+BEGIN_SRC ipython :session :results none
-%matplotlib inline
+
 
 import moor
 import chipy
@@ -182,7 +193,7 @@ nrl3.ReadTropflux('../tropflux/')
 
 #+NAME: read-nrl4
 #+BEGIN_SRC ipython :session :results none
-%matplotlib inline
+
 
 import moor
 import chipy
