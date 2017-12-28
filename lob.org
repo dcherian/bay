@@ -101,16 +101,14 @@ ra12.ReadCTD('../rama/RamaPrelimProcessed/RAMA14-12N-corrected.mat', 'ramaprelim
 # ra12.AddDeployment('RAMA13', '2013-Nov-29', '2014-Dec-')
 # ra12.AddDeployment('RAMA14', 't0', 't1')
 
-ra12.AddEvents([526, 527], 'FW1', '2014-Jan-15', '2014-Jan-19')
-ra12.AddEvents([526], 'Hudhud', '2014-Oct-08', '2014-Oct-11')
-ra12.AddEvents([810, 811, 812], 'FW2', '2015-Apr-05', '2015-Apr-10')
-ra12.AddEvents([810, 811, 812], 'FW3', '2015-Oct-28', '2015-Nov-05')
+ra12.AddEvents('FW1', '2014-Jan-15', '2014-Jan-19')
+ra12.AddEvents('Hudhud', '2014-Oct-08', '2014-Oct-11', 526)
+ra12.AddEvents('FW2', '2015-Apr-05', '2015-Apr-10')
+ra12.AddEvents('FW3', '2015-Oct-28', '2015-Nov-05')
 #+END_SRC
 
 #+NAME: read-ra15
 #+BEGIN_SRC ipython :session :results none
-
-
 import moor
 import chipy
 moor = importlib.reload(moor)
@@ -130,9 +128,8 @@ ra15.ReadVel('../rama/data/cur15n90e_30m.cdf', FileType='pmel')
 # ra15.AddSeason([813, 814], 'NE→SW', '2015-Mar-01', '2015-May-15')
 # ra15.AddSeason([813, 814], 'SW', '2015-May-15', '2015-Oct-14')
 
-ra15.AddEvents([813], 'FW4', '2015-Aug-12', '2015-Aug-20')
-ra15.AddEvents([813, 814], 'Storm1', '2015-Jul-03', '2015-Jun-25')
-
+ra15.AddEvents('FW4', '2015-Aug-12', '2015-Aug-20', 813)
+ra15.AddEvents('Storm1', '2015-Jul-03', '2015-Jun-25')
 #+END_SRC
 
 #+NAME: read-ra12-2015
@@ -170,6 +167,8 @@ nrl1.AddChipod(501, depth=76, best='mm1', fname='Turb.mat')
 nrl1.CombineTurb()
 nrl1.ReadVel('NRL1', FileType='ebob')
 nrl1.ReadTropflux('../tropflux/')
+
+nrl1.AddEvents("SW1", '2014-01-23', '2014-02-02')
 #+END_SRC
 
 #+NAME: read-nrl3
@@ -225,4 +224,5 @@ nrl5.AddChipod(519, depth=104, best='mm', fname='Turb.mat')
 nrl5.CombineTurb()
 nrl5.ReadVel('NRL5', FileType='ebob')
 nrl5.ReadTropflux('../tropflux/')
+nrl5.AddEvents('Storm+IW', '2014-07-01', '2014-09-01')
 #+END_SRC
