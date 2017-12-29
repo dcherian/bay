@@ -54,14 +54,9 @@ ax['Tz'].set_yscale('linear')
 ax['Jq'].set_ylim([-100, 20])
 plt.show()
 #+END_SRC
-
+#+ATTR_HTML: :class full-width
 #+RESULTS: nrl1-summary
 [[file:images/nrl1-summary.png]]
-
-#+ATTR_HTML: :class full-width
-#+RESULTS:
-[[file:images/nrl1-summary.png]]
-
 #+BEGIN_SRC ipython :session :ipyfile images/temp/py28335p-H.png
 nrl1.PlotMetCoherence()
 #+END_SRC
@@ -156,42 +151,44 @@ nrl1.χpod[501].Summarize(filter_len=43200)
 ax = nrl3.Plotχpods()
 _ = ax['S'].set_ylim([32.5, 36])
 #+END_SRC
-
+#+ATTR_HTML: :class full-width
 #+RESULTS: nrl3-summary
 [[file:images/nrl3-summary.png]]
 
-#+ATTR_HTML: :class full-width
-#+RESULTS:
-[[file:images/nrl3-summary.png]]
 * NRL-4
 #+CALL: read-nrl4()
 #+NAME: nrl4-summary
 #+BEGIN_SRC ipython :session :ipyfile images/nrl4-summary.png
 ax = nrl4.Plotχpods()
 #+END_SRC
-
+#+ATTR_HTML: :class full-width
 #+RESULTS: nrl4-summary
 [[file:images/nrl4-summary.png]]
-
-#+ATTR_HTML: :class full-width
-#+RESULTS:
-[[file:images/nrl4-summary.png]]
-
 * NRL 5
 #+CALL: read-nrl5()
 #+NAME: nrl5-summary
 #+BEGIN_SRC ipython :session :ipyfile images/nrl5-summary.png
-ax = nrl5.Plotχpods()
+ax = nrl5.Plotχpods(TSkind='pcolor')
 ax['Tz'].set_yscale('linear')
-_ = ax['Jq'].set_ylim([-40, 0])
+ax['u'].set_ylim([250, 0])
+ax['Jq'].set_ylim([-40, 0])
 #+END_SRC
-
+#+ATTR_HTML: :class full-width
 #+RESULTS: nrl5-summary
 [[file:images/nrl5-summary.png]]
 
+#+NAME: nrl5-storm
+#+BEGIN_SRC ipython :session :ipyfile images/nrl5-storm-near-inertial-waves.png
+ax = nrl5.Plotχpods(TSkind='pcolor', filter_len=6*3600,
+                    region={'time': slice('2014-07-01', '2014-09-01')})
+ax['u'].set_ylim([260,0])
+ax['Tz'].set_yscale('linear')
+_ = ax['Jq'].set_ylim([-40, 0])
+#+END_SRC
+#+CAPTION: Looks like burst of mixing & Jqt that _might_ be associated with the storm. Wind stress is from 1° Tropflux product, so perfect lineup is not expected. Looks like near-inertial waves but why do they seem to disappear?
 #+ATTR_HTML: :class full-width
-#+RESULTS:
-[[file:images/nrl5-summary.png]]
+#+RESULTS: nrl5-storm
+[[file:images/nrl5-storm-near-inertial-waves.png]]
 
 #+BEGIN_SRC ipython :session :ipyfile images/TS-nrl5.png
 nrl5.TSPlot()
