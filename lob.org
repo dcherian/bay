@@ -62,7 +62,7 @@ tropflux = xr.merge([swr, lwr, tau , taux, tauy, net, sst])
 #+BEGIN_SRC ipython :session :results none
 #+END_SRC
 * read χpod moorings
-
+** all
 #+NAME: read-all-moorings
 #+BEGIN_SRC ipython :session :results none
 <<read-ra12>>
@@ -71,6 +71,22 @@ tropflux = xr.merge([swr, lwr, tau , taux, tauy, net, sst])
 <<read-nrl3>>
 <<read-nrl4>>
 <<read-nrl5>>
+#+END_SRC
+
+#+NAME: combine-turb-all
+#+BEGIN_SRC ipython :session :results none
+if 'ra12' in locals():
+    ra12.CombineTurb()
+if 'ra15' in locals():
+    ra15.CombineTurb()
+if 'nrl1' in locals():
+    nrl1.CombineTurb()
+if 'nrl3' in locals():
+    nrl3.CombineTurb()
+if 'nrl4' in locals():
+    nrl4.CombineTurb()
+if 'nrl5' in locals():
+    nrl5.CombineTurb()
 #+END_SRC
 ** RAMA
 #+NAME: read-ra12
