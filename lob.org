@@ -189,8 +189,6 @@ nrl1.AddEvents("SW1", '2014-01-23', '2014-02-02')
 
 #+NAME: read-nrl3
 #+BEGIN_SRC ipython :session :results none
-
-
 import moor
 import chipy
 
@@ -204,12 +202,11 @@ nrl3.AddChipod(511, 48, 'mm1', 'Turb.mat')
 nrl3.CombineTurb()
 nrl3.ReadVel('NRL3', FileType='ebob')
 nrl3.ReadTropflux('../tropflux/')
+nrl3.AddEvents('SLD', '2014-06-01', '2014-09-01')
 #+END_SRC
 
 #+NAME: read-nrl4
 #+BEGIN_SRC ipython :session :results none
-
-
 import moor
 import chipy
 
@@ -223,6 +220,7 @@ nrl4.AddChipod(516, 75, 'mm', 'Turb.mat')
 nrl4.CombineTurb()
 nrl4.ReadVel('NRL4', FileType='ebob')
 nrl4.ReadTropflux('../tropflux/')
+nrl4.AddEvents('SLD', '2014-06-01', '2014-09-01')
 #+END_SRC
 
 #+NAME: read-nrl5
