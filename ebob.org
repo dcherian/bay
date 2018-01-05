@@ -149,7 +149,6 @@ nrl1.χpod[501].Summarize(filter_len=43200)
 #+NAME: nrl3-summary
 #+BEGIN_SRC ipython :session :ipyfile images/nrl3-summary.png
 ax = nrl3.Plotχpods()
-_ = ax['S'].set_ylim([32.5, 36])
 #+END_SRC
 #+ATTR_HTML: :class full-width
 #+RESULTS: nrl3-summary

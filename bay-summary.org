@@ -3,9 +3,8 @@
 * Map
 #+CAPTION: χpod locations for ASIRI/EBOB/MesoBOB
 [[file:../images/MixingmapASIRIPiston.png]]
-* Summary
-** All χpods
-*** RAMA
+* All χpods
+** RAMA
 #+ATTR_HTML: :class full-width
 [[file:images/ra12-2014-summary.png]]
 
@@ -15,7 +14,7 @@
 #+ATTR_HTML: :class full-width
 [[file:images/ra15-summary.png]]
 
-*** EBOB
+** EBOB
 
 #+ATTR_HTML: :class full-width
 [[file:images/nrl1-summary.png]]
@@ -450,7 +449,7 @@ f, ax = plot_distrib(KTdf, bins, varname='S', xlines=[32, 35])
 [[file:images/temp/imgbp6rfN.png]]
 :END:
 
-**** full distrib OLD
+*** full distrib OLD
 #+NAME: define-seaborn_vert_distrib
 #+BEGIN_SRC ipython :session :results none
 pal_dist = sns.color_palette("GnBu_d", n_colors=13)
@@ -590,6 +589,12 @@ g = seaborn_vert_distrib(KTdf, "ρbinned", 'dist')
 [[file:images/bay-KT-vert-hist.png]]
 :END:
 
+#+BEGIN_SRC ipython :session :ipyfile images/bay-sampling-hist.png :results drawer
+<<define-seaborn_vert_distrib>>
+
+g = seaborn_vert_distrib(KTdf, "ρbinned", 'dist')
+#+END_SRC
+
 #+BEGIN_SRC ipython :session :ipyfile images/bay-KT-vert-hist-depths.png
 <<define-seaborn_vert_distrib>>
 seaborn_vert_distrib(KTdf, 'mean_depth', 'kde')
@@ -598,7 +603,7 @@ seaborn_vert_distrib(KTdf, 'mean_depth', 'kde')
 #+RESULTS:
 : <seaborn.axisgrid.FacetGrid at 0x7f1a3c885dd8>
 [[file:images/bay-KT-vert-hist-depths.png]]
-** Surface fluxes
+* Surface fluxes
 
 #+CALL: read-tropflux()
 #+BEGIN_SRC ipython :session :ipyfile images/temp/img7tMMDR.png
@@ -669,13 +674,13 @@ This could be the large-scale ∇S being advected back and forth across the moor
 #+RESULTS:
 [[file:images/temp/img3907Zeq.png]]
 
-*** K_T variations
+** K_T variations
 #+CAPTION: Distribution of 5 minute averages of K_T.
 #+RESULTS:
 [[file:../images//rama12n-kt-boxplot.png]]
 
-** MISO signals?
-*** Summary
+* MISO signals?
+** Summary
 cite:Sobel2010 show large TRMM 30-90 day variance between May and October in the Bay.
 [[file:../images//sobel-trmm-variance.png]]
 
@@ -687,12 +692,12 @@ cite:Sobel2010 show large TRMM 30-90 day variance between May and October in the
 #+RESULTS:
 [[file:images/bandpass-90e-2011.png]]
 
-**** old :noexport:
+*** old                                                          :noexport:
 I see northward propagating "anomalies" in Tropflux SWR.
 [[file:images/90e-swr-anom.png]]
-*** in mixing
-**** RAMA 12N
-***** Coherence
+** in mixing
+*** RAMA 12N
+**** Coherence
 - Note sure coherence is the way to do this given short records
 
 The next figure shows coherence between Jq0 and  Jqt at 15m, 30m at the RAMA 12N mooring for the year 2014. Signs for all fluxes are such that +ve warms the surface.
@@ -705,8 +710,8 @@ Nothing at 30m
 
 #+CAPTION: (Top left) Band-passed time series. (bottom left) PSD for the unfiltered time series. (Right) coherence amplitude and phase between J_q^0 and J_q^t at both depths. Significance level marked by horizontal line. Pass band marked by vertical lines.
 file:rama/images/ra12-jq0-jqt-coherence.png
-*** temp / salinity record
-**** Stratification T_z
+** temp / salinity record
+*** Stratification T_z
 Filtered T_z?
 #+BEGIN_SRC ipython :session :ipyfile images/ra12n-bandpass-strat.png
 from dcpy.plots import offset_line_plot
@@ -765,7 +770,7 @@ plt.gcf().autofmt_xdate()
 
 #+RESULTS:
 [[file:images/ra12n-bandpass-strat.png]]
-**** Subsurface MISO signals?
+*** Subsurface MISO signals?
 What am I looking for?
 1. northward propagation of MISO signal
 2. subsurface MISO signals in 30d-90d band
@@ -920,7 +925,7 @@ time = '2015'
 #+CAPTION: Southward propagating signals in 2011-Nov/Dec, but not so much in 2014?
 #+RESULTS:
 [[file:images/bandpass-90e-2014.png]]
-**** Spectra
+*** Spectra
 #+call: read-mur()
 
 #+NAME: calc-spec
@@ -972,7 +977,7 @@ plt.xlim([10**-3.5, 1])
 #+RESULTS:
 [[file:../images/12n-spectra.png]]
 
-**** spectra old :noexport:
+*** spectra old                                                  :noexport:
 #+BEGIN_SRC ipython :session :ipyfile images/temp/img16594-DQ.png
 data = rama.SelectVar('T', region=dict(lon=90, lat=12, depth=10))
 
@@ -1043,7 +1048,7 @@ plt.tight_layout()
 #+RESULTS:
 [[file:../images//temp/py28335Frc.png]]
 
-*** winds at EBOB and rama
+** winds at EBOB and rama
 #+BEGIN_SRC ipython :session :ipyfile images/bob-winds.png
 from scipy.interpolate import interpn
 
@@ -1104,7 +1109,7 @@ plt.tight_layout()
 #+END_SRC
 #+RESULTS:
 [[file:../images//bob-winds.png]]
-*** in SWR
+** in SWR
 Look at anomalies:
 1. Subtract yearly average.
 2. Subtract daily climatology (2001-2017)
@@ -1186,8 +1191,8 @@ plt.legend(('15N', '12N', '8N'))
 #+RESULTS:
 [[file:images/90e-swr-spec.png]]
 
-*** SST analysis
-**** test snapshot
+** SST analysis
+*** test snapshot
 #+CALL: read-mur()
 #+BEGIN_SRC ipython :session :ipyfile images/temp/img3907o-U.png
 mur['sst'].isel(time=1).plot()
@@ -1195,7 +1200,7 @@ mur['sst'].isel(time=1).plot()
 #+CAPTION: Test snapshot
 #+RESULTS:
 [[file:../images//temp/img3907o-U.png]]
-**** spec
+*** spec
 #+call: read-mur()
 #+BEGIN_SRC ipython :session :ipyfile images/mur-spectra-RAMA-line.png
 %matplotlib inline
@@ -1258,7 +1263,7 @@ plt.gcf().set_size_inches((8.5, 3.5))
 
 #+RESULTS:
 [[file:images/bandpass-SST.png]]
-**** SST variance map
+*** SST variance map
 #+BEGIN_SRC ipython :session :results none
 freqs = [1/30.0, 1/90.0]
 
@@ -1285,7 +1290,7 @@ anim = mpl.animation.FuncAnimation(plt.gcf(), animate)
 
 anim.save('sst-iso.mp4', fps=5)
 #+END_SRC
-** vel spectra
+* vel spectra
 
 #+BEGIN_SRC ipython :session :ipyfile images/temp/img3907nzu.png
 u = rama.SelectVar('u', region=dict(lon=90, lat=12))
@@ -1337,7 +1342,7 @@ ax.set_ylabel('power spectral density (m^2/s^2/cps)')
 #+RESULTS:
 [[file:../images//temp/img3907mHE.png]]
 
-** TS plots
+* TS plots
 
 #+BEGIN_SRC ipython :session :ipyfile images/TS.png
 plt.figure(figsize=(10,10))
@@ -1373,7 +1378,7 @@ plt.tight_layout()
 
 #+RESULTS:
 [[file:../images//KT-seasonal.png]]
-** MLD climatology
+* MLD climatology
 
 #+BEGIN_SRC ipython :session :ipyfile images/temp/img3907e_A.png
 mld = dcpy.oceans.argo_mld_clim()
@@ -1390,10 +1395,10 @@ plt.legend()
 #+RESULTS:
 [[file:../images//temp/img3907e_A.png]]
 
-** ARGO data : S_min and S_max
+* ARGO data : S_min and S_max
 [[file:../images//argo-smin-smax.png]]
-** sampling considerations
-*** ISO signals
+* sampling considerations
+** ISO signals
 Can I  see a 10/20/30/50/60/90 day peak confidently in a year-long record?
 #+BEGIN_SRC ipython :session :ipyfile images/temp/img3907IKt.png
 dt = 1  # day
@@ -1427,7 +1432,7 @@ dcpy.plots.linex(1/periods)
 #+CAPTION: Can I see a 10/20/30/50/60/90 day peak confidently in a year-long record?
 #+RESULTS:
 [[file:../images//temp/img3907IKt.png]]o
-*** χpod depths for RAMA17
+** χpod depths for RAMA17
 
 #+name: read-rama-10m
 #+BEGIN_SRC ipython :session :results none
@@ -1503,7 +1508,7 @@ plt.gcf().set_size_inches((6.5, 6.5))
 
 #+END_SRC
 
-** using pressure instead of accelerometer
+* using pressure instead of accelerometer
 
 Tested with RAMA14-810
 #+CAPTION: Δp is quantized! Bit resolution ≈ 2 cm. I smooth over 0.5 seconds.
