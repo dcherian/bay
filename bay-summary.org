@@ -31,15 +31,17 @@
 #+ATTR_HTML: :class full-width
 [[file:images/nrl5-summary.png]]
 
-** vertical distribution of $K_T$
-*** Mangle together and change to dataframe
+* vertical distribution of $K_T$
+** Mangle together and change to dataframe
 #+CALL: read-all-moorings()
 #+NAME: make-KT-dataframe
 #+BEGIN_SRC ipython :session :results none
 def make_merged_KT(moorings):
     KT = []
     for m in moorings:
-        ktsubset = m.KT.copy()
+        ktsubset = (m.KT.copy()
+                    .reset_coords(['ρ', 'S', 'T', 'z'])
+                    .expand_dims(['lat','lon']))
 
         ktsubset['season'] = ktsubset.time.monsoon.labels
         ktsubset['depth'].values = np.round(ktsubset.z.mean(dim='time'),
@@ -130,9 +132,19 @@ def bin_and_to_dataframe(KTm, ρbins=None, Sbins=None):
             .to_dataframe()
             .dropna(axis=0, subset=['KT'])
             .reset_index())
+
     KTdf['latlon'] = (KTdf['lat'].astype('str') + 'N, '
                       + KTdf['lon'].astype('str') + 'E')
 
+    moornames = {'RAMA12': '12.0N, 90.0E',
+                 'RAMA15': '15.0N, 90.0E',
+                 'NRL1': '5.0N, 85.5E',
+                 'NRL2': '6.5N, 85.5E',
+                 'NRL3': '8.0N, 85.5E',
+                 'NRL4': '8.0N, 87.0E',
+                 'NRL5': '8.0N, 88.5E'}
+    KTdf['moor'] = KTdf['latlon'].map(dict(zip(moornames.values(),
+                                            moornames.keys())))
     return KTdf
 
 def histedges_equalN(x, nbin):
@@ -277,10 +289,40 @@ plt.clabel(hc, fmt='%1.1f')
 [[file:images/rho-bins-TS-plot.png]]
 :END:
 
-*** Make plot
-**** means/medians profile
+** Make plot
+*** means/medians profile
 #+NAME: define-vert_distrib
 #+BEGIN_SRC ipython :session :results none
+def trim_horiz_violin(hdl):
+    # halve the voilin
+    for b in hdl['bodies']:
+        m = np.mean(b.get_paths()[0].vertices[:, 1])
+        b.get_paths()[0].vertices[:, 1] = np.clip((b.get_paths()[0]
+                                                   .vertices[:, 1]),
+                                                  -np.inf, m)
+
+def format_moor_names(names):
+    rama = []
+    nrl = []
+
+    for nn in names:
+        if nn[0:4] == 'RAMA':
+            rama.append(nn[4:])
+        elif nn[0:3] == 'NRL':
+            nrl.append(nn[3])
+
+    string = ''
+    if rama != []:
+        string += 'R' + ','.join(rama)
+
+    if nrl != []:
+        if string is not '':
+            string += '\n'
+
+        string += 'N' + ','.join(nrl)
+
+    return string
+
 def vert_distrib(KTdf, bins, varname='KT', pal=None, f=None, ax=None,
                  ,**kwargs):
 
@@ -296,8 +338,8 @@ def vert_distrib(KTdf, bins, varname='KT', pal=None, f=None, ax=None,
         ax = {'NE': axx[0], 'NESW': axx[1], 'SW': axx[2], 'SWNE': axx[3]}
 
     if varname is 'KT':
-        title = 'Hourly averaged $K_T$'
-        xlim = kwargs.pop('xlim', [-7,0])
+        title = '$\log_{10}$ hourly averaged $K_T$'
+        xlim = kwargs.pop('xlim', [-7,2])
         xlines = kwargs.pop('xlines', [-5, -4])
     else:
         title = varname
@@ -306,6 +348,7 @@ def vert_distrib(KTdf, bins, varname='KT', pal=None, f=None, ax=None,
 
     months = {'NE': 'Dec-Feb', 'NESW': 'Mar-May',
               'SW': 'Jun-Sep', 'SWNE': 'Oct-Nov'}
+
     for seas in ax:
         aa = ax[seas]
         from cycler import cycler
@@ -343,16 +386,45 @@ def vert_distrib(KTdf, bins, varname='KT', pal=None, f=None, ax=None,
                     zloc += 5
 
             if (bin_name > 25) and season == 'SW':
-                    zloc += 5
+                zloc += 5
 
         else:
             bin_name = interval.mid
 
+        map_kind = {'NRL1': 'NRL',
+                    'NRL2': 'NRL',
+                    'NRL3': 'NRL',
+                    'NRL4': 'NRL',
+                    'NRL5': 'NRL',
+                    'RAMA12': 'RAMA',
+                    'RAMA15': 'RAMA'}
+
         var = df[varname]
+
+        for mm in df['moor'].unique():
+            if len(df['moor'].ix[df['moor'] == mm])/len(df) <= 0.15:
+                df = df[df['moor'] != mm]
+
         hdl = ax[season].violinplot(var, positions=[zloc],
                                     widths=[12],
                                     vert=False, showmedians=False)
-        color = hdl['bodies'][0].get_facecolor()[0][:-1]
+        trim_horiz_violin(hdl)
+
+        facecolor = hdl['bodies'][0].get_facecolor()[0]
+        color = facecolor[:-1]
+
+        # kind = df['moor'].map(map_kind)
+        # ramadf = df[kind == 'RAMA']
+        # nrldf = df[kind == 'NRL']
+        # if not nrldf.empty and not ramadf.empty:
+        #     rhdl = ax[season].violinplot(ramadf[varname], positions=[zloc],
+        #                                  widths=[12],
+        #                                  vert=False, showextrema=False)
+        #     nhdl = ax[season].violinplot(nrldf[varname], positions=[zloc],
+        #                                  widths=[12],
+        #                                  vert=False, showextrema=False)
+        #     trim_horiz_violin(rhdl)
+        #     trim_horiz_violin(nhdl)
 
         if np.all(var < 1):
             # if in log-space transform out and back
@@ -363,28 +435,28 @@ def vert_distrib(KTdf, bins, varname='KT', pal=None, f=None, ax=None,
             mean = np.nanmean(var)
 
         ax[season].plot(median, zloc, 'o',
-                        color=color, zorder=12, ms=base_marker_size)
-        ax[season].plot(median, zloc, 'o',
-                        color='w', zorder=11, ms=base_marker_size+2)
-        ax[season].plot(mean, zloc, 'x',
                         color=color, zorder=12, ms=base_marker_size-1)
+        ax[season].plot(median, zloc, 'o',
+                        color='w', zorder=11, ms=base_marker_size+1)
+        ax[season].plot(mean, zloc, '^',
+                        color=color, zorder=12, ms=base_marker_size)
+        ax[season].plot(mean, zloc, '^',
+                        color='w', zorder=12, ms=base_marker_size+2,
+                        fillstyle='none')
 
         xtxt = hdl['cbars'].get_paths()[0].vertices[1, 0]
         ytxt = zloc
 
         ax[season].text(xtxt, ytxt, '     '+np.round(bin_name, 1).astype('str'),
                         color=color, ha='left', va='center', fontsize=7)
-
-        # halve the voilin
-        for b in hdl['bodies']:
-            m = np.mean(b.get_paths()[0].vertices[:, 1])
-            b.get_paths()[0].vertices[:, 1] = np.clip(b.get_paths()[0].vertices[:, 1],
-                                                      -np.inf, m)
+        ax[season].text(2, ytxt, format_moor_names(df['moor'].unique()),
+                        color=color, ha='left', va='center', fontsize=6)
 
         # min K_T is useless.
         hdl['cmaxes'].set_visible(False)
         hdl['cmins'].get_paths()[0].vertices[:, 1] = (zloc +
-                                                       np.array([-1,1])*df.z.std())
+                                                      np.array([-1,1])
+                                                      ,*df.z.std())
 
     ax['NE'].set_ylabel('depth (m)')
     ax[season].set_ylim([125, 0])
@@ -416,7 +488,20 @@ if 'KTm' not in locals():
             .dropna(axis=0, subset=['KT'])
             .reset_index())
     KTdf['latlon'] = (KTdf['lat'].astype('str') + 'N, '
-                      + KTdf['lon'].astype('str') + 'E')
+                      + KTdf['lon'].astype('str') + 'E').astype('category')
+    KTdf['season'] = KTdf['season'].astype('category')
+
+    moornames = {'RAMA12': '12.0N, 90.0E',
+                 'RAMA15': '15.0N, 90.0E',
+                 'NRL1': '5.0N, 85.5E',
+                 'NRL2': '6.5N, 85.5E',
+                 'NRL3': '8.0N, 85.5E',
+                 'NRL4': '8.0N, 87.0E',
+                 'NRL5': '8.0N, 88.5E'}
+    KTdf['moor'] = (KTdf['latlon']
+                    .map(dict(zip(moornames.values(),
+                               moornames.keys())))
+                    .astype('category'))
 
 # KTdf = KTdf.set_index(['season'])
 # KTdf = KTdf.assign(
@@ -432,8 +517,14 @@ plt.savefig('images/vert-profile.svg', bbox_inches='tight')
 #+END_SRC
 #+RESULTS: vert-profile
 :RESULTS:
-[[file:images/bay-KT-vert-profile.png]]
 :END:
+
+1. High mixing at 70-10m depth in SW monsoon, compared to NE monsoon. Connected to SMC/SLD?
+
+#+BEGIN_SRC ipython :session :ipyfile images/temp/imgzOd1mm.png
+
+#+END_SRC
+
 
 #+NAME: sal-distrib
 #+BEGIN_SRC ipython :session :ipyfile images/temp/imgbp6rfN.png :results drawer
@@ -661,8 +752,28 @@ plt.tight_layout()
 
 #+RESULTS:
 [[file:images/temp/img7tMMDR.png]]
-** Seasonal patterns
-*** "pycnocline uplift"
+* Seasonal patterns
+** depth of salinity surfaces
+
+#+BEGIN_SRC ipython :session :ipyfile images/temp/imgzT2m1u.png :results drawer
+clim = xr.open_dataset('~/work/datasets/nio-atlas/nioa_climatology_seasonal_temp_salt_monsoon_season.nc', decode_times=False)
+
+_, zmat = xr.broadcast(clim.SALT, clim.DEPTH)
+
+S0 = 35
+isodepth = zmat.where(np.logical_and(clim.SALT > 34.9, clim.SALT < 35.1)).mean(dim='DEPTH')
+
+isodepth.plot(x='LONGITUDE', col='TIME', col_wrap=2, levels=np.arange(10, 500, 30))
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+: <xarray.plot.facetgrid.FacetGrid at 0x7f44b39be6d8>
+[[file:images/temp/imgzT2m1u.png]]
+:END:
+
+
+** "pycnocline uplift"
 It is quite hard to see if there is a semi-regular period.
 
 This could be the large-scale ∇S being advected back and forth across the mooring.
