@@ -176,7 +176,7 @@ c527 = chipy.chipod('../rama/RAMA13/data/', '527', '2017-08-15.mat', best='mm', 
 moor = importlib.reload(moor)
 chipy = importlib.reload(chipy)
 
-nrl1 = moor.moor(85.5, 5.5, 'NRL1', 'ebob', '../ebob/')
+nrl1 = moor.moor(85.5, 5.0, 'NRL1', 'ebob', '../ebob/')
 nrl1.ReadCTD('NRL1', FileType='ebob')
 nrl1.AddChipod(500, depth=56, best='mm', fname='Turb.mat')
 nrl1.AddChipod(501, depth=76, best='mm1', fname='Turb.mat')
