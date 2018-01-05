@@ -32,102 +32,128 @@
 #+ATTR_HTML: :class full-width
 [[file:images/nrl5-summary.png]]
 
-*** vertical distribution
-**** Mangle together and change to dataframe
+** vertical distribution of $K_T$
+*** Mangle together and change to dataframe
 #+CALL: read-all-moorings()
 #+NAME: make-KT-dataframe
 #+BEGIN_SRC ipython :session :results none
-KT = []
-for m in [ra12, ra15, nrl1, nrl3, nrl4, nrl5]:
-    ktsubset = m.KT.copy()
+def make_merged_KT(moorings):
+    KT = []
+    for m in moorings:
+        ktsubset = m.KT.copy()
 
-    ktsubset['season'] = ktsubset.time.monsoon.labels
-    ktsubset['depth'].values = np.round(ktsubset.z.mean(dim='time'),
-                                        decimals=1)
+        ktsubset['season'] = ktsubset.time.monsoon.labels
+        ktsubset['depth'].values = np.round(ktsubset.z.mean(dim='time'),
+                                            decimals=1)
 
-    if m.name == 'RAMA 12N':
-        ktsubset['depth'].values += 0.012
+        # if m.name == 'RAMA 12N':
+        #     ktsubset['depth'].values += 0.012
 
-    if m.name == 'RAMA 15N':
-        ktsubset['depth'].values += 0.015
+        # if m.name == 'RAMA 15N':
+        #     ktsubset['depth'].values += 0.015
 
-    if m.name == 'NRL1':
-        ktsubset['depth'].values += 0.001
+        # if m.name == 'NRL1':
+        #     ktsubset['depth'].values += 0.001
 
-    if m.name == 'NRL2':
-        ktsubset['depth'].values += 0.002
+        # if m.name == 'NRL2':
+        #     ktsubset['depth'].values += 0.002
 
-    if m.name == 'NRL3':
-        ktsubset['depth'].values += 0.003
+        # if m.name == 'NRL3':
+        #     ktsubset['depth'].values += 0.003
 
-    if m.name == 'NRL4':
-        ktsubset['depth'].values += 0.004
+        # if m.name == 'NRL4':
+        #     ktsubset['depth'].values += 0.004
 
-    if m.name == 'NRL5':
-        ktsubset['depth'].values += 0.005
+        # if m.name == 'NRL5':
+        #     ktsubset['depth'].values += 0.005
 
-    depth_season = np.round(ktsubset.z.groupby(ktsubset['season'])
-                            .mean(dim='time')).astype('int64')
+        depth_season = np.round(ktsubset.z.groupby(ktsubset['season'])
+                                .median(dim='time')).astype('int64')
 
-    # depth_week = np.round(ktsubset.z.groupby(ktsubset.time.dt.weekofyear)
-    #                       .mean(dim='time')).astype('int64')
+        # depth_week = np.round(ktsubset.z.groupby(ktsubset.time.dt.weekofyear)
+        #                       .mean(dim='time')).astype('int64')
 
-    # depth_bin = depth_week
+        # depth_bin = depth_week
 
-    # bin depths
-    depth_season.values[np.logical_and(
-        depth_season.values > 55,
-        depth_season.values < 63)] = 60
+        # bin depths
+        # depth_season.values[np.logical_and(
+        #     depth_season.values > 55,
+        #     depth_season.values < 63)] = 60
 
-    depth_season.values[np.logical_and(
-        depth_season.values >= 64,
-        depth_season.values < 68)] = 65
+        # depth_season.values[np.logical_and(
+        #     depth_season.values >= 64,
+        #     depth_season.values < 68)] = 65
 
-    depth_season.values[np.logical_and(
-        depth_season.values > 68,
-        depth_season.values < 82)] = 75
+        # depth_season.values[np.logical_and(
+        #     depth_season.values > 68,
+        #     depth_season.values < 82)] = 75
 
-    depth_season.values[np.logical_and(
-        depth_season.values > 84.5,
-        depth_season.values < 87.2)] = 85
+        # depth_season.values[np.logical_and(
+        #     depth_season.values > 84.5,
+        #     depth_season.values < 87.2)] = 85
 
-    depth_season.values[depth_season.values > 87.2] = 100
+        # depth_season.values[depth_season.values > 87.2] = 100
 
-    _, seas = xr.broadcast(ktsubset, ktsubset['season'])
+        _, seas = xr.broadcast(ktsubset, ktsubset['season'])
 
-    mean_depth = xr.zeros_like(ktsubset)
-    for ss in ['NE', 'NESW', 'SW', 'SWNE']:
-        mask = seas.values == ss
-        _, zz = xr.broadcast(seas == ss, depth_season.sel(season=ss))
-        mean_depth.values[mask] = zz.values[mask]
+        mean_depth = xr.zeros_like(ktsubset)
+        for ss in ['NE', 'NESW', 'SW', 'SWNE']:
+            mask = seas.values == ss
+            if np.all(mask == False):
+                continue
+            _, zz = xr.broadcast(seas == ss, depth_season.sel(season=ss))
+            mean_depth.values[mask] = zz.values[mask]
 
-    # get a reasonable depth for the subset
-    ktsubset['mean_depth'] = mean_depth
+        # get a reasonable depth for the subset
+        ktsubset['mean_depth'] = mean_depth
 
-    KT.append(ktsubset)
+        KT.append(ktsubset.reset_coords())
 
-KTm = xr.merge(KT)
+    KTm = xr.merge(KT)
+    KTm.to_netcdf('merged_KT.nc', format='netCDF4')
+    KTm.resample(time='1H').mean().to_netcdf('merged_KT_hourly.nc')
+    KTm.resample(time='6H').mean().to_netcdf('merged_KT_6hourly.nc')
 
-# from https://stackoverflow.com/questions/39418380/histogram-with-equal-number-of-points-in-each-bin
+def bin_and_to_dataframe(KTm, ρbins=None, Sbins=None):
+    def bin(var, bins):
+        binned = bins[np.digitize(var, bins)-1]
+        return xr.DataArray(binned, dims=var.dims, coords=var.coords)
+
+    if ρbins is not None:
+        KTm['ρbinned'] = bin(KTm.ρ, ρbins)
+    if Sbins is not None:
+        KTm['Sbinned'] = bin(KTm.S, Sbins)
+
+    if np.all(KTm['KT'].values > 0):
+        KTm['KT'].values = np.log10(KTm['KT'].values)
+
+    KTdf = (KTm[['KT', 'ρbinned', 'z', 'season']]
+            .to_dataframe()
+            .dropna(axis=0, subset=['KT'])
+            .reset_index())
+    KTdf['latlon'] = (KTdf['lat'].astype('str') + 'N, '
+                      + KTdf['lon'].astype('str') + 'E')
+
+    return KTdf
+
 def histedges_equalN(x, nbin):
+    # from https://stackoverflow.com/questions/39418380/histogram-with-equal-number-of-points-in-each-bin
     x = x[np.logical_not(np.isnan(x))]
     npt = len(x)
     return np.interp(np.linspace(0, npt, nbin + 1),
                      np.arange(npt),
                      np.sort(x))
-def bin(var, bins):
-    binned = bins[np.digitize(var, bins)-1]
-    return xr.DataArray(binned, dims=var.dims, coords=var.coords)
 
+# moorings = [ra12, ra15, nrl1, nrl3, nrl4, nrl5]
+# make_merged_KT(moorings)
+#if 'KTm' in locals():
+ #    del KTm
+
+# KTm = xr.open_dataset('merged_KT.nc', autoclose=True)
 ρbins = histedges_equalN(np.ravel(KTm.ρ), 11)
 Sbins = histedges_equalN(np.ravel(KTm.S), 11)
-KTm['ρbinned'] = bin(KTm.ρ, ρbins)
-KTm['Sbinned'] = bin(KTm.S, Sbins)
 
-KTm['KT'].values = np.log10(KTm['KT'].values)
-KTdf = KTm.to_dataframe().reset_index()
-KTm['ρbins'] = ρbins
-KTm['Sbins'] = Sbins
+KTdf = bin_and_to_dataframe(KTm, ρbins)
 #+END_SRC
 
 Test out binning so that there are equal number of observations (NaN filtered) in each bin
@@ -201,13 +227,248 @@ plt.tight_layout()
 [[file:images/TSρ-sampled-by-χpod.png]]
 :END:
 
-**** Make plot
+#+NAME: kmeans
+#+BEGIN_SRC ipython :session :ipyfile images/temp/imgiZJc38.png
+data = KTdf.ρ
+# centroids, _ = sp.cluster.vq.kmeans(data, 10)
+# idx, _ = sp.cluster.vq.vq(data, centroids)
+
+for ii in range(10):
+    ST = np.vstack([KTdf.S[idx == ii], KTdf['T'][idx == ii]]).T
+    hull = sp.spatial.ConvexHull(ST)
+    plt.plot(ST[hull.vertices, 0], ST[hull.vertices, 1])
+
+#+END_SRC
+#+RESULTS: kmeans
+[[file:images/temp/imgiZJc38.png]]
+
+
+#+NAME: TS-plot
+#+BEGIN_SRC ipython :session :ipyfile images/rho-bins-TS-plot.png :results drawer
+T, S, binned= dcpy.util.BinEqualizeHist([KTdf['T'], KTdf['S']], bins=[200, 100])
+Tg, Sg = np.meshgrid(T, S, indexing='ij')
+ρg = sw.pden(Sg, Tg, 50)
+# plt.plot(KTdf['S'], KTdf['T'], '.')
+plt.pcolormesh(S, T, binned.T, cmap=mpl.cm.Reds)
+# hc = plt.contour(Sg, Tg, ρg, colors='k', levels=ρbins)
+# plt.clabel(hc, fmt='%1.1f')
+plt.xlabel('S')
+plt.ylabel('T')
+
+kmeans = 12
+
+data = KTdf.ρ
+centroids, _ = sp.cluster.vq.kmeans(data, kmeans)
+idx, _ = sp.cluster.vq.vq(data, centroids)
+
+for ii in range(kmeans):
+    ST = np.vstack([KTdf.S[idx == ii], KTdf['T'][idx == ii]]).T
+    hull = sp.spatial.ConvexHull(ST)
+    plt.plot(ST[hull.vertices, 0], ST[hull.vertices, 1], 'k--')
+
+cent = np.sort(centroids)
+newbins = np.hstack([KTdf.ρ.min(), (cent[:-1]+cent[1:])/2])
+hc = plt.contour(Sg, Tg, ρg, colors='k', levels=newbins, zorder=10)
+plt.clabel(hc, fmt='%1.1f')
+
+#+END_SRC
+#+RESULTS: TS-plot
+:RESULTS:
+: <a list of 12 text.Text objects>
+[[file:images/rho-bins-TS-plot.png]]
+:END:
+
+*** Make plot
+**** means/medians profile
 #+NAME: define-vert_distrib
 #+BEGIN_SRC ipython :session :results none
-def vert_distrib(KTdf, category, kind='kde'):
+def vert_distrib(KTdf, bins, varname='KT', pal=None, f=None, ax=None,
+                 ,**kwargs):
+
+    base_marker_size = 5
+    pal_dist = sns.color_palette("GnBu_d", n_colors=13)
+    pal_dist.reverse()
+
+    if pal is None:
+        pal = pal_dist
+
+    if f is None:
+        f, axx = plt.subplots(1, 4, sharex=True, sharey=True)
+        ax = {'NE': axx[0], 'NESW': axx[1], 'SW': axx[2], 'SWNE': axx[3]}
+
+    if varname is 'KT':
+        title = 'Hourly averaged $K_T$'
+        xlim = kwargs.pop('xlim', [-7,0])
+        xlines = kwargs.pop('xlines', [-5, -4])
+    else:
+        title = varname
+        xlim = kwargs.pop('xlim', None)
+        xlines = kwargs.pop('xlines', [])
+
+    months = {'NE': 'Dec-Feb', 'NESW': 'Mar-May',
+              'SW': 'Jun-Sep', 'SWNE': 'Oct-Nov'}
+    for seas in ax:
+        aa = ax[seas]
+        from cycler import cycler
+        aa.set_prop_cycle(cycler('color', pal))
+        aa.set_title(seas + '\n(' + months[seas] +')')
+        if xlim is not None:
+            aa.set_xlim(xlim)
+            aa.set_xticks(range(*xlim))
+
+    # seaborn treats things as categoricals booo...
+    # do things the verbose matplotlib way
+    for index, (label, df) in enumerate(KTdf.groupby([bins, 'season'])):
+        interval = label[0]
+        season = label[1]
+        zloc = sp.stats.trim_mean(df.z, 0.01)
+
+        if interval.mid > 1000:
+            bin_name = interval.mid-1000
+            if bin_name < 20:
+                if season == 'SW':
+                    zloc -= 5
+                elif season == 'NE' or season == 'SWNE':
+                    zloc -= 2.5
+
+            if (bin_name < 21 and bin_name > 20.8):
+                if season == 'SWNE':
+                    zloc +=2.5
+
+            if (bin_name > 21.1 and bin_name < 21.6):
+                if season == 'NE':
+                    zloc += 5
+
+            if (bin_name > 23.7 and bin_name < 25):
+                if season == 'NESW' or season == 'SW':
+                    zloc += 5
+
+            if (bin_name > 25) and season == 'SW':
+                    zloc += 5
+
+        else:
+            bin_name = interval.mid
+
+        var = df[varname]
+        hdl = ax[season].violinplot(var, positions=[zloc],
+                                    widths=[12],
+                                    vert=False, showmedians=False)
+        color = hdl['bodies'][0].get_facecolor()[0][:-1]
+
+        if np.all(var < 1):
+            # if in log-space transform out and back
+            median = np.log10(np.nanmedian(10**var))
+            mean = np.log10(np.nanmean(10**var))
+        else:
+            median = np.nanmedian(var)
+            mean = np.nanmean(var)
+
+        ax[season].plot(median, zloc, 'o',
+                        color=color, zorder=12, ms=base_marker_size)
+        ax[season].plot(median, zloc, 'o',
+                        color='w', zorder=11, ms=base_marker_size+2)
+        ax[season].plot(mean, zloc, 'x',
+                        color=color, zorder=12, ms=base_marker_size-1)
+
+        xtxt = hdl['cbars'].get_paths()[0].vertices[1, 0]
+        ytxt = zloc
+
+        ax[season].text(xtxt, ytxt, '     '+np.round(bin_name, 1).astype('str'),
+                        color=color, ha='left', va='center', fontsize=7)
+
+        # halve the voilin
+        for b in hdl['bodies']:
+            m = np.mean(b.get_paths()[0].vertices[:, 1])
+            b.get_paths()[0].vertices[:, 1] = np.clip(b.get_paths()[0].vertices[:, 1],
+                                                      -np.inf, m)
+
+        # min K_T is useless.
+        hdl['cmaxes'].set_visible(False)
+        hdl['cmins'].get_paths()[0].vertices[:, 1] = (zloc +
+                                                       np.array([-1,1])*df.z.std())
+
+    ax['NE'].set_ylabel('depth (m)')
+    ax[season].set_ylim([125, 0])
+    ax[season].set_yticks(np.arange(120,0,-10))
+    ax[season].set_yticklabels(np.arange(120,0,-10).astype('str'))
+
+    for aa in ax.values():
+        for xx in xlines:
+            aa.axvline(xx, lw=0.5, ls='dotted', zorder=-50, color='gray')
+
+    f.set_size_inches((8.5, 5.5))
+    f.suptitle(title, y=0.03, va='baseline')
+    plt.subplots_adjust(wspace=0.25)
+
+    return f, ax
+#+END_SRC
+
+#+NAME: vert-profile
+#+BEGIN_SRC ipython :session :ipyfile images/bay-KT-vert-profile.png :results drawer
+<<define-vert_distrib>>
+if 'KTm' not in locals():
+    KTm = xr.open_dataset('merged_KT_hourly.nc').load()
+    if np.all(KTm['KT'].values[np.logical_not(KTm.KT.isnull().values)] > 0):
+        KTm['KT'].values = np.log10(KTm['KT'].values)
+
+    KTm['season'] = KTm.time.monsoon.labels
+    KTdf = (KTm[['KT', 'T', 'S', 'z', 'ρ', 'season']]
+            .to_dataframe()
+            .dropna(axis=0, subset=['KT'])
+            .reset_index())
+    KTdf['latlon'] = (KTdf['lat'].astype('str') + 'N, '
+                      + KTdf['lon'].astype('str') + 'E')
+
+# KTdf = KTdf.set_index(['season'])
+# KTdf = KTdf.assign(
+#     median_z=KTdf.groupby([bins, 'season']).transform('median')['z'])
+# KTdf = KTdf.assign(
+#     median_KT=KTdf.groupby([bins, 'season']).transform('median')['KT'])
+
+bins = pd.qcut(KTdf.ρ, 11)
+bins = pd.cut(KTdf.ρ, ρbins)
+
+f, ax = vert_distrib(KTdf, bins)
+plt.savefig('images/vert-profile.svg', bbox_inches='tight')
+#+END_SRC
+#+RESULTS: vert-profile
+:RESULTS:
+[[file:images/bay-KT-vert-profile.png]]
+:END:
+
+#+NAME: sal-distrib
+#+BEGIN_SRC ipython :session :ipyfile images/temp/imgbp6rfN.png :results drawer
+<<define-vert_distrib>>
+
+Sbins = pd.qcut(KTdf.S, 11)
+
+f, ax = plot_distrib(KTdf, bins, varname='S', xlines=[32, 35])
+# plot_distrib(KTdf.where(KTdf.S > 34.9), bins, pal=[[0.5,0.5,0.5]]*13, f=f, ax=ax)
+#+END_SRC
+#+RESULTS: sal-distrib
+:RESULTS:
+[[file:images/temp/imgbp6rfN.png]]
+:END:
+
+**** full distrib OLD
+#+NAME: define-seaborn_vert_distrib
+#+BEGIN_SRC ipython :session :results none
+pal_dist = sns.color_palette("GnBu_d", n_colors=13)
+pal_dist.reverse()
+
+def seaborn_vert_distrib(KTdf, category, kind='kde'):
+    stylekwargs = dict(style="ticks",
+                       rc={'axes.facecolor': 'None',
+                           'figure.facecolor': 'None'})
     bandwidth = 'scott'
-    pal = sns.color_palette("GnBu_d", n_colors=13)
-    pal.reverse()
+    # pal_dist=sns.cubehelix_palette(11, rot=-.25, light=.7)
+    # pal_dist = [pal_dist[0]]*13
+
+    pal_boxplot = sns.color_palette("muted",
+                                    n_colors=len(KTdf['latlon'].unique()))
+    pal_boxplot[1] = (0,0,0)
+    pal_boxdict = dict(zip(KTdf['latlon'].unique(), pal_boxplot))
+
     # pal = sns.cubehelix_palette(11, rot=-.25, light=0.7)
 
     def label(x, color, label):
@@ -216,7 +477,7 @@ def vert_distrib(KTdf, category, kind='kde'):
             return ((name+': {0:'+fmt+'}'+suffix
                      +', {1:'+fmt+'}'+suffix
                      +', {2:'+fmt+'}'+suffix)
-               .format(q25, x.mean(), q75))
+                    .format(q25, x.mean(), q75))
 
         extract = KTdf.take(x.index)
         ax = plt.gca()
@@ -235,83 +496,108 @@ def vert_distrib(KTdf, category, kind='kde'):
                 fontsize=8,
                 ha="right", va="bottom", transform=ax.transAxes)
 
-        ax.set_xlim([-7, 0])
+    def mark_distributions_by_location(x, color, label):
+        ax = plt.gca().twinx()
+        gby = KTdf.take(x.index).groupby('latlon');
+
+        for index, (name, grp) in enumerate(gby):
+            props = {'linewidth': 1, 'color': pal_boxdict[name]}
+            ax.boxplot(grp['KT'], vert=False, sym='', widths=0.08,
+                       showbox=False,
+                       showmeans=False, positions=[0.2+0.1*index],
+                       boxprops={**props}, whiskerprops={**props},
+                       medianprops={**props}, capprops={**props})
+
+        ax.set_ylim([0, 2])
+        ax.set_yticks([])
+
+        # with sns.axes_style(**stylekwargs):
+        #     sns.boxplot(data=KTdf.take(x.index), x='KT', hue='latlon',
+        #                 ax=ax, orient='h', width=0.1)
 
     def mark_mean_mdn(x, color, label):
         ax = plt.gca()
 
         mean = np.log10(np.nanmean(10**x))
         median = np.log10(np.nanmedian(10**x))
-        yloc = ax.get_ylim()[1]/3
+        yloc = 0.5
         plt.plot(mean, yloc, color=color, marker='x')
         # plt.plot(mean, yloc, color='w', marker='x', fillstyle='none')
         plt.plot(median, yloc, color=color, marker='o', ms=10)
         plt.plot(median, yloc, color='w', marker='o', ms=11, fillstyle='none')
 
-    with sns.axes_style(style="ticks",
-                        rc={'axes.facecolor': 'None',
-                            'figure.facecolor': 'None'}):
-        g = sns.FacetGrid(KTdf.dropna(), row=category, col="season",
+    with sns.axes_style(**stylekwargs):
+        g = sns.FacetGrid(KTdf, row=category, col="season",
                           col_order=['NE', 'NESW', 'SW', 'SWNE'],
-                          hue=category, xlim=[-8, -0.5],
-                          sharex=True, sharey=True, palette=pal,
+                          hue=category, xlim=[-7, 0],
+                          sharex=True, sharey=True, palette=pal_dist,
                           aspect=4, size=1)
 
+
+        kdekwargs = {'clip': [-8, 0],
+                     'clip_on': False,
+                     'cut': 0,
+                     'bw': bandwidth}
+
+        distkwargs = {'bins': 50, 'hist':True, 'rug':False, 'norm_hist':True,
+                      'kde':False, 'kde_kws':{'lw': 1, **kdekwargs}}
         if kind == 'kde':
-            kdekwargs = {'clip': [-8, 0],
-                         'clip_on': False,
-                         'bw': bandwidth}
             g.map(sns.kdeplot, "KT", shade=True, alpha=0.6, lw=1.5, **kdekwargs)
             g.map(sns.kdeplot, "KT", color="w", lw=2, **kdekwargs)
 
         elif kind == 'dist':
-            g.map(sns.distplot, "KT", hist=True, kde=True, rug=False,
-                  kde_kws={'lw': 2, 'cut': 0},
-                  hist_kws={'alpha': 0.8})
+            g.map(sns.distplot, "KT", **distkwargs,
+                  hist_kws={'alpha': 1})
+            g.map(sns.distplot, "KT", **distkwargs,
+                  hist_kws={'histtype': 'step', 'color': 'w',
+                            'lw': 1, 'alpha': 1})
 
         g.map(plt.axhline, y=0, lw=2, clip_on=False)
 
         g.map(label, "KT")
         g.map(mark_mean_mdn, "KT")
-        g.fig.subplots_adjust(hspace=-0.48)
+#        g.map(mark_distributions_by_location, "KT")
+        g.fig.subplots_adjust(hspace=-0.58)
         g.set_xlabels('$K_T$')
         g.set_titles('')
-        g.set(yticks=[])
+        g.set(yticks=[], ylim=[0, 2])
         _ = g.despine(left=True)
 
-        g.axes[1,0].set_title('NE\n(Jan-Mar)')
+        g.axes[1,0].set_title('NE\n(Dec-Mar)')
         g.axes[1,1].set_title('NE → SW\n(Apr-May)')
         g.axes[1,2].set_title('SW\n(Jun-Sep)')
-        g.axes[1,3].set_title('SW → NE\n(Oct-Dec)')
+        g.axes[1,3].set_title('SW → NE\n(Oct-Nov)')
 
-        plt.suptitle('Columns are seasons, rows are density bins', y=0.95)
+        for index, tt in enumerate(KTdf['latlon'].unique()):
+            plt.gcf().text(0.98,0.97-index*0.015, tt,
+                           color=pal_boxplot[index],
+                           ha='right', va='top')
+            plt.suptitle('Columns are seasons, rows are density bins', y=0.95)
+
+        return g
+
 #+END_SRC
 
 #+CALL: make-KT-dataframe()
 #+NAME: KT-vert-hist
 #+BEGIN_SRC ipython :session :ipyfile images/bay-KT-vert-hist.png :results drawer
-<<define-vert_distrib>>
+<<define-seaborn_vert_distrib>>
 
-vert_distrib(KTdf, "ρbinned", 'kde')
+g = seaborn_vert_distrib(KTdf, "ρbinned", 'dist')
 #+END_SRC
 #+RESULTS: KT-vert-hist
 :RESULTS:
 [[file:images/bay-KT-vert-hist.png]]
 :END:
 
-#+RESULTS:
-:RESULTS:
-[[file:images/bay-KT-vert-hist.png]]
-:END:
-
 #+BEGIN_SRC ipython :session :ipyfile images/bay-KT-vert-hist-depths.png
-<<define-vert_distrib>>
-vert_distrib(KTdf, 'mean_depth', 'kde')
+<<define-seaborn_vert_distrib>>
+seaborn_vert_distrib(KTdf, 'mean_depth', 'kde')
 #+END_SRC
 
 #+RESULTS:
+: <seaborn.axisgrid.FacetGrid at 0x7f1a3c885dd8>
 [[file:images/bay-KT-vert-hist-depths.png]]
-
 ** Surface fluxes
 
 #+CALL: read-tropflux()
