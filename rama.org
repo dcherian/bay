@@ -1757,6 +1757,43 @@ At this point, I think I can choose ∂T/∂z independently of the choice made e
    [[file:images/rama13-rama14-full-salinity.png]]
 
  - no difference between released and pre-calib temperature. I checked the calibration coefficients; they don't change for temperature.
+** 810
+- χ estimates using T1, T2 differ quite a bit at the end of October. I don't know why.
+
+- T1 seems to have gotten whacked in November. Discarding all estimates after that point: χ_1 is always greater than χ_2.
+
+** 811
+- T2 didn't work at all.
+
+** 812
+
+processed using w = dpres/dt since accelerometers didn't work.
+
+** 813
+
+ADCP dies in sept, χpod dies in december.
+calibrating pitot...
+
+There is a big difference between ADCP and calibrated pitot in the beginning (ADCP is 5m away). Not sure why.
+** 814
+*** General
+- T2 is all bad :(
+- T1 dies by end of July i.e. 8 months of data.
+*** Pitot
+
+1. There is a high velocity signal at the beginning of the record. velocity from the 10m current meter is a lot larger than pitot, doesn't seem unreasonable. good agreement in the later part of the record.
+
+2. After 16-May-2015, the pitot signal shows a funny oscillation. I think that's aphysical.
+
+3. SO I calibrate with respect to 10m current meter between 21-Dec-2014 and 16-May-2015
+
+4. Then, both self-calibrated and ADCP work well. Magnitudes agree with current meter quite well.
+
+5. +Still tells me there's a -20 degree offset between current meter and compass. :( .(note that if I didn't correct for declination it'd be -35 degrees.)+
+
+6. OK final offset is -26 degrees. I calibrate within a smaller time range that excludes the big velocity in the beginning but calculate velocities for all valid data. Things look better then ...
+
+7. The rose diagrams comparing V_adcp and V_pitot don't really look bad at all. I'm going to say that the average angle offset diagnostic is a little weird?
 * misc notes
 - The mooring diagram attached is for 15N.  12N is the same except that it does not have any instruments shallower than 10m.  The 8N site may or may not end up in either of our cruises, depending on ship schedules and cruise plans, so you probably should not plan on deploying at that site.
   Each mooring has one current instrument (sontek), and in both cases they and their accompanying TC module occupy the space from 10m depth to 13.3m depth.  In the past, you've put chipods at 14m.  If you wanted to put a chipod above the sontek on the 12N buoy, it would need to be shallower than 6m, because the sontek is facing up, and we would not want any interference.  Please let us know what you think.
