@@ -694,7 +694,19 @@ Compare10mDyDiff(ra122, 'dens', '')
 #+RESULTS:
 
 * RAMA14 - 15N (ra-123)
-** Email from Sonya
+** Emails from Sonya
+#+BEGIN_QUOTE
+Hi Deepak, Happy New Year!
+Sure, I'll attach them here. The one from ra123 is the final post-cal file I'd used, with the post-cal 1m and 10m temperature coefficients (and all other temperature coeffs pre-cal) and post-cal salinity coefficients. The one from ra122 is a regular post-cal file (with pre-cal temperature coeffs)...
+Take care, -Sonya
+#+END_QUOTE
+
+#+BEGIN_QUOTE
+ Hi Deepak, I hope all is going well for you and you're enjoying autumn! Sorry about the delay but we did get the ra123 (15n90e, 12/2014-3/2016) post-calibrations back in October and I finally processed and released the ra123 temperatures and salinities, so this email is to let you know they're available. I did end up using the 1m and 10m temperature post-calibration coefficients instead of the usual pre-calibration coefficients, and fortunately that seemed to nicely eliminate the temperature inversions...
+I was just finally checking the notes and plots you so kindly sent to me from ra107 and ra122, and am impressed with your processing results, thank you again for sharing them with me. Now that we have the post cals for ra122 I'm working on those as well...
+Take care and I hope you'll enjoy the holiday season! :-) -Sonya
+#+END_QUOTE
+
 #+BEGIN_QUOTE
 Hi Deepak,
 
@@ -714,11 +726,11 @@ The adjusted data looks good at the χpod depths.
 [[file:../images/RAMA14-15N-N2.png]]
 #+CAPTION:The corrections are all over the place!
 [[file:../images/RAMA14-15N-corrections.png]]
+
 * RAMA13 & RAMA14
 ** Property plots
 
 #+BEGIN_SRC ipython :session :tangle yes :exports results :eval never-export :file images/rama1314-T-s-ρ.png
-
 ramafull = RamaStitch(ra107, ra122)
 PcolorAll(ramafull, ylim=[-50,0])
 #+END_SRC
