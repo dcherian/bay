@@ -350,7 +350,8 @@ PlotNRL(1)
 [[file:images/nrl2-pres.png]]
 
 - for sensors 2,3 (χpod 504) there's trouble
-
+  - accels are bad.
+  - T1 is  bad.
 #+BEGIN_SRC ipython :session :tangle yes :exports results :eval never-export :ipyfile images/nrl2-ctd-dρ.png
 PlotNRL(2)
 #+END_SRC
@@ -369,7 +370,10 @@ depth = (T.P - 14.7)/14.7 in the code. Then things are correct.
 [[file:scripts/images/nrl2-density-inversion.png]]
 ** NRL3
 - sensor 2 drifts (negative N² at the end of the record)
+- sensor 3 has a gap.
 - sensor 4 has a constant offset. It is too dense all of the time. Salinity is in the 20s!!!
+
+Can't do much for 511 because sensor 4 is quite bad and 5 is really deep.
 #+BEGIN_SRC ipython :session :tangle yes :exports results :eval never-export :ipyfile images/nrl3-ctd-dρ.png
 PlotNRL(3)
 #+END_SRC
