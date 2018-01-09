@@ -134,7 +134,7 @@ def bin_and_to_dataframe(KTm, ρbins=None, Sbins=None):
             .reset_index())
 
     KTdf['latlon'] = (KTdf['lat'].astype('str') + 'N, '
-                      + KTdf['lon'].astype('str') + 'E')
+                      + KTdf['lon'].astype('str') + 'E').astype('category')
 
     moornames = {'RAMA12': '12.0N, 90.0E',
                  'RAMA15': '15.0N, 90.0E',
@@ -144,7 +144,7 @@ def bin_and_to_dataframe(KTm, ρbins=None, Sbins=None):
                  'NRL4': '8.0N, 87.0E',
                  'NRL5': '8.0N, 88.5E'}
     KTdf['moor'] = KTdf['latlon'].map(dict(zip(moornames.values(),
-                                            moornames.keys())))
+                                            moornames.keys()))).astype('category')
     return KTdf
 
 def histedges_equalN(x, nbin):
@@ -515,16 +515,39 @@ bins = pd.cut(KTdf.ρ, ρbins)
 f, ax = vert_distrib(KTdf, bins)
 plt.savefig('images/vert-profile.svg', bbox_inches='tight')
 #+END_SRC
+#+ATTR_HTML: :class full-width
 #+RESULTS: vert-profile
-:RESULTS:
-:END:
+[[file:images/bay-KT-vert-profile.png]]
 
-1. High mixing at 70-10m depth in SW monsoon, compared to NE monsoon. Connected to SMC/SLD?
+1. High mixing at 70-10m depth in SW monsoon, compared to NE monsoon.
+   1. Connected to SMC/SLD?
+   2. Near-inertial waves from storms could be a thing
 
-#+BEGIN_SRC ipython :session :ipyfile images/temp/imgzOd1mm.png
 
+#+NAME: kt-by-lat
+#+BEGIN_SRC ipython :session :ipyfile images/bay-KT-by-lat.png
+KTdf.loc[KTdf['depth'] == 43.0, 'depth'] = 45.0
+KTdf.loc[KTdf['depth'] == 68.5, 'depth'] = 69.0
+KTdf.loc[KTdf['depth'] == 89.4, 'depth'] = 88.2
+g = sns.FacetGrid(KTdf, row='depth', col='lat', hue='season',
+                  sharex=True, sharey=True,
+                  hue_order=['NE', 'NESW', 'SW', 'SWNE'],
+                  col_order=[5., 8., 12.0, 15.0],
+                  margin_titles=True, legend_out=False,
+                  size=1.2, aspect=2)
+
+kdekwargs = {'clip': [-8, 0],
+             'clip_on': False,
+             'bw': 0.2}
+
+g.map(sns.kdeplot, "KT", shade=False, lw=1.5, **kdekwargs)
+g.add_legend()
+g.set(xlim=[-8,0], ylim=[0, 1], yticks=[])
+sns.despine(left=True)
+plt.subplots_adjust(hspace=-0.15)
 #+END_SRC
-
+#+RESULTS: kt-by-lat
+[[file:images/bay-KT-by-lat.png]]
 
 #+NAME: sal-distrib
 #+BEGIN_SRC ipython :session :ipyfile images/temp/imgbp6rfN.png :results drawer
@@ -540,6 +563,9 @@ f, ax = plot_distrib(KTdf, bins, varname='S', xlines=[32, 35])
 [[file:images/temp/imgbp6rfN.png]]
 :END:
 
+#+BEGIN_SRC ipython :session :ipyfile images/temp/img0WlFMK.png
+
+#+END_SRC
 *** full distrib OLD
 #+NAME: define-seaborn_vert_distrib
 #+BEGIN_SRC ipython :session :results none

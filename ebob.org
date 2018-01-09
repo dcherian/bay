@@ -144,6 +144,26 @@ nrl1.χpod[501].Summarize(filter_len=43200)
 #+CAPTION: Half-Daily averaged quantities for unit 501 on NRL-1.
 #+RESULTS:
 [[file:images/nrl1-501-summary.png]]
+* NRL-2
+#+CALL: read-nrl2()
+
+#+NAME: nrl2-summary
+#+BEGIN_SRC ipython :session :ipyfile images/nrl2-summary.png
+_ = nrl2.Plotχpods()
+#+END_SRC
+#+ATTR_HTML: :class full-width
+#+RESULTS: nrl2-summary
+[[file:images/nrl2-summary.png]]
+
+
+Really high Jqt!.
+
+#+CAPTION: Upper sensors die in Feb. var(T2P) seems much higher later.
+[[file:~/bay/ebob/data/504/pics/temp.png]]
+
+#+ATTR_HTML: :class full-width
+[[file:~/bay/ebob/data/504/pics/Compare_Turb.png]]
+
 * NRL-3
 #+CALL: read-nrl3()
 #+NAME: nrl3-summary
@@ -358,7 +378,6 @@ PlotNRL(2)
 
 #+RESULTS:
 [[file:images/nrl2-ctd-dρ.png]]
-
 *** old                                                          :noexport:
 depth = (T.P - 14.7)/14.7 in the code. Then things are correct.
 #+CAPTION: Do the χ-pods know where they are? Should be between the top 3 instruments. OK. Temperature records confirms they are where they should be.

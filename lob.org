@@ -131,7 +131,7 @@ moor = importlib.reload(moor)
 chipy = importlib.reload(chipy)
 
 ra15 = moor.moor(90, 15, 'RAMA 15N', 'rama', '../rama/RAMA14/')
-ra15.AddChipod(813, 15, 'mm', 'Turb.mat')
+ra15.AddChipod(813, 15, 'pm', 'Turb.mat')
 ra15.AddChipod(814, 30, 'mm1', 'Turb.mat')
 ra15.CombineTurb()
 ra15.ReadMet('../rama/data/met15n90e_10m.cdf', WindType='pmel')
