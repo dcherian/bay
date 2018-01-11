@@ -34,18 +34,19 @@
 * vertical distribution of $K_T$
 ** Mangle together and change to dataframe
 #+CALL: read-all-moorings()
-#+NAME: make-KT-dataframe
+#+NAME: make-merged-KT
 #+BEGIN_SRC ipython :session :results none
 def make_merged_KT(moorings):
     KT = []
     for m in moorings:
         ktsubset = (m.KT.copy()
-                    .reset_coords(['ρ', 'S', 'T', 'z'])
-                    .expand_dims(['lat','lon']))
+                    .reset_coords(['ρ', 'S', 'T', 'z']))
 
-        ktsubset['season'] = ktsubset.time.monsoon.labels
         ktsubset['depth'].values = np.round(ktsubset.z.mean(dim='time'),
                                             decimals=1)
+
+        ktsubset = ktsubset.expand_dims(['lat', 'lon'])
+        ktsubset['season'] = ktsubset.time.monsoon.labels
 
         # if m.name == 'RAMA 12N':
         #     ktsubset['depth'].values += 0.012
@@ -95,9 +96,9 @@ def make_merged_KT(moorings):
 
         # depth_season.values[depth_season.values > 87.2] = 100
 
-        _, seas = xr.broadcast(ktsubset, ktsubset['season'])
+        _, seas = xr.broadcast(ktsubset.KT, ktsubset['season'])
 
-        mean_depth = xr.zeros_like(ktsubset)
+        mean_depth = xr.zeros_like(ktsubset.KT)
         for ss in ['NE', 'NESW', 'SW', 'SWNE']:
             mask = seas.values == ss
             if np.all(mask == False):
@@ -112,8 +113,8 @@ def make_merged_KT(moorings):
 
     KTm = xr.merge(KT)
     KTm.to_netcdf('merged_KT.nc', format='netCDF4')
-    KTm.resample(time='1H').mean().to_netcdf('merged_KT_hourly.nc')
-    KTm.resample(time='6H').mean().to_netcdf('merged_KT_6hourly.nc')
+    KTm.resample(time='1H').mean(dim='time').to_netcdf('merged_KT_hourly.nc')
+    KTm.resample(time='6H').mean(dim='time').to_netcdf('merged_KT_6hourly.nc')
 
 def bin_and_to_dataframe(KTm, ρbins=None, Sbins=None):
     def bin(var, bins):
@@ -155,16 +156,16 @@ def histedges_equalN(x, nbin):
                      np.arange(npt),
                      np.sort(x))
 
-# moorings = [ra12, ra15, nrl1, nrl3, nrl4, nrl5]
-# make_merged_KT(moorings)
+moorings = [ra12, ra15, nrl1, nrl3, nrl4, nrl5]
+make_merged_KT(moorings)
 #if 'KTm' in locals():
  #    del KTm
 
 # KTm = xr.open_dataset('merged_KT.nc', autoclose=True)
-ρbins = histedges_equalN(np.ravel(KTm.ρ), 11)
-Sbins = histedges_equalN(np.ravel(KTm.S), 11)
+#ρbins = histedges_equalN(np.ravel(KTm.ρ), 11)
+#Sbins = histedges_equalN(np.ravel(KTm.S), 11)
 
-KTdf = bin_and_to_dataframe(KTm, ρbins)
+#KTdf = bin_and_to_dataframe(KTm, ρbins)
 #+END_SRC
 
 Test out binning so that there are equal number of observations (NaN filtered) in each bin
@@ -177,6 +178,7 @@ _ = KTm.ρ.plot.hist(bins=ρbins, density=True, edgecolor='k', facecolor='none')
 :RESULTS:
 [[file:images/temp/imgSAH1E0.png]]
 :END:
+
 
 #+NAME: argo-clim-density
 #+BEGIN_SRC ipython :session :ipyfile images/mean-density-at-moorings.png
@@ -241,8 +243,8 @@ plt.tight_layout()
 #+NAME: kmeans
 #+BEGIN_SRC ipython :session :ipyfile images/temp/imgiZJc38.png
 data = KTdf.ρ
-# centroids, _ = sp.cluster.vq.kmeans(data, 10)
-# idx, _ = sp.cluster.vq.vq(data, centroids)
+centroids, _ = sp.cluster.vq.kmeans(data, 10)
+idx, _ = sp.cluster.vq.vq(data, centroids)
 
 for ii in range(10):
     ST = np.vstack([KTdf.S[idx == ii], KTdf['T'][idx == ii]]).T
@@ -252,7 +254,6 @@ for ii in range(10):
 #+END_SRC
 #+RESULTS: kmeans
 [[file:images/temp/imgiZJc38.png]]
-
 
 #+NAME: TS-plot
 #+BEGIN_SRC ipython :session :ipyfile images/rho-bins-TS-plot.png :results drawer
@@ -281,7 +282,6 @@ cent = np.sort(centroids)
 newbins = np.hstack([KTdf.ρ.min(), (cent[:-1]+cent[1:])/2])
 hc = plt.contour(Sg, Tg, ρg, colors='k', levels=newbins, zorder=10)
 plt.clabel(hc, fmt='%1.1f')
-
 #+END_SRC
 #+RESULTS: TS-plot
 :RESULTS:
@@ -293,6 +293,12 @@ plt.clabel(hc, fmt='%1.1f')
 *** means/medians profile
 #+NAME: define-vert_distrib
 #+BEGIN_SRC ipython :session :results none
+def get_kmeans_bins(k, data):
+    centroids, _ = sp.cluster.vq.kmeans(data, k)
+    cent = np.sort(centroids)
+    bins = np.hstack([data.min(), (cent[:-1]+cent[1:])/2])
+    return bins
+
 def trim_horiz_violin(hdl):
     # halve the voilin
     for b in hdl['bodies']:
@@ -475,10 +481,11 @@ def vert_distrib(KTdf, bins, varname='KT', pal=None, f=None, ax=None,
 #+END_SRC
 
 #+NAME: vert-profile
-#+BEGIN_SRC ipython :session :ipyfile images/bay-KT-vert-profile.png :results drawer
+#+BEGIN_SRC ipython :session :ipyfile images/bay-KT-vert-profile-new.png :results drawer
 <<define-vert_distrib>>
+
 if 'KTm' not in locals():
-    KTm = xr.open_dataset('merged_KT_hourly.nc').load()
+    KTm = xr.open_dataset('merged_KT_hourly.nc', autoclose=True).load()
     if np.all(KTm['KT'].values[np.logical_not(KTm.KT.isnull().values)] > 0):
         KTm['KT'].values = np.log10(KTm['KT'].values)
 
@@ -503,6 +510,9 @@ if 'KTm' not in locals():
                                moornames.keys())))
                     .astype('category'))
 
+    ρbins = get_kmeans_bins(11, KTdf['ρ'])
+
+
 # KTdf = KTdf.set_index(['season'])
 # KTdf = KTdf.assign(
 #     median_z=KTdf.groupby([bins, 'season']).transform('median')['z'])
@@ -517,7 +527,9 @@ plt.savefig('images/vert-profile.svg', bbox_inches='tight')
 #+END_SRC
 #+ATTR_HTML: :class full-width
 #+RESULTS: vert-profile
-[[file:images/bay-KT-vert-profile.png]]
+:RESULTS:
+[[file:images/bay-KT-vert-profile-new.png]]
+:END:
 
 1. High mixing at 70-10m depth in SW monsoon, compared to NE monsoon.
    1. Connected to SMC/SLD?
@@ -694,7 +706,6 @@ def seaborn_vert_distrib(KTdf, category, kind='kde'):
 
 #+END_SRC
 
-#+CALL: make-KT-dataframe()
 #+NAME: KT-vert-hist
 #+BEGIN_SRC ipython :session :ipyfile images/bay-KT-vert-hist.png :results drawer
 <<define-seaborn_vert_distrib>>
@@ -716,9 +727,7 @@ g = seaborn_vert_distrib(KTdf, "ρbinned", 'dist')
 <<define-seaborn_vert_distrib>>
 seaborn_vert_distrib(KTdf, 'mean_depth', 'kde')
 #+END_SRC
-
 #+RESULTS:
-: <seaborn.axisgrid.FacetGrid at 0x7f1a3c885dd8>
 [[file:images/bay-KT-vert-hist-depths.png]]
 * Surface fluxes
 
@@ -797,20 +806,43 @@ isodepth.plot(x='LONGITUDE', col='TIME', col_wrap=2, levels=np.arange(10, 500, 3
 : <xarray.plot.facetgrid.FacetGrid at 0x7f44b39be6d8>
 [[file:images/temp/imgzT2m1u.png]]
 :END:
-
-
 ** "pycnocline uplift"
 It is quite hard to see if there is a semi-regular period.
 
 This could be the large-scale ∇S being advected back and forth across the mooring.
 1. At 12N, it happens in Jul-2014, Jul-2015
-[[file:images/12n-sal.png]]
 
-[[file:images/15n-sal.png]]
+#+BEGIN_SRC ipython :session :ipyfile images/rama-sal-mosaic.png :results drawer
+sal = xr.open_dataset('~/TaoTritonPirataRama/RAMA/s_xyzt_dy.cdf',
+                      autoclose=True)['S_41'].sel(lon=90, lat=[12,15])
+sal.values[sal.values > 40] = np.nan
+sal = sal.dropna(dim='depth', how='all')
 
+def process(x):
+    x = x.expand_dims('year')
+    x['year'] = x.time.dt.year.pipe(np.unique)
+    x['time'] = x.time.dt.dayofyear
+    x = x.rename({'time': 'dayofyear'})
+    return x
+
+stacked = [process(a[1]) for a in sal.groupby('time.year')]
+
+syearly = (xr.concat(stacked, dim='year')
+           .dropna(dim='year', how='all')
+           .drop([2007, 2018], dim='year'))
+
+g = syearly.plot.contourf(x='dayofyear', row='year', col='lat',
+                          robust=True, levels=40, yincrease=False, size=1, aspect=7)
+g.axes[0,0].set_xlim([0, 100])
+#+END_SRC
 #+RESULTS:
-[[file:images/temp/img3907Zeq.png]]
-
+:RESULTS:
+: (0, 100)
+[[file:images/rama-sal-mosaic.png]]
+:END:
+*** old figures :noexport:
+[[file:images/15n-sal.png]]
+[[file:images/12n-sal.png]]
 ** K_T variations
 #+CAPTION: Distribution of 5 minute averages of K_T.
 #+RESULTS:
@@ -1114,7 +1146,7 @@ plt.xlim([10**-3.5, 1])
 #+RESULTS:
 [[file:../images/12n-spectra.png]]
 
-*** spectra old                                                  :noexport:
+*** spectra old :noexport:
 #+BEGIN_SRC ipython :session :ipyfile images/temp/img16594-DQ.png
 data = rama.SelectVar('T', region=dict(lon=90, lat=12, depth=10))
 

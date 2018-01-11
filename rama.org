@@ -725,6 +725,32 @@ _ = ax['N2'].set_ylim([0, 7])
 #+RESULTS: ra15-summary
 [[file:images/ra15-summary.png]]
 
+#+BEGIN_SRC ipython :session :ipyfile images/temp/img0ahL18.png
+region = dict(time=slice('2014-12-13', '2014-12-15'), depth=slice(0,60))
+
+f, ax = plt.subplots(4, 1, sharex=True)
+for iT, ctd in enumerate(['T', 'S']):
+    T = (ra15.ctd[ctd].sel(**region)
+         .resample(time='20min')
+         .mean(dim='time'))
+
+    T -= T.min(dim='depth')
+    for idx, tt in enumerate(T.time):
+        ax[iT].plot(pd.to_timedelta(T.sel(time=tt).values/12, 'D')+tt.values,
+                 -T.depth, 'k.-')
+
+    ax[iT].set_title(ctd)
+    dcpy.plots.liney([-15, -30], ax=ax[iT])
+
+ra15.Jq.sel(**region).plot.line(x='time', ax=ax[2])
+ra15.Tz.sel(**region).plot.line(x='time', ax=ax[3], add_legend=False)
+dcpy.plots.liney(0, ax=ax[-2:])
+
+plt.tight_layout()
+#+END_SRC
+
+#+RESULTS:
+
 #+CALL: read-ra15()
 #+BEGIN_SRC ipython :session :ipyfile images/rama15n-kt-boxplot.png
 ra15.ChipodSeasonalSummary(filter_len=None)
@@ -737,30 +763,35 @@ Check if there's a bias in T_z for 2015. There is! 20m temp agrees very well wit
 
 #+BEGIN_SRC ipython :session :ipyfile images/ra15n-temp-offset.png
 plt.figure(figsize=(11.5, 4.5))
-ds = nc.Dataset('../data/t15n90e_10m.cdf')
-T = ds['T_20']
-time = ds['time'][:]/24/60 + dt.date2num(dt.datetime.datetime(2008,10,19,15,00,0))
-
-dT = (np.squeeze(T[:, 2, :, :] - T[:, 4, :, :]))
-dT[abs(dT) > 10] = np.nan
+ds = (xr.open_dataset('~/TaoTritonPirataRama/high_resolution/10m/t15n90e_10m.cdf')
+      .rename({'T_20': 'temp'}))
+ds.temp.values[ds.temp.values > 100] = np.nan
+dT = ds.temp.drop(13, dim='depth').diff(dim='depth').squeeze()
 
 for year in range(2012, 2016):
-    t0 = dt.date2num(dt.datetime.datetime(year, 1, 1, 0, 0, 0))
-    t1 = dt.date2num(dt.datetime.datetime(year+1, 1, 1, 0, 0, 0))
+    (-dT.sel(depth=20, time=str(year))/10).plot.line(x='time', lw=0.5)
+    # plt.plot(time[mask][::24], dT[mask][::24]/10, linewidth=0.5)
+    #  dcpy.plots.hist(dT[mask], normed=True, label=str(year))
 
-    mask = np.logical_and(time <= t1, time >= t0)
-    plt.plot(time[mask][::24], dT[mask][::24]/10, linewidth=0.5)
-   #  dcpy.plots.hist(dT[mask], normed=True, label=str(year))
-
-plt.gca().xaxis_date()
 plt.title('RAMA 15N dT/dz = ($T_{10m} - T_{20m}$)/10')
-plt.ylim([-5e-2, 5e-2])
+# plt.ylim([-5e-2, 5e-2])
 dcpy.plots.liney([0, -5e-3])
-dcpy.plots.linex(dt.date2num(dt.datetime.datetime(2014, 12, 6)))
+plt.gca().set_yscale('symlog', linthreshy=5e-3, linscaley=0.1)
+# dcpy.plots.linex(dt.date2num(dt.datetime.datetime(2014, 12, 6)))
 #+END_SRC
-
 #+RESULTS:
 [[file:images/ra15n-temp-offset.png]]
+** Attempt 1D budget
+#+BEGIN_SRC ipython :session :ipyfile images/ra15-budget.png :results drawer
+ax = ra15.Budget(z=15)
+ax[0].set_ylim([-150, 150])
+plt.gcf().set_size_inches(8.5,5.5)
+# budget.Jq.resample(time='D').mean(dim='time').sel(depth=15).plot(x='time')
+#+END_SRC
+#+RESULTS:
+:RESULTS:
+[[file:images/ra15-budget.png]]
+:END:
 
 * 12N 2014 (RAMA13/ra-107)
 |------------+------------+-----------------+----------------+------+---------|
