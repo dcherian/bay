@@ -848,6 +848,55 @@ g.axes[0,0].set_xlim([0, 100])
 #+RESULTS:
 [[file:../images//rama12n-kt-boxplot.png]]
 
+* Barrier layers
+When the freshwater arrives, I see large values of Jqt at 30m/45m. This is at both 12N, 15N in both 2014, 2015.
+
+1. Some of these are where T_z changes sign frequently. (╯°□°）╯︵ ┻━┻
+2. Sally says that in the Gulf of Mexico she thinks that ambient water is getting subducted under river plumes and mixing there because of strong shear at the base. This is as opposed to the standard barrier layer idea that there is not much mixing happening beneath the mixed layer: i.e., the freshwater cap prevents wind-forced turbulence from penetrating downward?
+
+Some examples follow.
+#+NAME: barrier-rama15-2015
+#+BEGIN_SRC ipython :session :ipyfile images/barrier-layer-rama15-2015-feb.png :results raw
+ax = ra15.Plotχpods(region={'time': slice('2015-02-20', '2015-03-20')},
+                    filt='hann',  filter_len=6*3600)
+_ = ax['T'].set_ylim([50,0])
+#+END_SRC
+#+CAPTION: In this one, the rise in turbulence at 30m coincides with speeds increasing. 30m χpod sees relatively few changes in T_z sign (compare with below)
+#+RESULTS: barrier-rama15-2015
+[[file:images/barrier-layer-rama15-2015-feb.png]]
+
+#+NAME: barrier-rama12-2014
+#+BEGIN_SRC ipython :session :ipyfile images/barrier-layer-rama12-2014-feb.png :results raw
+ax = ra12.Plotχpods(region={'time': slice('2014-02-20', '2014-03-20')},
+                    filt='hann',  filter_len=6*3600)
+_ = ax['T'].set_ylim([45,0])
+#+END_SRC
+#+CAPTION: Here, both χpods see frequent changes in the sign of T_z and heat fluxes are large and change sign often. |T_z| stays decently big (0.01-0.1) for chunks of time --- these are associated with large fluxes. Maybe using internal T_z might make sense here.
+#+RESULTS: barrier-rama12-2014
+[[file:images/barrier-layer-rama12-2014-feb.png]]
+
+#+NAME: barrier-rama12-2014
+#+BEGIN_SRC ipython :session :ipyfile images/barrier-layer-rama12-2014-feb.png :results raw
+ax = ra12.Plotχpods(filt='hann',  filter_len=6*3600, met='tropflux')
+_ = ax['T'].set_ylim([60,0])
+_ =  ax['met'].set_xlim(('2015-04-10', '2015-05-10'))
+#+END_SRC
+#+CAPTION: Not that similar to above (but see 2015/04/15-2015/04/18). Here, 45m χpod sees large heat fluxes.
+#+RESULTS: barrier-rama12-2014
+[[file:images/barrier-layer-rama12-2014-feb.png]]
+
+* Spectrogram
+#+BEGIN_SRC ipython :session :ipyfile images/temp/imgoi5WUg.png
+spec = dcpy.ts.Spectrogram(ra15.vel.spd.interpolate_na(dim='time').squeeze(),
+                           dim='time',
+                           window=(7*86400)/(30*60),
+                           shift=(3.5*86400)/(30*60), nsmooth=15)
+np.log10(spec).plot.contourf(x='time', levels=40);
+plt.gca().set_yscale('log')
+#+END_SRC
+
+#+RESULTS:
+
 * MISO signals?
 ** Summary
 cite:Sobel2010 show large TRMM 30-90 day variance between May and October in the Bay.
