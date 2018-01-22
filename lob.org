@@ -88,11 +88,28 @@ if 'nrl4' in locals():
 if 'nrl5' in locals():
     nrl5.CombineTurb()
 #+END_SRC
+
+#+NAME: summary-all
+#+BEGIN_SRC ipython :session :results none
+if 'ra12' in locals():
+    <<ra12-summary()>>
+    <<ra12-2014-summary()>>
+    <<ra12-2015-summary()>>
+if 'ra15' in locals():
+    <<ra15-summary()>>
+if 'nrl1' in locals():
+    <<nrl1-summary()>>
+if 'nrl3' in locals():
+    <<nrl3-summary()>>
+if 'nrl4' in locals():
+    <<nrl4-summary()>>
+if 'nrl5' in locals():
+    <<nrl5-summary()>>
+#+END_SRC
+
 ** RAMA
 #+NAME: read-ra12
 #+BEGIN_SRC ipython :session :results none
-
-
 import moor
 import chipy
 moor = importlib.reload(moor)
@@ -134,6 +151,8 @@ chipy = importlib.reload(chipy)
 ra15 = moor.moor(90, 15, 'RAMA 15N', 'rama', '../rama/RAMA14/')
 ra15.AddChipod(813, 15, 'pm', 'Turb.mat')
 ra15.AddChipod(814, 30, 'mm1', 'Turb.mat')
+ra15.χpod[813].load_pitot()
+ra15.χpod[814].load_pitot()
 ra15.CombineTurb()
 ra15.ReadMet('../rama/data/met15n90e_10m.cdf', WindType='pmel')
 ra15.ReadMet(FluxType='pmel')
