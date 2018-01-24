@@ -851,40 +851,84 @@ g.axes[0,0].set_xlim([0, 100])
 * Barrier layers
 When the freshwater arrives, I see large values of Jqt at 30m/45m. This is at both 12N, 15N in both 2014, 2015.
 
+- This observation contradicts the presence of layers hmmm...
+
 1. Some of these are where T_z changes sign frequently. (╯°□°）╯︵ ┻━┻
 2. Sally says that in the Gulf of Mexico she thinks that ambient water is getting subducted under river plumes and mixing there because of strong shear at the base. This is as opposed to the standard barrier layer idea that there is not much mixing happening beneath the mixed layer: i.e., the freshwater cap prevents wind-forced turbulence from penetrating downward?
 
 Some examples follow.
 #+NAME: barrier-rama15-2015
 #+BEGIN_SRC ipython :session :ipyfile images/barrier-layer-rama15-2015-feb.png :results raw
-ax = ra15.Plotχpods(region={'time': slice('2015-02-20', '2015-03-20')},
-                    filt='hann',  filter_len=6*3600)
+ax = ra15.Plotχpods(region={'time': slice('2015-02-01', '2015-03-31')},
+                    filt='hann',  filter_len=None, Tlim=[26.5,28])
 _ = ax['T'].set_ylim([50,0])
+# _ = ax['Jq'].set_yscale('symlog', linthreshy=10, linscaley=0.5)
 #+END_SRC
-#+CAPTION: In this one, the rise in turbulence at 30m coincides with speeds increasing. 30m χpod sees relatively few changes in T_z sign (compare with below)
+#+CAPTION: In this one, the rise in turbulence at 30m coincides with *speed increasing*. 30m χpod sees relatively few changes in T_z sign, but high heat fluxes (compare with below). The "waviness" seems to be M_2.
 #+RESULTS: barrier-rama15-2015
 [[file:images/barrier-layer-rama15-2015-feb.png]]
+
+When the freshwater arrives we see stronger M_2 tides, maybe a packet came by?
+
+#+BEGIN_SRC ipython :session :ipyfile images/rama-15n-freshwater-M2.png
+f, ax = plt.subplots(3,1, sharex=False, sharey=False)
+
+(ra15.ctd.S.sel(depth=[10, 20, 40, 60],
+                time=slice('2015-02-01', '2015-03-31'))
+.plot.line(x='time', ax=ax[0]))
+
+(ra15.ctd.S.sel(depth=[10, 20, 40, 60],
+                time=slice('2015-02-22', '2015-03-01'))
+.plot.line(x='time', ax=ax[1], add_legend=False))
+ax[0].set_title('RAMA 15N, arrival of freshwater 2015 - Note M2 signal')
+
+specargs =dict(dt=600/86400, nsmooth=2, multitaper=True, preserve_area=False, ax=ax[2])
+dcpy.ts.PlotSpectrum(ra15.ctd.S.sel(depth=40,
+                                    time=slice('2015-02-12', '2015-03-03')),
+                     ,**specargs)
+dcpy.ts.PlotSpectrum(ra15.ctd.S.sel(depth=40,
+                                    time=slice('2015-03-03', '2015-03-30')),
+                     ,**specargs)
+ax[2].set_ylim([10**-5, 1])
+ax[2].set_xlabel('Freq (cpd)')
+
+# plt.grid(True)
+plt.gca().set_title('Spectra of salinity at 40m | RAMA 15N, 90E')
+plt.legend(['2015-Feb-12 - 2015-Mar-05', '2015-Mar-05 - 2015-Mar-30'])
+# plt.gca().set_yscale('linear')
+# plt.gca().set_ylim([0, 1])
+
+plt.setp(ax[0].get_xticklabels(), visible=True, rotation=20)
+plt.setp(ax[1].get_xticklabels(), visible=True, rotation=20)
+
+f.set_size_inches((8.5, 12.5))
+plt.tight_layout()
+#+END_SRC
+#+RESULTS:
+:RESULTS:
+[[file:images/rama-15n-freshwater-M2.png]]
+:END:
 
 #+NAME: barrier-rama12-2014
 #+BEGIN_SRC ipython :session :ipyfile images/barrier-layer-rama12-2014-feb.png :results raw
 ax = ra12.Plotχpods(region={'time': slice('2014-02-20', '2014-03-20')},
-                    filt='hann',  filter_len=6*3600)
-_ = ax['T'].set_ylim([45,0])
+                    Tlim=[26.5, 28.75],
+                    filt='hann',  filter_len=3*3600)
+_ = ax['T'].set_ylim([60,0])
 #+END_SRC
 #+CAPTION: Here, both χpods see frequent changes in the sign of T_z and heat fluxes are large and change sign often. |T_z| stays decently big (0.01-0.1) for chunks of time --- these are associated with large fluxes. Maybe using internal T_z might make sense here.
 #+RESULTS: barrier-rama12-2014
 [[file:images/barrier-layer-rama12-2014-feb.png]]
 
-#+NAME: barrier-rama12-2014
-#+BEGIN_SRC ipython :session :ipyfile images/barrier-layer-rama12-2014-feb.png :results raw
+#+NAME: barrier-rama12-2015
+#+BEGIN_SRC ipython :session :ipyfile images/barrier-layer-rama12-2015-apr.png :results raw
 ax = ra12.Plotχpods(filt='hann',  filter_len=6*3600, met='tropflux')
 _ = ax['T'].set_ylim([60,0])
 _ =  ax['met'].set_xlim(('2015-04-10', '2015-05-10'))
 #+END_SRC
 #+CAPTION: Not that similar to above (but see 2015/04/15-2015/04/18). Here, 45m χpod sees large heat fluxes.
-#+RESULTS: barrier-rama12-2014
-[[file:images/barrier-layer-rama12-2014-feb.png]]
-
+#+RESULTS: barrier-rama12-2015
+[[file:images/barrier-layer-rama12-2015-apr.png]]
 * Spectrogram
 #+BEGIN_SRC ipython :session :ipyfile images/temp/imgoi5WUg.png
 spec = dcpy.ts.Spectrogram(ra15.vel.spd.interpolate_na(dim='time').squeeze(),
