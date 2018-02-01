@@ -12,16 +12,17 @@
 #+CALL: read-ra12()
 #+NAME: ra12-summary
 #+BEGIN_SRC ipython :session :ipyfile images/ra12-summary.png
-%matplotlib inline
-ax = ra12.Plotχpods(quiv=False, filt='hann', filter_len=5*86400.0,
-                    TSkind='pcolor', met='tropflux')
+ax = ra12.Plotχpods(quiv=False, filt='hann', filter_len=12*3600.0,
+                    TSkind='timeseries', met='local')
 _ = ax['N2'].set_ylim([0, 8])
 #+END_SRC
 #+ATTR_HTML: :class full-width
 #+RESULTS: ra12-summary
+:RESULTS:
 [[file:images/ra12-summary.png]]
+:END:
 
-
+#+NAME: ra12-2014-summary
 #+BEGIN_SRC ipython :session :ipyfile images/ra12-2014-summary.png
 %matplotlib inline
 ax = ra12.Plotχpods(quiv=False, filt='mean', filter_len=3*86400.0,
@@ -31,18 +32,21 @@ _ = ax['N2'].set_ylim([0, 8])
 #+END_SRC
 #+ATTR_HTML: :class full-width
 #+CAPTION: 2014 (RAMA13 deployment mostly)
-#+RESULTS:
+#+RESULTS: ra12-2014-summary
+:RESULTS:
 [[file:images/ra12-2014-summary.png]]
+:END:
 
+#+NAME: ra12-2015-summary
 #+BEGIN_SRC ipython :session :ipyfile images/ra12-2015-summary.png
 ax = ra12.Plotχpods(quiv=False, filt='mean', filter_len=3*86400.0,
                     TSkind='pcolor', met='tropflux',
                     region=dict(time='2015'))
 _ = ax['N2'].set_ylim([0, 8])
 #+END_SRC
-
-#+RESULTS:
-[[file:images/ra12-2015-summary.png]]
+#+RESULTS: ra12-2015-summary
+:RESULTS:
+:END:
 
 #+ATTR_HTML: :class full-width
 [[file:images/rama13-summary-miso.png]]
@@ -715,7 +719,7 @@ hf.suptitle('RAMA 12N | 30m')
 ** Summarize
 #+NAME: ra15-summary
 #+BEGIN_SRC ipython :session :ipyfile images/ra15-summary.png
-ax = ra15.Plotχpods(quiv=False, filt='mean', filter_len=86400.0,
+ax = ra15.Plotχpods(quiv=False, filt='mean', filter_len=1*3600.0,
                     TSkind='pcolor', met='tropflux')
 ax['Jq'].set_ylim([-100, 100])
 # ax['S'].set_ylim([30, 34])
@@ -723,7 +727,9 @@ _ = ax['N2'].set_ylim([0, 7])
 #+END_SRC
 #+ATTR_HTML: :class full-width
 #+RESULTS: ra15-summary
+:RESULTS:
 [[file:images/ra15-summary.png]]
+:END:
 
 #+BEGIN_SRC ipython :session :ipyfile images/temp/img0ahL18.png
 region = dict(time=slice('2014-12-13', '2014-12-15'), depth=slice(0,60))

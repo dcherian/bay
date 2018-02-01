@@ -510,32 +510,59 @@ if 'KTm' not in locals():
                                moornames.keys())))
                     .astype('category'))
 
-    ρbins = get_kmeans_bins(11, KTdf['ρ'])
+depth_minus_mld = (KTdf.z - KTdf.mld)
+depth_minus_ild = (KTdf.z - KTdf.ild)
+error_depth = 10
+mask_ml = depth_minus_mld <= error_depth
+mask_bl = np.logical_and(np.logical_not(mask_ml),
+                         depth_minus_ild <= error_depth)
+mask_deep = np.logical_not(np.logical_or(mask_ml, mask_bl))
 
+KTdf['bin'] = ''
+KTdf.bin[mask_ml] = 'ML'
+KTdf.bin[mask_bl] = 'BL'
+# KTdf.bin[mask_deep] = pd.cut(KTdf.ρ[mask_deep],
+#                              get_kmeans_bins(10, KTdf['ρ'][mask_deep]),
+#                              precision=1)
+KTdf.bin[mask_deep] = pd.qcut(KTdf.ρ[mask_deep], 8, precision=1)
+KTdf['bin'] = KTdf['bin'].astype('category')
 
-# KTdf = KTdf.set_index(['season'])
-# KTdf = KTdf.assign(
-#     median_z=KTdf.groupby([bins, 'season']).transform('median')['z'])
-# KTdf = KTdf.assign(
-#     median_KT=KTdf.groupby([bins, 'season']).transform('median')['KT'])
+assert(np.sum(KTdf.bin == '') == 0)
 
-bins = pd.qcut(KTdf.ρ, 11)
-bins = pd.cut(KTdf.ρ, ρbins)
+# bins = pd.qcut(KTdf.ρ, 11)
+# bins = pd.cut(KTdf.ρ, get_kmeans_bins(13, KTdf.ρ))
 
-f, ax = vert_distrib(KTdf, bins)
-plt.savefig('images/vert-profile.svg', bbox_inches='tight')
+f, ax = vert_distrib(KTdf, KTdf.bin)
+# plt.savefig('images/vert-profile.svg', bbox_inches='tight')
 #+END_SRC
 #+ATTR_HTML: :class full-width
 #+RESULTS: vert-profile
 :RESULTS:
-[[file:images/bay-KT-vert-profile-new.png]]
 :END:
 
 1. High mixing at 70-10m depth in SW monsoon, compared to NE monsoon.
    1. Connected to SMC/SLD?
    2. Near-inertial waves from storms could be a thing
 
+#+NAME: sal-distrib
+#+BEGIN_SRC ipython :session :ipyfile images/temp/imgbp6rfN.png :results drawer
+<<define-vert_distrib>>
 
+Sbins = pd.qcut(KTdf.S, 11)
+
+f, ax = plot_distrib(KTdf, bins, varname='S', xlines=[32, 35])
+# plot_distrib(KTdf.where(KTdf.S > 34.9), bins, pal=[[0.5,0.5,0.5]]*13, f=f, ax=ax)
+#+END_SRC
+#+RESULTS: sal-distrib
+:RESULTS:
+[[file:images/temp/imgbp6rfN.png]]
+:END:
+*** old attempts
+**** without MLD binning : only ρ binning
+#+CAPTION: After extending unit 814 with pitot
+[[file:images/bay-KT-vert-profile-pre-mld-bin.png]]
+
+**** by latitude
 #+NAME: kt-by-lat
 #+BEGIN_SRC ipython :session :ipyfile images/bay-KT-by-lat.png
 KTdf.loc[KTdf['depth'] == 43.0, 'depth'] = 45.0
@@ -561,23 +588,6 @@ plt.subplots_adjust(hspace=-0.15)
 #+RESULTS: kt-by-lat
 [[file:images/bay-KT-by-lat.png]]
 
-#+NAME: sal-distrib
-#+BEGIN_SRC ipython :session :ipyfile images/temp/imgbp6rfN.png :results drawer
-<<define-vert_distrib>>
-
-Sbins = pd.qcut(KTdf.S, 11)
-
-f, ax = plot_distrib(KTdf, bins, varname='S', xlines=[32, 35])
-# plot_distrib(KTdf.where(KTdf.S > 34.9), bins, pal=[[0.5,0.5,0.5]]*13, f=f, ax=ax)
-#+END_SRC
-#+RESULTS: sal-distrib
-:RESULTS:
-[[file:images/temp/imgbp6rfN.png]]
-:END:
-
-#+BEGIN_SRC ipython :session :ipyfile images/temp/img0WlFMK.png
-
-#+END_SRC
 *** full distrib OLD
 #+NAME: define-seaborn_vert_distrib
 #+BEGIN_SRC ipython :session :results none
@@ -833,11 +843,10 @@ syearly = (xr.concat(stacked, dim='year')
 
 g = syearly.plot.contourf(x='dayofyear', row='year', col='lat',
                           robust=True, levels=40, yincrease=False, size=1, aspect=7)
-g.axes[0,0].set_xlim([0, 100])
+# g.axes[0,0].set_xlim([0, 100])
 #+END_SRC
 #+RESULTS:
 :RESULTS:
-: (0, 100)
 [[file:images/rama-sal-mosaic.png]]
 :END:
 *** old figures :noexport:
@@ -853,28 +862,32 @@ When the freshwater arrives, I see large values of Jqt at 30m/45m. This is at bo
 
 - This observation contradicts the presence of layers hmmm...
 
-1. Some of these are where T_z changes sign frequently. (╯°□°）╯︵ ┻━┻
-2. Sally says that in the Gulf of Mexico she thinks that ambient water is getting subducted under river plumes and mixing there because of strong shear at the base. This is as opposed to the standard barrier layer idea that there is not much mixing happening beneath the mixed layer: i.e., the freshwater cap prevents wind-forced turbulence from penetrating downward?
+- Some of these are where T_z changes sign frequently. (╯°□°）╯︵ ┻━┻
+
+- Sally says that in the Gulf of Mexico she thinks that ambient water is getting subducted under river plumes and mixing there because of strong shear at the base. This is as opposed to the standard barrier layer idea that there is not much mixing happening beneath the mixed layer: i.e., the freshwater cap prevents wind-forced turbulence from penetrating downward?
+
+- Ritabrata observes similar stuff: high mixing near the base and mixing shuts down in 10-20m range below the base.
 
 Some examples follow.
 #+NAME: barrier-rama15-2015
 #+BEGIN_SRC ipython :session :ipyfile images/barrier-layer-rama15-2015-feb.png :results raw
 ax = ra15.Plotχpods(region={'time': slice('2015-02-01', '2015-03-31')},
-                    filt='hann',  filter_len=None, Tlim=[26.5,28])
+                    filt='mean',  filter_len=6*3600, Tlim=[26.5,28])
 _ = ax['T'].set_ylim([50,0])
-# _ = ax['Jq'].set_yscale('symlog', linthreshy=10, linscaley=0.5)
+_ = ax['Jq'].set_yscale('symlog', linthreshy=10, linscaley=0.5)
 #+END_SRC
+#+ATTR_HTML: :class full-width
 #+CAPTION: In this one, the rise in turbulence at 30m coincides with *speed increasing*. 30m χpod sees relatively few changes in T_z sign, but high heat fluxes (compare with below). The "waviness" seems to be M_2.
 #+RESULTS: barrier-rama15-2015
 [[file:images/barrier-layer-rama15-2015-feb.png]]
 
-When the freshwater arrives we see stronger M_2 tides, maybe a packet came by?
+When the freshwater arrives we see stronger M_2 tides, maybe a packet came by? But the variability is confined to 20m, 40m CTDs.
 
 #+BEGIN_SRC ipython :session :ipyfile images/rama-15n-freshwater-M2.png
 f, ax = plt.subplots(3,1, sharex=False, sharey=False)
 
 (ra15.ctd.S.sel(depth=[10, 20, 40, 60],
-                time=slice('2015-02-01', '2015-03-31'))
+                time=slice('2015-02-01', '2015-04-10'))
 .plot.line(x='time', ax=ax[0]))
 
 (ra15.ctd.S.sel(depth=[10, 20, 40, 60],
@@ -884,17 +897,18 @@ ax[0].set_title('RAMA 15N, arrival of freshwater 2015 - Note M2 signal')
 
 specargs =dict(dt=600/86400, nsmooth=2, multitaper=True, preserve_area=False, ax=ax[2])
 dcpy.ts.PlotSpectrum(ra15.ctd.S.sel(depth=40,
-                                    time=slice('2015-02-12', '2015-03-03')),
-                     ,**specargs)
+                                    time=slice('2015-02-16', '2015-03-10')),
+                     **specargs)
 dcpy.ts.PlotSpectrum(ra15.ctd.S.sel(depth=40,
-                                    time=slice('2015-03-03', '2015-03-30')),
-                     ,**specargs)
+                                    time=slice('2015-03-20', '2015-04-10')),
+                     **specargs)
 ax[2].set_ylim([10**-5, 1])
 ax[2].set_xlabel('Freq (cpd)')
+dcpy.plots.linex([1/(2*np.pi/dcpy.oceans.coriolis(15)/86400),
+                  24/12.42], ax=ax[2])
 
-# plt.grid(True)
 plt.gca().set_title('Spectra of salinity at 40m | RAMA 15N, 90E')
-plt.legend(['2015-Feb-12 - 2015-Mar-05', '2015-Mar-05 - 2015-Mar-30'])
+plt.legend(['2015-Feb-16 - 2015-Mar-10', '2015-Mar-20 - 2015-Apr-10'])
 # plt.gca().set_yscale('linear')
 # plt.gca().set_ylim([0, 1])
 
@@ -907,6 +921,29 @@ plt.tight_layout()
 #+RESULTS:
 :RESULTS:
 [[file:images/rama-15n-freshwater-M2.png]]
+:END:
+
+10m velocity is not useful: 10m salinity behaves much differently. There's a near inertial packet Mar 13-17, otherwise just M2 in velocity.
+#+BEGIN_SRC ipython :session :ipyfile images/temp/imgt8hw0H.png
+hdl, ax = (dcpy.ts.PlotSpectrum((ra15.vel.u+1j*ra15.vel.v)
+                                .squeeze().sel(time=slice('2014-02-16',
+                                                          '2014-03-10')),
+                                multitaper=True, dt=30*60/86400))
+hdl, ax = (dcpy.ts.PlotSpectrum((ra15.vel.u+1j*ra15.vel.v)
+                                .squeeze().sel(time=slice('2014-03-12',
+                                                          '2014-04-10')),
+                                multitaper=True, dt=30*60/86400, ax=ax))
+
+dcpy.plots.linex([1/(2*np.pi/dcpy.oceans.coriolis(15)/86400),
+                  24/12.42], ax=ax)
+ax[1].set_xlim([1e-1, 1e1])
+ax[0].set_xlim([1e1, 1e-1])
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+: (10.0, 0.1)
+[[file:images/temp/imgt8hw0H.png]]
 :END:
 
 #+NAME: barrier-rama12-2014
@@ -1659,6 +1696,26 @@ plt.legend()
 
 * ARGO data : S_min and S_max
 [[file:../images//argo-smin-smax.png]]
+* code tests
+** MLD calc
+#+BEGIN_SRC ipython :session :ipyfile images/temp/imgJlnzfg.png
+f, ax = plt.subplots(1,3)
+
+it = 35000
+ra15.ctd['T'].isel(time=it).plot(ax=ax[0])
+dcpy.plots.linex(ra15.ild.isel(time=it), ax=ax[0])
+
+ra15.ctd['S'].isel(time=it).plot(ax=ax[1])
+dcpy.plots.linex(ra15.sld.isel(time=it), ax=ax[1])
+
+ra15.ctd['ρ'].isel(time=it).plot(ax=ax[2])
+dcpy.plots.linex(ra15.mld.isel(time=it), ax=ax[2])
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+:END:
+
 * sampling considerations
 ** ISO signals
 Can I  see a 10/20/30/50/60/90 day peak confidently in a year-long record?
