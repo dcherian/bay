@@ -40,7 +40,7 @@ def make_merged_KT(moorings):
     KT = []
     for m in moorings:
         ktsubset = (m.KT.copy()
-                    .reset_coords(['ρ', 'S', 'T', 'z']))
+                    .reset_coords(['ρ', 'S', 'T', 'z', 'mld', 'ild']))
 
         ktsubset['depth'].values = np.round(ktsubset.z.mean(dim='time'),
                                             decimals=1)
@@ -112,7 +112,7 @@ def make_merged_KT(moorings):
         KT.append(ktsubset.reset_coords())
 
     KTm = xr.merge(KT)
-    KTm.to_netcdf('merged_KT.nc', format='netCDF4')
+    # KTm.to_netcdf('merged_KT_test.nc', format='netCDF4')
     KTm.resample(time='1H').mean(dim='time').to_netcdf('merged_KT_hourly.nc')
     KTm.resample(time='6H').mean(dim='time').to_netcdf('merged_KT_6hourly.nc')
 
@@ -333,7 +333,7 @@ def vert_distrib(KTdf, bins, varname='KT', pal=None, f=None, ax=None,
                  ,**kwargs):
 
     base_marker_size = 5
-    pal_dist = sns.color_palette("GnBu_d", n_colors=13)
+    pal_dist = sns.color_palette("GnBu_d", n_colors=len(bins.unique())+2)
     pal_dist.reverse()
 
     if pal is None:
@@ -345,8 +345,8 @@ def vert_distrib(KTdf, bins, varname='KT', pal=None, f=None, ax=None,
 
     if varname is 'KT':
         title = '$\log_{10}$ hourly averaged $K_T$'
-        xlim = kwargs.pop('xlim', [-7,2])
-        xlines = kwargs.pop('xlines', [-5, -4])
+        xlim = kwargs.pop('xlim', [-7.5,2])
+        xlines = kwargs.pop('xlines', [-5, -4, -1])
     else:
         title = varname
         xlim = kwargs.pop('xlim', None)
@@ -362,7 +362,7 @@ def vert_distrib(KTdf, bins, varname='KT', pal=None, f=None, ax=None,
         aa.set_title(seas + '\n(' + months[seas] +')')
         if xlim is not None:
             aa.set_xlim(xlim)
-            aa.set_xticks(range(*xlim))
+            aa.set_xticks(range(-7, 0))
 
     # seaborn treats things as categoricals booo...
     # do things the verbose matplotlib way
@@ -371,31 +371,35 @@ def vert_distrib(KTdf, bins, varname='KT', pal=None, f=None, ax=None,
         season = label[1]
         zloc = sp.stats.trim_mean(df.z, 0.01)
 
-        if interval.mid > 1000:
-            bin_name = interval.mid-1000
-            if bin_name < 20:
-                if season == 'SW':
-                    zloc -= 5
-                elif season == 'NE' or season == 'SWNE':
-                    zloc -= 2.5
+        bin_name = (np.round(interval.mid-1000, 1).astype('str')
+                    if isinstance(interval, pd.Interval)
+                    else interval)
 
-            if (bin_name < 21 and bin_name > 20.8):
-                if season == 'SWNE':
-                    zloc +=2.5
+        # if interval.mid > 1000:
+        #     bin_name = interval.mid-1000
+        #     if bin_name < 20:
+        #         if season == 'SW':
+        #             zloc -= 5
+        #         elif season == 'NE' or season == 'SWNE':
+        #             zloc -= 2.5
 
-            if (bin_name > 21.1 and bin_name < 21.6):
-                if season == 'NE':
-                    zloc += 5
+        #     if (bin_name < 21 and bin_name > 20.8):
+        #         if season == 'SWNE':
+        #             zloc +=2.5
 
-            if (bin_name > 23.7 and bin_name < 25):
-                if season == 'NESW' or season == 'SW':
-                    zloc += 5
+        #     if (bin_name > 21.1 and bin_name < 21.6):
+        #         if season == 'NE':
+        #             zloc += 5
 
-            if (bin_name > 25) and season == 'SW':
-                zloc += 5
+        #     if (bin_name > 23.7 and bin_name < 25):
+        #         if season == 'NESW' or season == 'SW':
+        #             zloc += 5
 
-        else:
-            bin_name = interval.mid
+        #     if (bin_name > 25) and season == 'SW':
+        #         zloc += 5
+
+        # else:
+        #     bin_name = interval.mid
 
         map_kind = {'NRL1': 'NRL',
                     'NRL2': 'NRL',
@@ -453,7 +457,7 @@ def vert_distrib(KTdf, bins, varname='KT', pal=None, f=None, ax=None,
         xtxt = hdl['cbars'].get_paths()[0].vertices[1, 0]
         ytxt = zloc
 
-        ax[season].text(xtxt, ytxt, '     '+np.round(bin_name, 1).astype('str'),
+        ax[season].text(xtxt, ytxt, '     '+ bin_name,
                         color=color, ha='left', va='center', fontsize=7)
         ax[season].text(2, ytxt, format_moor_names(df['moor'].unique()),
                         color=color, ha='left', va='center', fontsize=6)
@@ -466,8 +470,9 @@ def vert_distrib(KTdf, bins, varname='KT', pal=None, f=None, ax=None,
 
     ax['NE'].set_ylabel('depth (m)')
     ax[season].set_ylim([125, 0])
-    ax[season].set_yticks(np.arange(120,0,-10))
-    ax[season].set_yticklabels(np.arange(120,0,-10).astype('str'))
+    sns.despine(fig=f, left=False, bottom=False, trim=True)
+    # ax[season].set_yticks(np.arange(120,0,-10))
+    # ax[season].set_yticklabels(np.arange(120,0,-10).astype('str'))
 
     for aa in ax.values():
         for xx in xlines:
@@ -481,7 +486,7 @@ def vert_distrib(KTdf, bins, varname='KT', pal=None, f=None, ax=None,
 #+END_SRC
 
 #+NAME: vert-profile
-#+BEGIN_SRC ipython :session :ipyfile images/bay-KT-vert-profile-new.png :results drawer
+#+BEGIN_SRC ipython :session :ipyfile images/bay-KT-vert-profile-test.png :results drawer
 <<define-vert_distrib>>
 
 if 'KTm' not in locals():
@@ -490,12 +495,13 @@ if 'KTm' not in locals():
         KTm['KT'].values = np.log10(KTm['KT'].values)
 
     KTm['season'] = KTm.time.monsoon.labels
-    KTdf = (KTm[['KT', 'T', 'S', 'z', 'ρ', 'season']]
+    KTdf = (KTm[['KT', 'T', 'S', 'z', 'ρ', 'mld', 'ild', 'season']]
             .to_dataframe()
             .dropna(axis=0, subset=['KT'])
             .reset_index())
-    KTdf['latlon'] = (KTdf['lat'].astype('str') + 'N, '
-                      + KTdf['lon'].astype('str') + 'E').astype('category')
+    KTdf['latlon'] = (KTdf['lat'].astype('float32').astype('str') + 'N, '
+                      + KTdf['lon'].astype('float32').astype('str')
+                      + 'E').astype('category')
     KTdf['season'] = KTdf['season'].astype('category')
 
     moornames = {'RAMA12': '12.0N, 90.0E',
