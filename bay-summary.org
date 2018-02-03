@@ -32,7 +32,8 @@
 [[file:images/nrl5-summary.png]]
 
 * vertical distribution of $K_T$
-** Mangle together and change to dataframe
+** Make plot
+*** Mangle together and change to dataframe
 #+CALL: read-all-moorings()
 #+NAME: make-merged-KT
 #+BEGIN_SRC ipython :session :results none
@@ -42,8 +43,8 @@ def make_merged_KT(moorings):
         ktsubset = (m.KT.copy()
                     .reset_coords(['ρ', 'S', 'T', 'z', 'mld', 'ild']))
 
-        ktsubset['depth'].values = np.round(ktsubset.z.mean(dim='time'),
-                                            decimals=1)
+        # ktsubset['depth'].values = np.round(ktsubset.z.mean(dim='time'),
+        #                                     decimals=1)
 
         ktsubset = ktsubset.expand_dims(['lat', 'lon'])
         ktsubset['season'] = ktsubset.time.monsoon.labels
@@ -112,6 +113,15 @@ def make_merged_KT(moorings):
         KT.append(ktsubset.reset_coords())
 
     KTm = xr.merge(KT)
+
+    # make sure the merging worked
+    for m in moorings:
+        merged = (KTm.sel(lon=m.lon, lat=m.lat).reset_coords().KT
+                  .dropna(dim='depth', how='all')
+                  .dropna(dim='time', how='all'))
+        orig = m.KT.reset_coords().KT.dropna(dim='time', how='all')
+        xr.testing.assert_equal(merged, orig)
+
     # KTm.to_netcdf('merged_KT_test.nc', format='netCDF4')
     KTm.resample(time='1H').mean(dim='time').to_netcdf('merged_KT_hourly.nc')
     KTm.resample(time='6H').mean(dim='time').to_netcdf('merged_KT_6hourly.nc')
@@ -145,7 +155,7 @@ def bin_and_to_dataframe(KTm, ρbins=None, Sbins=None):
                  'NRL4': '8.0N, 87.0E',
                  'NRL5': '8.0N, 88.5E'}
     KTdf['moor'] = KTdf['latlon'].map(dict(zip(moornames.values(),
-                                            moornames.keys()))).astype('category')
+                                               moornames.keys()))).astype('category')
     return KTdf
 
 def histedges_equalN(x, nbin):
@@ -159,7 +169,7 @@ def histedges_equalN(x, nbin):
 moorings = [ra12, ra15, nrl1, nrl3, nrl4, nrl5]
 make_merged_KT(moorings)
 #if 'KTm' in locals():
- #    del KTm
+#    del KTm
 
 # KTm = xr.open_dataset('merged_KT.nc', autoclose=True)
 #ρbins = histedges_equalN(np.ravel(KTm.ρ), 11)
@@ -167,129 +177,6 @@ make_merged_KT(moorings)
 
 #KTdf = bin_and_to_dataframe(KTm, ρbins)
 #+END_SRC
-
-Test out binning so that there are equal number of observations (NaN filtered) in each bin
-#+BEGIN_SRC ipython :session :ipyfile images/temp/imgSAH1E0.png :results drawer
-KTm.ρ.plot.hist(bins='fd', density=True)
-ρbins = histedges_equalN(np.ravel(KTm.ρ), 12)
-_ = KTm.ρ.plot.hist(bins=ρbins, density=True, edgecolor='k', facecolor='none')
-#+END_SRC
-#+RESULTS:
-:RESULTS:
-[[file:images/temp/imgSAH1E0.png]]
-:END:
-
-
-#+NAME: argo-clim-density
-#+BEGIN_SRC ipython :session :ipyfile images/mean-density-at-moorings.png
-import dcpy.oceans
-import seawater as sw
-
-latitude = [12, 15, 5, 6.5, 8, 8, 8]
-longitude = [90, 90, 85.5, 85.5, 85.5, 87, 88.5]
-name = ['RA12', 'RA15', 'NRL1', 'NRL3', 'NRL4', 'NRL5']
-
-_, ax = plt.subplots(1, 3, sharey=True)
-if 'argoS' not in locals():
-    argoS = xr.open_dataset('~/datasets/argoclim/RG_ArgoClim_Salinity_2016.nc',
-                            decode_times=False, autoclose=True)
-    argoT = xr.open_dataset('~/datasets/argoclim/RG_ArgoClim_Temperature_2016.nc',
-                            decode_times=False, autoclose=True)
-
-for (lon, lat, moorname) in zip(longitude, latitude, name):
-    S = argoS.ARGO_SALINITY_MEAN.sel(LONGITUDE=lon, LATITUDE=lat, method='nearest')
-    T = argoT.ARGO_TEMPERATURE_MEAN.sel(LONGITUDE=lon, LATITUDE=lat, method='nearest')
-    ρ = sw.pden(S, T, argoS.PRESSURE)
-
-    ax[0].plot(S, argoS.PRESSURE, label=moorname)
-    ax[1].plot(T, argoS.PRESSURE, label=moorname)
-    ax[2].plot(ρ, argoS.PRESSURE, label=moorname)
-
-plt.ylim([120, 0])
-plt.gcf().legend()
-dcpy.plots.linex(Sbins, ax=ax[0])
-dcpy.plots.linex(ρbins, ax=ax[2])
-ax[0].set_ylabel('Pressure')
-ax[0].set_xlabel('S')
-ax[1].set_xlabel('T')
-ax[1].set_xlim([20, 30])
-ax[2].set_xlabel('ρ')
-plt.gcf().suptitle('Roemmich & Gilson ARGO Climatology')
-plt.gcf().set_size_inches((5.5, 2.5))
-#+END_SRC
-#+CAPTION: Mark density bins on ARGO climatology density profile
-#+RESULTS: argo-clim-density
-[[file:images/mean-density-at-moorings.png]]
-
-#+NAME: TS-sampled-distribution
-#+BEGIN_SRC ipython :session :ipyfile images/TSρ-sampled-by-χpod.png :results drawer
-f, ax = plt.subplots(2,1)
-sns.violinplot(data=KTdf.dropna(), x="depth", y="ρ", ax=ax[0])
-sns.violinplot(data=KTdf.dropna(), x="depth", y="S", ax=ax[1])
-# sns.violinplot(data=KTdf.dropna(), x="depth", y="T", ax=ax[2])
-plt.gcf().autofmt_xdate()
-ρbins2 = [ 1019.45,  1020.43,  1021.05,  1021.68,
-           1022.49,  1022.94,  1023.49,  1026.27]
-dcpy.plots.liney(ρbins, ax=ax[0])
-dcpy.plots.liney(Sbins, ax=ax[1])
-plt.gcf().set_size_inches((8.5, 7.5))
-plt.tight_layout()
-#+END_SRC
-#+RESULTS: TS-sampled-distribution
-:RESULTS:
-[[file:images/TSρ-sampled-by-χpod.png]]
-:END:
-
-#+NAME: kmeans
-#+BEGIN_SRC ipython :session :ipyfile images/temp/imgiZJc38.png
-data = KTdf.ρ
-centroids, _ = sp.cluster.vq.kmeans(data, 10)
-idx, _ = sp.cluster.vq.vq(data, centroids)
-
-for ii in range(10):
-    ST = np.vstack([KTdf.S[idx == ii], KTdf['T'][idx == ii]]).T
-    hull = sp.spatial.ConvexHull(ST)
-    plt.plot(ST[hull.vertices, 0], ST[hull.vertices, 1])
-
-#+END_SRC
-#+RESULTS: kmeans
-[[file:images/temp/imgiZJc38.png]]
-
-#+NAME: TS-plot
-#+BEGIN_SRC ipython :session :ipyfile images/rho-bins-TS-plot.png :results drawer
-T, S, binned= dcpy.util.BinEqualizeHist([KTdf['T'], KTdf['S']], bins=[200, 100])
-Tg, Sg = np.meshgrid(T, S, indexing='ij')
-ρg = sw.pden(Sg, Tg, 50)
-# plt.plot(KTdf['S'], KTdf['T'], '.')
-plt.pcolormesh(S, T, binned.T, cmap=mpl.cm.Reds)
-# hc = plt.contour(Sg, Tg, ρg, colors='k', levels=ρbins)
-# plt.clabel(hc, fmt='%1.1f')
-plt.xlabel('S')
-plt.ylabel('T')
-
-kmeans = 12
-
-data = KTdf.ρ
-centroids, _ = sp.cluster.vq.kmeans(data, kmeans)
-idx, _ = sp.cluster.vq.vq(data, centroids)
-
-for ii in range(kmeans):
-    ST = np.vstack([KTdf.S[idx == ii], KTdf['T'][idx == ii]]).T
-    hull = sp.spatial.ConvexHull(ST)
-    plt.plot(ST[hull.vertices, 0], ST[hull.vertices, 1], 'k--')
-
-cent = np.sort(centroids)
-newbins = np.hstack([KTdf.ρ.min(), (cent[:-1]+cent[1:])/2])
-hc = plt.contour(Sg, Tg, ρg, colors='k', levels=newbins, zorder=10)
-plt.clabel(hc, fmt='%1.1f')
-#+END_SRC
-#+RESULTS: TS-plot
-:RESULTS:
-: <a list of 12 text.Text objects>
-[[file:images/rho-bins-TS-plot.png]]
-:END:
-
-** Make plot
 *** means/medians profile
 #+NAME: define-vert_distrib
 #+BEGIN_SRC ipython :session :results none
@@ -332,6 +219,7 @@ def format_moor_names(names):
 def vert_distrib(KTdf, bins, varname='KT', pal=None, f=None, ax=None,
                  ,**kwargs):
 
+    plotkind = 'violin'
     base_marker_size = 5
     pal_dist = sns.color_palette("GnBu_d", n_colors=len(bins.unique())+2)
     pal_dist.reverse()
@@ -363,6 +251,15 @@ def vert_distrib(KTdf, bins, varname='KT', pal=None, f=None, ax=None,
         if xlim is not None:
             aa.set_xlim(xlim)
             aa.set_xticks(range(-7, 0))
+
+    # for plotting mean, median profile
+    zvec = dict()
+    mdnvec = dict()
+    meanvec = dict()
+    for seas in months.keys():
+        zvec[seas] = []
+        mdnvec[seas] = []
+        meanvec[seas] = []
 
     # seaborn treats things as categoricals booo...
     # do things the verbose matplotlib way
@@ -412,15 +309,27 @@ def vert_distrib(KTdf, bins, varname='KT', pal=None, f=None, ax=None,
         var = df[varname]
 
         for mm in df['moor'].unique():
-            if len(df['moor'].ix[df['moor'] == mm])/len(df) <= 0.15:
+            if len(df['moor'].ix[df['moor'] == mm])/len(df) <= 0.10:
                 df = df[df['moor'] != mm]
 
-        hdl = ax[season].violinplot(var, positions=[zloc],
-                                    widths=[12],
-                                    vert=False, showmedians=False)
-        trim_horiz_violin(hdl)
+        if plotkind is 'violin':
+            hdl = ax[season].violinplot(var, positions=[zloc],
+                                        widths=[12],
+                                        vert=False, showmedians=False)
+            trim_horiz_violin(hdl)
+            hdl['cmaxes'].set_visible(False)
+            hdl['cmins'].get_paths()[0].vertices[:, 1] = (zloc +
+                                                          np.array([-1,1])
+                                                          ,*df.z.std())
 
-        facecolor = hdl['bodies'][0].get_facecolor()[0]
+        elif plotkind is 'hist':
+            hdl = ax[season].hist(var, bottom=zloc, density=True)
+
+        try:
+            facecolor = hdl['bodies'][0].get_facecolor()[0]
+        except TypeError:
+            facecolor = hdl[2][0].get_facecolor()
+
         color = facecolor[:-1]
 
         # kind = df['moor'].map(map_kind)
@@ -444,6 +353,10 @@ def vert_distrib(KTdf, bins, varname='KT', pal=None, f=None, ax=None,
             median = np.nanmedian(var)
             mean = np.nanmean(var)
 
+        zvec[season].append(zloc)
+        mdnvec[season].append(median)
+        meanvec[season].append(mean)
+
         ax[season].plot(median, zloc, 'o',
                         color=color, zorder=12, ms=base_marker_size-1)
         ax[season].plot(median, zloc, 'o',
@@ -454,19 +367,16 @@ def vert_distrib(KTdf, bins, varname='KT', pal=None, f=None, ax=None,
                         color='w', zorder=12, ms=base_marker_size+2,
                         fillstyle='none')
 
-        xtxt = hdl['cbars'].get_paths()[0].vertices[1, 0]
-        ytxt = zloc
+        try:
+            xtxt = hdl['cbars'].get_paths()[0].vertices[1, 0]
+            ytxt = zloc
 
-        ax[season].text(xtxt, ytxt, '     '+ bin_name,
-                        color=color, ha='left', va='center', fontsize=7)
-        ax[season].text(2, ytxt, format_moor_names(df['moor'].unique()),
-                        color=color, ha='left', va='center', fontsize=6)
-
-        # min K_T is useless.
-        hdl['cmaxes'].set_visible(False)
-        hdl['cmins'].get_paths()[0].vertices[:, 1] = (zloc +
-                                                      np.array([-1,1])
-                                                      ,*df.z.std())
+            ax[season].text(xtxt, ytxt, '     '+ bin_name,
+                            color=color, ha='left', va='center', fontsize=7)
+            ax[season].text(2, ytxt, format_moor_names(df['moor'].unique()),
+                            color=color, ha='left', va='center', fontsize=6)
+        except TypeError:
+            pass
 
     ax['NE'].set_ylabel('depth (m)')
     ax[season].set_ylim([125, 0])
@@ -474,7 +384,14 @@ def vert_distrib(KTdf, bins, varname='KT', pal=None, f=None, ax=None,
     # ax[season].set_yticks(np.arange(120,0,-10))
     # ax[season].set_yticklabels(np.arange(120,0,-10).astype('str'))
 
-    for aa in ax.values():
+    for season in ax:
+        args={'linestyle': '--', 'color': 'dimgray'}
+        idx = np.argsort(zvec[season])
+        ax[season].plot(np.array(mdnvec[season])[idx],
+                        np.array(zvec[season])[idx], **args)
+        ax[season].plot(np.array(meanvec[season])[idx],
+                        np.array(zvec[season])[idx], **args)
+        aa = ax[season]
         for xx in xlines:
             aa.axvline(xx, lw=0.5, ls='dotted', zorder=-50, color='gray')
 
@@ -527,10 +444,10 @@ mask_deep = np.logical_not(np.logical_or(mask_ml, mask_bl))
 KTdf['bin'] = ''
 KTdf.bin[mask_ml] = 'ML'
 KTdf.bin[mask_bl] = 'BL'
-# KTdf.bin[mask_deep] = pd.cut(KTdf.ρ[mask_deep],
-#                              get_kmeans_bins(10, KTdf['ρ'][mask_deep]),
-#                              precision=1)
-KTdf.bin[mask_deep] = pd.qcut(KTdf.ρ[mask_deep], 8, precision=1)
+KTdf.bin[mask_deep] = pd.cut(KTdf.ρ[mask_deep],
+                             get_kmeans_bins(10, KTdf['ρ'][mask_deep]),
+                             precision=1)
+KTdf.bin = pd.qcut(KTdf.ρ, 10, precision=1)
 KTdf['bin'] = KTdf['bin'].astype('category')
 
 assert(np.sum(KTdf.bin == '') == 0)
@@ -546,9 +463,10 @@ f, ax = vert_distrib(KTdf, KTdf.bin)
 :RESULTS:
 :END:
 
-1. High mixing at 70-10m depth in SW monsoon, compared to NE monsoon.
+1. High mixing at 70-100m depth in SW monsoon, compared to NE monsoon.
    1. Connected to SMC/SLD?
    2. Near-inertial waves from storms could be a thing
+   3. Something happens in NRL5, around SW monsoon start to see temperature inversions semi-regularly (rare, but regular)
 
 #+NAME: sal-distrib
 #+BEGIN_SRC ipython :session :ipyfile images/temp/imgbp6rfN.png :results drawer
@@ -593,7 +511,6 @@ plt.subplots_adjust(hspace=-0.15)
 #+END_SRC
 #+RESULTS: kt-by-lat
 [[file:images/bay-KT-by-lat.png]]
-
 *** full distrib OLD
 #+NAME: define-seaborn_vert_distrib
 #+BEGIN_SRC ipython :session :results none
@@ -745,6 +662,128 @@ seaborn_vert_distrib(KTdf, 'mean_depth', 'kde')
 #+END_SRC
 #+RESULTS:
 [[file:images/bay-KT-vert-hist-depths.png]]
+** Bin testing
+
+Test out binning so that there are equal number of observations (NaN filtered) in each bin
+#+BEGIN_SRC ipython :session :ipyfile images/temp/imgSAH1E0.png :results drawer
+KTm.ρ.plot.hist(bins='fd', density=True)
+ρbins = histedges_equalN(np.ravel(KTm.ρ), 12)
+_ = KTm.ρ.plot.hist(bins=ρbins, density=True, edgecolor='k', facecolor='none')
+#+END_SRC
+#+RESULTS:
+:RESULTS:
+[[file:images/temp/imgSAH1E0.png]]
+:END:
+
+
+#+NAME: argo-clim-density
+#+BEGIN_SRC ipython :session :ipyfile images/mean-density-at-moorings.png
+import dcpy.oceans
+import seawater as sw
+
+latitude = [12, 15, 5, 6.5, 8, 8, 8]
+longitude = [90, 90, 85.5, 85.5, 85.5, 87, 88.5]
+name = ['RA12', 'RA15', 'NRL1', 'NRL3', 'NRL4', 'NRL5']
+
+_, ax = plt.subplots(1, 3, sharey=True)
+if 'argoS' not in locals():
+    argoS = xr.open_dataset('~/datasets/argoclim/RG_ArgoClim_Salinity_2016.nc',
+                            decode_times=False, autoclose=True)
+    argoT = xr.open_dataset('~/datasets/argoclim/RG_ArgoClim_Temperature_2016.nc',
+                            decode_times=False, autoclose=True)
+
+for (lon, lat, moorname) in zip(longitude, latitude, name):
+    S = argoS.ARGO_SALINITY_MEAN.sel(LONGITUDE=lon, LATITUDE=lat, method='nearest')
+    T = argoT.ARGO_TEMPERATURE_MEAN.sel(LONGITUDE=lon, LATITUDE=lat, method='nearest')
+    ρ = sw.pden(S, T, argoS.PRESSURE)
+
+    ax[0].plot(S, argoS.PRESSURE, label=moorname)
+    ax[1].plot(T, argoS.PRESSURE, label=moorname)
+    ax[2].plot(ρ, argoS.PRESSURE, label=moorname)
+
+plt.ylim([120, 0])
+plt.gcf().legend()
+dcpy.plots.linex(Sbins, ax=ax[0])
+dcpy.plots.linex(ρbins, ax=ax[2])
+ax[0].set_ylabel('Pressure')
+ax[0].set_xlabel('S')
+ax[1].set_xlabel('T')
+ax[1].set_xlim([20, 30])
+ax[2].set_xlabel('ρ')
+plt.gcf().suptitle('Roemmich & Gilson ARGO Climatology')
+plt.gcf().set_size_inches((5.5, 2.5))
+#+END_SRC
+#+CAPTION: Mark density bins on ARGO climatology density profile
+#+RESULTS: argo-clim-density
+[[file:images/mean-density-at-moorings.png]]
+
+#+NAME: TS-sampled-distribution
+#+BEGIN_SRC ipython :session :ipyfile images/TSρ-sampled-by-χpod.png :results drawer
+f, ax = plt.subplots(2,1)
+sns.violinplot(data=KTdf.dropna(), x="depth", y="ρ", ax=ax[0])
+sns.violinplot(data=KTdf.dropna(), x="depth", y="S", ax=ax[1])
+# sns.violinplot(data=KTdf.dropna(), x="depth", y="T", ax=ax[2])
+plt.gcf().autofmt_xdate()
+ρbins2 = [ 1019.45,  1020.43,  1021.05,  1021.68,
+           1022.49,  1022.94,  1023.49,  1026.27]
+dcpy.plots.liney(ρbins, ax=ax[0])
+dcpy.plots.liney(Sbins, ax=ax[1])
+plt.gcf().set_size_inches((8.5, 7.5))
+plt.tight_layout()
+#+END_SRC
+#+RESULTS: TS-sampled-distribution
+:RESULTS:
+[[file:images/TSρ-sampled-by-χpod.png]]
+:END:
+
+#+NAME: kmeans
+#+BEGIN_SRC ipython :session :ipyfile images/temp/imgiZJc38.png
+data = KTdf.ρ
+centroids, _ = sp.cluster.vq.kmeans(data, 10)
+idx, _ = sp.cluster.vq.vq(data, centroids)
+
+for ii in range(10):
+    ST = np.vstack([KTdf.S[idx == ii], KTdf['T'][idx == ii]]).T
+    hull = sp.spatial.ConvexHull(ST)
+    plt.plot(ST[hull.vertices, 0], ST[hull.vertices, 1])
+
+#+END_SRC
+#+RESULTS: kmeans
+[[file:images/temp/imgiZJc38.png]]
+
+#+NAME: TS-plot
+#+BEGIN_SRC ipython :session :ipyfile images/rho-bins-TS-plot.png :results drawer
+T, S, binned= dcpy.util.BinEqualizeHist([KTdf['T'], KTdf['S']], bins=[200, 100])
+Tg, Sg = np.meshgrid(T, S, indexing='ij')
+ρg = sw.pden(Sg, Tg, 50)
+# plt.plot(KTdf['S'], KTdf['T'], '.')
+plt.pcolormesh(S, T, binned.T, cmap=mpl.cm.Reds)
+# hc = plt.contour(Sg, Tg, ρg, colors='k', levels=ρbins)
+# plt.clabel(hc, fmt='%1.1f')
+plt.xlabel('S')
+plt.ylabel('T')
+
+kmeans = 12
+
+data = KTdf.ρ
+centroids, _ = sp.cluster.vq.kmeans(data, kmeans)
+idx, _ = sp.cluster.vq.vq(data, centroids)
+
+for ii in range(kmeans):
+    ST = np.vstack([KTdf.S[idx == ii], KTdf['T'][idx == ii]]).T
+    hull = sp.spatial.ConvexHull(ST)
+    plt.plot(ST[hull.vertices, 0], ST[hull.vertices, 1], 'k--')
+
+cent = np.sort(centroids)
+newbins = np.hstack([KTdf.ρ.min(), (cent[:-1]+cent[1:])/2])
+hc = plt.contour(Sg, Tg, ρg, colors='k', levels=newbins, zorder=10)
+plt.clabel(hc, fmt='%1.1f')
+#+END_SRC
+#+RESULTS: TS-plot
+:RESULTS:
+: <a list of 12 text.Text objects>
+[[file:images/rho-bins-TS-plot.png]]
+:END:
 * Surface fluxes
 
 #+CALL: read-tropflux()
@@ -1833,7 +1872,30 @@ plt.gcf().set_size_inches((6.5, 6.5))
 
 #+END_SRC
 
-* using pressure instead of accelerometer
+* χ processing
+** really low turbulence
+[[file:images/518-low-turbulence.png]]
+
+- instrument is being pumped through what looks like really quiet layers.
+- 15 sec period roughly : signal is also seen in pressure time series.
+
+** 1 sec IC fits
+Use 526 2017-07-06 to test: this has kstart, kstop, ki saved for the entire year.
+
+1. I can get ~k_stop~ decently well in ~combine_turbulence~. Not doing that well with ~k_start.~
+2. Part of the reason is that I'm not actually getting k_b right which is mystifying.
+3. If I can do ~k_start~ I can also check how many points are in fitting range.
+   1. Though really, I should redo all calculations :(.
+
+#+CAPTION: Comparing estimated k_b with saved k_b. Why is this wrong?!  This might be because chi, epsilon is recalculated right at the end but the k_b I saved was not.
+[[file:images/526-k_b-est-saved.png]]
+
+#+CAPTION: This figure show histograms of ε when k_i > k_{stop}. It compares one where I estimate kstop and other where kstop was saved during iterations.
+[[file:images/526-eps-ki-filter-hist.png]]
+
+#+CAPTION: Here I compare ε distributions after when k_i < k_stop (straddling the transition) and k_i < k_start (always in vc range). These use the saved ranges.
+[[file:images/526-chi-ki-filtering.png]]
+** using pressure instead of accelerometer
 
 Tested with RAMA14-810
 #+CAPTION: Δp is quantized! Bit resolution ≈ 2 cm. I smooth over 0.5 seconds.
