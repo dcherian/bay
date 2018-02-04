@@ -220,7 +220,7 @@ chipy = importlib.reload(chipy)
 
 nrl2 = moor.moor(85.5, 6.5, 'NRL2', 'ebob', '../ebob/')
 nrl2.ReadCTD('NRL2', FileType='ebob')
-nrl2.AddChipod(504, 69, 'mm2', 'Turb.mat')
+nrl2.AddChipod(504, 69, 'mm', 'Turb.mat')
 nrl2.CombineTurb()
 nrl2.ReadVel('NRL2', FileType='ebob')
 nrl2.ReadTropflux('../tropflux/')
