@@ -151,11 +151,10 @@ if TSkind is 'pcolor':
 TSkind = 'contour'
 Tlim = [25, 28.1]
 Slim = [32, 35.5]
-t0 = dt.date2num(dt.datetime.datetime(2013, 12, 29))
-t1 = dt.date2num(dt.datetime.datetime(2014, 2, 8))
 
 ax = ra12.Plotχpods(quiv=False, filter_len=1*3600, filt='hann',
-                    TSkind=TSkind, t0=t0, t1=t1)
+                    TSkind=TSkind,
+                    region=dict(time=slice('2013-12-29', '2014-02-08')))
 
 ax['Jq'].set_ylim([-100, 100])
 ax['N2'].set_ylim([0, 2])
@@ -715,6 +714,44 @@ hf.suptitle('RAMA 12N | 30m')
 #+ATTR_HTML: :class full-width
 #+RESULTS:
 [[file:images/ra12-30m-χ-summary.png]]
+** WDA estimates
+#+BEGIN_SRC ipython :session :ipyfile images/temp/img6iDhwd.png
+plt.style.use('seaborn-colorblind')
+
+tslice = slice('2014-10-04', '2014-10-14');
+tslice = slice('2014-01-27', '2014-02-08');
+
+with plt.style.context({'font.size': 14}):
+    jregion = {'Jtime': tslice}
+    region = {'time': tslice, 'depth': 15}
+
+    f, axx = plt.subplots(2, 1, sharex=True);
+
+    ax = axx[0]
+
+    ra12.met.Jq0.sel(**jregion).plot(ax=ax, label='Jq0')
+
+    ra12.Jq.sel(**region).plot(ax=ax, label='Jqt WDA')
+    ax.plot(ra12.χpod[526].chi['mm1']['time'], ra12.χpod[526].Jq['mm1'],
+            label='Jqt mm1')
+    ax.axhline(0, color='gray', zorder=-10)
+
+    ax2 = ax.twinx()
+    ax2.plot(ra12.χpod[526].chi['mm1']['time'],
+             ra12.χpod[526].chi['mm1']['dTdz'], 'k', label='Tz moor')
+    ra12.Tz.sel(**region).plot(ax=ax2, color='r', label='Tz WDA')
+    ax2.set_ylim([-0.03, 0.03])
+    ax2.axhline(0, color='k', zorder=-10)
+    plt.gcf().legend()
+
+    Lmo  = ra12.monin_obukhov()
+    Lmo.plot(ax=axx[1])
+    axx[1].set_ylim([-100, 30])
+    dcpy.plots.liney([-15, 15, 0], ax=axx[1])
+    ax.set_xlim([region['time'].start, region['time'].stop])
+    ax.set_ylim([-400, 400])
+
+#+END_SRC
 * 15N 2015 (RAMA14/ra-123)
 #+CALL: read-ra15()
 ** Summarize
@@ -799,7 +836,6 @@ plt.gcf().set_size_inches(8.5,5.5)
 :RESULTS:
 [[file:images/ra15-budget.png]]
 :END:
-
 * 12N 2014 (RAMA13/ra-107)
 |------------+------------+-----------------+----------------+------+---------|
 | Section    | Dir        | Vel             | S              | Tz   | Compass |

@@ -2440,6 +2440,25 @@ plt.gcf().set_size_inches((6.5, 6.5))
 #+END_SRC
 
 * χ processing
+** Winters & D'Asaro methodology
+*** Convection
+*** determining sign
+1. Use mooring dT/dz (10-20m scale)
+2. Use sign of hourly moving median (6 points).
+3. For |dT/dz| < 1e-3; use sign of two hourly median
+
+[[file:~/work/bay/images/wda-tz-sign.png]]
+
+[[file:~/work/bay/images/wda-tz-sign-2.png]]
+
+*** noise levels
+The differentiator uses the /analog/ signal as input; so it never differentaties bit-noise in T. i.e. the noise floor in Tp and T are _different._
+
+~chi_chi_proc~ checks for Tp noise floor.
+
+When doing the WDA estimate, I need to check for the T noise floor when sorting temperature.
+*** Use just the sorted gradient or re-evalute with mooring gradient?
+[[file:images/wda-Jq-comparison.png]]
 ** really low turbulence
 
 - instrument is being pumped through what looks like really quiet layers.
