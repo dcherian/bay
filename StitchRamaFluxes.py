@@ -106,8 +106,8 @@ def StitchRamaFluxes():
 
     r12 = xr.merge([lhf, shf, swr, lwr, qnet])
 
-    # r12.squeeze().to_netcdf('./rama-12n-fluxes.nc')
-    # r15.squeeze().to_netcdf('./rama-15n-fluxes.nc')
+    r12.squeeze().to_netcdf('./rama-12n-fluxes.nc')
+    r15.squeeze().to_netcdf('./rama-15n-fluxes.nc')
 
     PlotStitched(r12)
     plt.savefig('/home/deepak/bay/images/stitched-fluxes-ra12.png', bbox_inches='tight')
