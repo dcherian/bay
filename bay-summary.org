@@ -415,6 +415,37 @@ make_merged_KT(moorings)
 *** means/medians profile
 #+NAME: define-vert_distrib
 #+BEGIN_SRC ipython :session :results none
+def bin_ktdf(KTdf, bins):
+
+    error_depth = 5
+
+    depth_minus_mld = (KTdf.z - KTdf.mld)
+    depth_minus_ild = (KTdf.z - KTdf.ild)
+    mask_ml = depth_minus_mld <= error_depth
+    mask_bl = np.logical_and(np.logical_not(mask_ml),
+                             depth_minus_ild <= error_depth)
+    mask_ml_plus = np.logical_and(
+        np.logical_not(np.logical_or(mask_ml, mask_bl)),
+        depth_minus_mld <= 15)
+    mask_ml_plus = np.zeros_like(mask_ml).astype('bool')
+    mask_deep = np.logical_not(np.logical_or(
+        np.logical_or(mask_ml, mask_bl),
+        mask_ml_plus))
+
+    KTdf['bin'] = ''
+    KTdf.bin[mask_ml] = 'ML'
+    KTdf.bin[mask_bl] = 'BL'
+    # KTdf.bin[mask_ml_plus] = 'ML+'
+    # bins = get_kmeans_bins(7, KTdf['ρ'][mask_deep])
+    #KTdf.bin = pd.qcut(KTdf.ρ, 10, precision=1)
+    KTdf.bin[mask_deep] = pd.cut(KTdf.ρ[mask_deep],
+                                 bins,
+                                 precision=1)
+    KTdf['bin'] = KTdf['bin'].astype('category')
+    assert(np.sum(KTdf.bin == '') == 0)
+
+    return KTdf
+
 def get_kmeans_bins(k, data):
     centroids, _ = sp.cluster.vq.kmeans(data, k)
     cent = np.sort(centroids)
@@ -451,13 +482,95 @@ def format_moor_names(names):
 
     return string
 
+def _get_color_from_hdl(hdl):
+    try:
+        facecolor = hdl['bodies'][0].get_facecolor()[0]
+    except TypeError:
+        facecolor = hdl[2][0].get_facecolor()
+
+    return facecolor[:-1]
+
+def plot_distrib(ax, plotkind, var, zloc, zstd, width=12, percentile=False):
+    ''' Actually plot the distribution '''
+
+    base_marker_size = 5
+
+    if np.all(var < 1):
+        # if in log-space transform out and back
+        median = np.log10(np.median(10**var))
+        mean = np.log10(np.mean(10**var))
+        if percentile:
+            prc = np.log10(np.percentile(10**var, 99.5))
+    else:
+        median = np.median(var)
+        mean = np.mean(var)
+        if percentile:
+            prc = np.percentile(var, 99.5)
+
+    if plotkind is 'violin':
+        if percentile:
+            var[var > prc] = np.nan
+
+        hdl = ax.violinplot(var[~np.isnan(var)], positions=[zloc],
+                            widths=[width],
+                            vert=False, showmedians=False)
+
+        for pc in hdl['bodies']:
+            pc.set_alpha(0.55)
+
+        trim_horiz_violin(hdl)
+        hdl['cmaxes'].set_visible(False)
+        hdl['cmins'].get_paths()[0].vertices[:, 1] = (zloc +
+                                                      np.array([-1,1])
+                                                      ,*zstd)
+        if percentile:
+            # use percentile instead of max
+            hdl['cbars'].get_paths()[0].vertices[1, 0] = prc
+
+    elif plotkind is 'hist':
+        hdl = ax.hist(var, bottom=zloc, density=True)
+
+    color = _get_color_from_hdl(hdl)
+
+    ax.plot(median, zloc, 'o',
+            color=color, zorder=12, ms=base_marker_size-1)
+    ax.plot(median, zloc, 'o',
+            color='w', zorder=11, ms=base_marker_size+1)
+    ax.plot(mean, zloc, '^',
+            color=color, zorder=12, ms=base_marker_size)
+    ax.plot(mean, zloc, '^',
+            color='w', zorder=12, ms=base_marker_size+2,
+            fillstyle='none')
+
+    return hdl, median, mean
+
 def vert_distrib(KTdf, bins, varname='KT', pal=None, f=None, ax=None,
-                 ,**kwargs):
+                 label_moorings=True, label_bins=True, adjust_fig=True,
+                 width=12, percentile=False, add_offset=True, **kwargs):
 
     plotkind = 'violin'
-    base_marker_size = 5
-    pal_dist = sns.color_palette("GnBu_d", n_colors=len(bins.unique())+2)
+    nadd = 3 # number of extra colors to generate
+    pal_dist = sns.color_palette("GnBu_d", n_colors=len(bins.unique())+nadd)
     pal_dist.reverse()
+    pal_dist = pal_dist[0:-(nadd)]
+    if 'ML' in bins.cat.categories:
+        pal_dist = np.roll(pal_dist, -1, axis=0)
+    # if 'ML+' in bins.cat.categories:
+    #     pal_dist = np.roll(pal_dist, -1, axis=0)
+    if 'BL' in bins.cat.categories:
+        pal_dist = np.roll(pal_dist, -1, axis=0)
+        if 'ML' in bins.cat.categories:
+            temp = pal_dist[-2,:].copy()
+            pal_dist[-2,:] = pal_dist[-1,:]
+            pal_dist[-1,:] = temp
+
+    map_kind = {'NRL1': 'NRL',
+                'NRL2': 'NRL',
+                'NRL3': 'NRL',
+                'NRL4': 'NRL',
+                'NRL5': 'NRL',
+                'RAMA12': 'RAMA',
+                'RAMA15': 'RAMA'}
 
     if pal is None:
         pal = pal_dist
@@ -467,7 +580,7 @@ def vert_distrib(KTdf, bins, varname='KT', pal=None, f=None, ax=None,
         ax = {'NE': axx[0], 'NESW': axx[1], 'SW': axx[2], 'SWNE': axx[3]}
 
     if varname is 'KT':
-        title = '$\log_{10}$ hourly averaged $K_T$'
+        title = '$\log_{10}$ hourly averaged $K_T$ (m²/s)'
         xlim = kwargs.pop('xlim', [-7.5,2])
         xlines = kwargs.pop('xlines', [-5, -4, -1])
     else:
@@ -501,127 +614,63 @@ def vert_distrib(KTdf, bins, varname='KT', pal=None, f=None, ax=None,
     for index, (label, df) in enumerate(KTdf.groupby([bins, 'season'])):
         interval = label[0]
         season = label[1]
-        zloc = sp.stats.trim_mean(df.z, 0.01)
+        zloc = sp.stats.trim_mean(df.z, 0.1)
+
+        if add_offset:
+            if type(interval) != str and interval.mid < 1020:
+                if season == 'SWNE':
+                    zloc += 5
+            elif interval == 'BL':
+                if season == 'NESW':
+                    zloc -= 5
+                else:
+                    zloc -= 10
+            elif interval == 'ML':
+                zloc -= 5
 
         bin_name = (np.round(interval.mid-1000, 1).astype('str')
                     if isinstance(interval, pd.Interval)
                     else interval)
 
-        # if interval.mid > 1000:
-        #     bin_name = interval.mid-1000
-        #     if bin_name < 20:
-        #         if season == 'SW':
-        #             zloc -= 5
-        #         elif season == 'NE' or season == 'SWNE':
-        #             zloc -= 2.5
-
-        #     if (bin_name < 21 and bin_name > 20.8):
-        #         if season == 'SWNE':
-        #             zloc +=2.5
-
-        #     if (bin_name > 21.1 and bin_name < 21.6):
-        #         if season == 'NE':
-        #             zloc += 5
-
-        #     if (bin_name > 23.7 and bin_name < 25):
-        #         if season == 'NESW' or season == 'SW':
-        #             zloc += 5
-
-        #     if (bin_name > 25) and season == 'SW':
-        #         zloc += 5
-
-        # else:
-        #     bin_name = interval.mid
-
-        map_kind = {'NRL1': 'NRL',
-                    'NRL2': 'NRL',
-                    'NRL3': 'NRL',
-                    'NRL4': 'NRL',
-                    'NRL5': 'NRL',
-                    'RAMA12': 'RAMA',
-                    'RAMA15': 'RAMA'}
-
         var = df[varname]
+        if varname == 'ρ':
+            var -= 1000
 
         for mm in df['moor'].unique():
             if len(df['moor'].ix[df['moor'] == mm])/len(df) <= 0.10:
                 df = df[df['moor'] != mm]
 
-        if plotkind is 'violin':
-            hdl = ax[season].violinplot(var, positions=[zloc],
-                                        widths=[12],
-                                        vert=False, showmedians=False)
-            trim_horiz_violin(hdl)
-            hdl['cmaxes'].set_visible(False)
-            hdl['cmins'].get_paths()[0].vertices[:, 1] = (zloc +
-                                                          np.array([-1,1])
-                                                          ,*df.z.std())
-
-        elif plotkind is 'hist':
-            hdl = ax[season].hist(var, bottom=zloc, density=True)
-
-        try:
-            facecolor = hdl['bodies'][0].get_facecolor()[0]
-        except TypeError:
-            facecolor = hdl[2][0].get_facecolor()
-
-        color = facecolor[:-1]
-
-        # kind = df['moor'].map(map_kind)
-        # ramadf = df[kind == 'RAMA']
-        # nrldf = df[kind == 'NRL']
-        # if not nrldf.empty and not ramadf.empty:
-        #     rhdl = ax[season].violinplot(ramadf[varname], positions=[zloc],
-        #                                  widths=[12],
-        #                                  vert=False, showextrema=False)
-        #     nhdl = ax[season].violinplot(nrldf[varname], positions=[zloc],
-        #                                  widths=[12],
-        #                                  vert=False, showextrema=False)
-        #     trim_horiz_violin(rhdl)
-        #     trim_horiz_violin(nhdl)
-
-        if np.all(var < 1):
-            # if in log-space transform out and back
-            median = np.log10(np.nanmedian(10**var))
-            mean = np.log10(np.nanmean(10**var))
-        else:
-            median = np.nanmedian(var)
-            mean = np.nanmean(var)
+        hdl, median, mean = plot_distrib(ax[season], plotkind, var,
+                                         zloc, df.z.std(), width, percentile)
+        color = _get_color_from_hdl(hdl)
 
         zvec[season].append(zloc)
         mdnvec[season].append(median)
         meanvec[season].append(mean)
 
-        ax[season].plot(median, zloc, 'o',
-                        color=color, zorder=12, ms=base_marker_size-1)
-        ax[season].plot(median, zloc, 'o',
-                        color='w', zorder=11, ms=base_marker_size+1)
-        ax[season].plot(mean, zloc, '^',
-                        color=color, zorder=12, ms=base_marker_size)
-        ax[season].plot(mean, zloc, '^',
-                        color='w', zorder=12, ms=base_marker_size+2,
-                        fillstyle='none')
-
         try:
             xtxt = hdl['cbars'].get_paths()[0].vertices[1, 0]
             ytxt = zloc
 
-            ax[season].text(xtxt, ytxt, '     '+ bin_name,
-                            color=color, ha='left', va='center', fontsize=7)
-            ax[season].text(2, ytxt, format_moor_names(df['moor'].unique()),
-                            color=color, ha='left', va='center', fontsize=6)
+            if label_bins:
+                ax[season].text(xtxt, ytxt, '     '+ bin_name,
+                                color=color, ha='left', va='center',
+                                fontsize=7)
+            if label_moorings:
+                ax[season].text(2, ytxt, format_moor_names(df['moor'].unique()),
+                                color=color, ha='left', va='center', fontsize=6)
         except TypeError:
             pass
 
+
     ax['NE'].set_ylabel('depth (m)')
-    ax[season].set_ylim([125, 0])
-    sns.despine(fig=f, left=False, bottom=False, trim=True)
-    # ax[season].set_yticks(np.arange(120,0,-10))
-    # ax[season].set_yticklabels(np.arange(120,0,-10).astype('str'))
+    ax['NE'].set_ylim([120, 0])
+    # ax['NE'].set_yticks(np.arange(120,0,-20))
+    # ax['NE'].set_yticklabels(np.arange(120,0,-10).astype('str'))
 
     for season in ax:
         args={'linestyle': '--', 'color': 'dimgray'}
-        idx = np.argsort(zvec[season])
+        idx = np.argsort(zvec)
         ax[season].plot(np.array(mdnvec[season])[idx],
                         np.array(zvec[season])[idx], **args)
         ax[season].plot(np.array(meanvec[season])[idx],
@@ -630,15 +679,18 @@ def vert_distrib(KTdf, bins, varname='KT', pal=None, f=None, ax=None,
         for xx in xlines:
             aa.axvline(xx, lw=0.5, ls='dotted', zorder=-50, color='gray')
 
-    f.set_size_inches((8.5, 5.5))
-    f.suptitle(title, y=0.03, va='baseline')
-    plt.subplots_adjust(wspace=0.25)
+
+    if adjust_fig:
+        sns.despine(fig=f, left=False, bottom=False, trim=True)
+        f.set_size_inches((8.5, 5.5))
+        f.suptitle(title, y=0.03, va='baseline')
+        plt.subplots_adjust(wspace=0.25)
 
     return f, ax
 #+END_SRC
 
 #+NAME: vert-profile
-#+BEGIN_SRC ipython :session :ipyfile images/bay-KT-vert-profile-test.png :results drawer
+#+BEGIN_SRC ipython :session :ipyfile images/bay-KT-vert-profile.png :results drawer
 <<define-vert_distrib>>
 
 if 'KTm' not in locals():
@@ -665,37 +717,23 @@ if 'KTm' not in locals():
                  'NRL5': '8.0N, 88.5E'}
     KTdf['moor'] = (KTdf['latlon']
                     .map(dict(zip(moornames.values(),
-                               moornames.keys())))
+                                  moornames.keys())))
                     .astype('category'))
 
-depth_minus_mld = (KTdf.z - KTdf.mld)
-depth_minus_ild = (KTdf.z - KTdf.ild)
-error_depth = 10
-mask_ml = depth_minus_mld <= error_depth
-mask_bl = np.logical_and(np.logical_not(mask_ml),
-                         depth_minus_ild <= error_depth)
-mask_deep = np.logical_not(np.logical_or(mask_ml, mask_bl))
+bins = [1018, 1021, 1022, 1022.5, 1023, 1023.5, 1024.25, 1029]
+KTdf = bin_ktdf(KTdf, bins)
 
-KTdf['bin'] = ''
-KTdf.bin[mask_ml] = 'ML'
-KTdf.bin[mask_bl] = 'BL'
-KTdf.bin[mask_deep] = pd.cut(KTdf.ρ[mask_deep],
-                             get_kmeans_bins(10, KTdf['ρ'][mask_deep]),
-                             precision=1)
-KTdf.bin = pd.qcut(KTdf.ρ, 10, precision=1)
-KTdf['bin'] = KTdf['bin'].astype('category')
+f, ax = vert_distrib(KTdf, KTdf.bin, label_moorings=False, percentile=True)
 
-assert(np.sum(KTdf.bin == '') == 0)
-
-# bins = pd.qcut(KTdf.ρ, 11)
-# bins = pd.cut(KTdf.ρ, get_kmeans_bins(13, KTdf.ρ))
-
-f, ax = vert_distrib(KTdf, KTdf.bin)
-# plt.savefig('images/vert-profile.svg', bbox_inches='tight')
+plt.subplots_adjust(wspace=-0.06)
+# sns.despine(fig=f, left=False, bottom=False, trim=True)
+plt.savefig('images/vert-profile.svg', bbox_inches='tight')
 #+END_SRC
 #+ATTR_HTML: :class full-width
 #+RESULTS: vert-profile
 :RESULTS:
+# Out[1435]:
+[[file:images/bay-KT-vert-profile.png]]
 :END:
 
 1. High mixing at 70-100m depth in SW monsoon, compared to NE monsoon.
