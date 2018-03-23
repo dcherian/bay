@@ -1,11 +1,115 @@
 #+TITLE: Bay of Bengal notes
 #+SETUPFILE: ~/org/notebook.org
 * Map
-#+BEGIN_SRC ipython :session :ipyfile images/map.png :results raw
-import cartopy.crs as ccrs
-from cartopy import feature
-from mpl_toolkits.basemap import cm
+#+NAME: define-make_map
+#+BEGIN_SRC ipython :session :results none
+# markers = {'RAMA': 'o', 'NRL': '^', 'OMM/WHOI': 'o'}
+# colors = {'RAMA': '#0074D9', 'NRL': '#3D9970', 'OMM/WHOI': '#FF4136'}
+# colors = {'RAMA': '#1696A3', 'NRL': '#F89B1F', 'OMM/WHOI': '#EA4D5B'}
+colors = {'RAMA': '#1696A3', 'NRL': '#F89B1F', 'OMM/WHOI': '#EA4D5B'}
 
+def make_map(pods, DX=0.6, DY=0.55, add_year=True, highlight=[]):
+    import cartopy.crs as ccrs
+    from cartopy import feature
+    from mpl_toolkits.basemap import cm
+    labelargs = {'fontsize': 11.5,
+                 'bbox': {
+                     'alpha': 0.25,
+                     'edgecolor': 'none',
+                     'boxstyle' : 'round'}}
+
+    ProjParams = {'min_latitude' : 0.0, # same as lat_0 in proj4 string
+                  'max_latitude' : 30.0, # same as lat_0 in proj4 string
+                  'central_longitude' : 88.0, # same as lon_0
+    }
+    proj = ccrs.PlateCarree()
+
+    coastline = feature.NaturalEarthFeature(name='coastline',
+                                            category='physical',
+                                            scale='50m',
+                                            edgecolor='black',
+                                            facecolor='#b2ccba')
+
+    etopo = xr.open_dataset('~/datasets/ETOPO2v2g_f4.nc4', autoclose=True)
+    extract={'x': slice(60, 96), 'y': slice(-5, 25)}
+
+    def get_color(name, highlight):
+        if name in highlight or len(highlight) == 0:
+            return colors[name]
+        else:
+            return '#888888'
+
+    with plt.rc_context({'font.size': 14}):
+        fig = plt.figure(figsize=(6, 8))
+        ax = plt.axes(projection = proj)
+        ax.set_extent([80, 96, 2, 24])
+        ax.add_feature(coastline)
+        # ax.coastlines('10m', color='slategray', facecolor='slategray', lw=1)
+
+        etopo.z.sel(**extract).plot.contour(
+            transform=ccrs.PlateCarree(),
+            add_colorbar=False,
+            levels=np.sort([-100, -500, -1000,
+                            -2500, -4000, -5000]),
+            colors=['gray'], linewidths=0.5)
+        ax.set_xlabel('')
+        ax.set_ylabel('')
+
+        for name in pods:
+            pod = pods[name]
+            ax.plot(pod['lon'], pod['lat'], transform=ccrs.PlateCarree(),
+                    linestyle='',
+                    marker='o',
+                    color=get_color(pod['label'], highlight),
+                    label=pod['label'], zorder=10)
+
+            text = ''
+            if add_year:
+                if pod['label'] == 'RAMA' and pod['lat'] == 15:
+                    text += '2015\n\n'
+                if pod['label'] == 'OMM/WHOI':
+                    text += '2014-15\n\n'
+
+            for z in pod['depths']:
+                text += z
+                if pod['label'] == 'RAMA' and pod['lat'] == 12 and add_year:
+                    text += ' / ' + pod['depths'][z]
+
+                text += '\n'
+
+            text = text[:-1]
+
+            dx=0; dy=0
+            if pod['ha'] is 'left':
+                dx = DX
+            elif pod['ha'] is 'right':
+                dx = -1 * DX
+            if pod['va'] is 'bottom':
+                dy = DY
+            elif pod['va'] is 'top':
+                dy = - DY
+
+            if name == 'NRL3':
+                dx += 0.6
+
+            if pod['label'] == 'OMM/WHOI':
+                dy += 1.25
+
+            labelargs['bbox']['facecolor'] = get_color(pod['label'], highlight)
+
+            ax.text(pod['lon']+dx, pod['lat']+dy, text,
+                    transform=ccrs.PlateCarree(),
+                    ha=pod['ha'], va=pod['va'],
+                    multialignment='center', **labelargs)
+
+        ax.set_facecolor(None)
+
+    return ax
+#+END_SRC
+
+#+NAME: map
+#+BEGIN_SRC ipython :session :results none
+<<define-make_map>>
 pods = {
     'RAMA12':
         {'lon': 90, 'lat': 12, 'label': 'RAMA',
@@ -19,8 +123,7 @@ pods = {
          'ha': 'right', 'va': 'center',
          'depths': {
              '15 m': '2015',
-             '30 m': '2015',
-             '45 m': '2015'}},
+             '30 m': '2015'}},
     'WHOI':
         {'lon': 90, 'lat': 18, 'label': 'OMM/WHOI',
          'ha': 'left', 'va': 'top',
@@ -32,107 +135,106 @@ pods = {
              '65 m': '2014-15'}},
     'NRL1':
         {'lon': 85.5, 'lat': 5.5, 'label': 'NRL',
-         'ha': 'right', 'va': 'center',
+         'ha': 'center', 'va': 'top',
          'depths': {
-             '55 m': '2015',
-             '75 m': '2015'}},
+             '60 m (55-100)': '2015',
+             '80 m (75-115)': '2015'}},
     'NRL3':
         {'lon': 85.5, 'lat': 8, 'label': 'NRL',
-         'ha': 'right', 'va': 'center',
+         'ha': 'right', 'va': 'top',
          'depths': {
-             '26 m': '2015',
-             '46 m': '2015'}},
+             '32 m (28-78)': '2015',
+             '52 m (48-100)': '2015'}},
     'NRL4':
         {'lon': 87, 'lat': 8, 'label': 'NRL',
          'ha': 'center', 'va': 'bottom',
          'depths': {
-             '55 m': '2015',
-             '75 m': '2015'}},
+             '63 m (60-85)': '2015',
+             '83 m (80-105)': '2015'}},
     'NRL5':
         {'lon': 88.5, 'lat': 8, 'label': 'NRL',
-         'ha': 'left', 'va': 'center',
+         'ha': 'left', 'va': 'top',
          'depths': {
-             '  82 m': '2015',
-             '102 m': '2015'}},
+             '  85 m': '2015',
+             '105 m': '2015'}},
 }
 
-# markers = {'RAMA': 'o', 'NRL': '^', 'OMM/WHOI': 'o'}
-colors = {'RAMA': '#0074D9', 'NRL': '#3D9970', 'OMM/WHOI': '#FF4136'}
-labelargs = {'bbox': {
-                'alpha': 0.2,
-                'edgecolor': 'none',
-                'boxstyle' : 'round'}}
-DX=0.6
-DY=0.55
+ax = make_map(pods, DX=0.6, DY=0.55, add_year=True, highlight=['RAMA', 'NRL'])
 
-ProjParams = {'min_latitude' : 0.0, # same as lat_0 in proj4 string
-              'max_latitude' : 30.0, # same as lat_0 in proj4 string
-              'central_longitude' : 88.0, # same as lon_0
-}
-proj = ccrs.PlateCarree()
-
-
-fig = plt.figure(figsize=(6, 8))
-ax = plt.axes(projection = proj)
-ax.set_extent([80, 96, 2, 24])
-ax.coastlines('10m', color='slategray', lw=0.75)
+ax.text(87, 6.8, 'NRL\n(2014)',
+        fontsize=14, color=colors['NRL'], ha='center', va='center')
+ax.text(90-0.35, 18, 'OMM/WHOI',
+        fontsize=14, color=colors['OMM/WHOI'], ha='right', va='center')
+ax.text(90, 13.5, 'RAMA',
+        fontsize=14, color=colors['RAMA'], ha='left', va='center')
 ax.set_xticks([80, 82, 84, 85.5, 87, 88.5, 90, 92, 94, 96])
 ax.set_yticks([2, 4, 5.5, 8.5, 12, 15, 18, 20, 22, 24])
 
-etopo = xr.open_dataset('~/datasets/ETOPO2v2g_f4.nc4', autoclose=True)
-extract={'x': slice(80, 96), 'y': slice(2, 25)}
-etopo.z.sel(**extract).plot.contour(
-                        transform=ccrs.PlateCarree(),
-                        add_colorbar=False,
-                        levels=np.sort([-100, -500, -1000, -2000, -3000, -4000, -5000]),
-                        colors=['gray'], linewidths=0.25)
-ax.set_xlabel('')
-ax.set_ylabel('')
-
-for name in pods:
-    pod = pods[name]
-    ax.plot(pod['lon'], pod['lat'], transform=ccrs.PlateCarree(),
-            linestyle='',
-            marker='o',
-            color=colors[pod['label']],
-            label=pod['label'], zorder=10)
-
-    text = ''
-    for z in pod['depths']:
-        text += z + ' / ' + pod['depths'][z] + '\n'
-    text = text[:-1]
-
-    dx=0; dy=0
-    if pod['ha'] is 'left':
-        dx = DX
-    elif pod['ha'] is 'right':
-        dx = -1 * DX
-    if pod['va'] is 'bottom':
-        dy = DY
-    elif pod['va'] is 'top':
-        dy = +DY
-
-    labelargs['bbox']['facecolor'] = colors[pod['label']]
-
-    ax.text(pod['lon']+dx, pod['lat']+dy, text,
-            transform=ccrs.PlateCarree(),
-            ha=pod['ha'], va=pod['va'],
-            multialignment='left', **labelargs)
-
-
-ax.text(90-0.35, 18, 'OMM/WHOI', fontsize=12, color=colors['OMM/WHOI'], ha='right', va='center')
-ax.text(90, 13.5, 'RAMA', fontsize=12, color=colors['RAMA'], ha='left', va='center')
-ax.text(87, 6.8, 'NRL', fontsize=12, color=colors['NRL'], ha='center', va='center')
-
-ax.set_facecolor(None)
-
 plt.savefig('../images/map.svg')
+plt.savefig('../images/map.png', bbox_inches='tight')
 #+END_SRC
 #+CAPTION: χ-pod locations.
 #+ATTR_HTML: :width 55%
-#+RESULTS:
 [[file:images/map.png]]
 
+#+BEGIN_SRC ipython :session :results none
+<<define-make_map>>
+pods = {
+    'RAMA67':
+        {'lon': 67, 'lat': 0, 'label': 'RAMA',
+         'ha': 'center', 'va': 'bottom',
+         'depths': {
+             '15 m': '',
+             '30 m': ''}},
+    'RAMA80':
+        {'lon': 80, 'lat': 0, 'label': 'RAMA',
+         'ha': 'center', 'va': 'bottom',
+         'depths': {
+             '15 m': '',
+             '30 m': ''}},
+    'RAMA90':
+        {'lon': 90, 'lat': 0, 'label': 'RAMA',
+         'ha': 'left', 'va': 'center',
+         'depths': {
+             '15 m': '',
+             '30 m': ''}},
+    'RAMA4':
+        {'lon': 90, 'lat': 4, 'label': 'RAMA',
+         'ha': 'right', 'va': 'center',
+         'depths': {
+             '45 m': ''}},
+    'RAMA12':
+        {'lon': 90, 'lat': 12, 'label': 'RAMA',
+         'ha': 'center', 'va': 'top',
+         'depths': {
+             '15 m': '',
+             '45 m': ''}},
+    'RAMA15':
+        {'lon': 90, 'lat': 15, 'label': 'RAMA',
+         'ha': 'right', 'va': 'center',
+         'depths': {
+             '15 m': '2018, 19',
+             '30 m': '2018, 19',
+             '45 m': '2018, 19',
+             '55 m': '2018, 19',
+             '65 m': '2018, 19'}},
+}
+
+ax = make_map(pods, DX=1, DY=1, add_year=False)
+
+ax.set_xlim([65, 96])
+ax.set_ylim([-2, 24])
+ax.set_xticks([65, 67, 70, 75, 80, 85, 90, 95])
+ax.set_yticks([0, 4, 8, 12, 15, 18, 20, 22, 24])
+
+ax.set_title('MISOBOB $χ$pod deployments (2018, 19)')
+plt.savefig('../images/map-misobob.svg')
+plt.savefig('../images/map-misobob.png', bbox_inches='tight')
+#+END_SRC
+#+ATTR_HTML: :width 55%
+[[file:images/map-misobob.png]]
+
+** emily :noexport:
 #+CAPTION: χpod locations for ASIRI/EBOB/MISOBOB
 #+ATTR_HTML: :width 55%
 [[file:../images/MixingmapASIRIPiston.png]]
