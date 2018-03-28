@@ -1,5 +1,6 @@
 #+TITLE: Bay of Bengal notes
 #+SETUPFILE: ~/org/notebook.org
+
 * Map
 #+NAME: define-make_map
 #+BEGIN_SRC ipython :session :results none
@@ -1578,6 +1579,91 @@ _ =  ax['met'].set_xlim(('2015-04-10', '2015-05-10'))
 #+CAPTION: Not that similar to above (but see 2015/04/15-2015/04/18). Here, 45m χpod sees large heat fluxes.
 #+RESULTS: barrier-rama12-2015
 [[file:images/barrier-layer-rama12-2015-apr.png]]
+* Hudhud sensitivity to Jq
+# Read data
+#+BEGIN_SRC ipython :session
+def read_Turb(filename):
+    from scipy.io import loadmat
+    f = loadmat(filename)
+
+    def process_estimate(estimate):
+        chi = xr.Dataset()
+        tmatlab = estimate[0,0]['time'][0,0].squeeze()
+        tcommon = ((-86400 + (tmatlab-366) * 86400).astype('timedelta64[s]')
+                   + np.datetime64('0001-01-01')).astype('datetime64[ns]')
+
+        chi['χ'] = xr.DataArray(estimate[0,0]['chi'][0,0].squeeze(),
+                                dims=['time'],
+                                coords=[tcommon])
+        chi['Kt'] = xr.DataArray(estimate[0,0]['Kt'][0,0].squeeze(),
+                                dims=['time'],
+                                coords=[tcommon])
+        chi['Jq'] = xr.DataArray(estimate[0,0]['Jq'][0,0].squeeze(),
+                                dims=['time'],
+                                coords=[tcommon])
+        chi['ε'] = xr.DataArray(estimate[0,0]['eps'][0,0].squeeze(),
+                                dims=['time'],
+                                coords=[tcommon])
+
+        return chi
+
+    Turb = dict()
+    for field in f['Turb'].dtype.names:
+        if field in ['mm1', 'mm2', 'pm1', 'pm2',
+                     'mi11', 'mi22', 'pi11', 'pi22']:
+            estimate = f['Turb'][field]
+            Turb[field] = process_estimate(estimate)
+    return Turb
+
+dirname = '/home/deepak/pods/526/proc/'
+est = dict()
+for tz in [1e-4, 3e-4, 7.5e-4, 1e-3, 2e-3, 5e-3]:
+    filename = dirname + 'Turb-{0:.1e}.mat'.format(tz)
+    print(filename)
+    est[tz] = read_Turb(filename)
+
+#+END_SRC
+
+# plot results
+#+BEGIN_SRC ipython :session
+trange = slice('2014-10-07','2014-10-11')
+hudhud = slice('2014-10-08','2014-10-10 12:00')
+
+barwidth = 1e-4
+f, ax = plt.subplots(2, 1)
+for ee in est.keys():
+    Jqvec = est[ee]['mm1'].Jq
+    (Jqvec
+     .resample(time='H').mean()
+     .sel(time=trange)
+     .plot(ax=ax[1], lw=1, label=ee))
+
+    hb = ax[0].bar(ee, Jqvec.where(Jqvec > 0).sel(time=hudhud).mean(),
+                   barwidth)
+    ax[0].bar(ee, Jqvec.where(Jqvec < 0).sel(time=hudhud).mean(),
+              barwidth, color=hb[0].get_facecolor())
+    ax[0].plot(ee, Jqvec.sel(time=hudhud).mean(), 'k.')
+
+ax[0].set_title('Mean heat flux (+/-) during Hudhud as fn(min_dTdz)')
+
+hwda = (ra12.Jq.sel(depth=15, time=trange)
+        .plot(ax=ax[1], add_legend=False, label='wda'))
+ax[1].legend()
+
+dcpy.plots.liney([ra12.Jq.where(ra12.Jq > 0).sel(depth=15, time=hudhud).mean(),
+                  ra12.Jq.where(ra12.Jq < 0).sel(depth=15, time=hudhud).mean()],
+                 ax=ax, color=hwda[0].get_color(), zorder=8)
+dcpy.plots.liney(0, ax=ax, zorder=10, color='k', ls='-')
+
+plt.savefig('/home/deepak/bay/images/526-heat-flux-dTdz.png', bbox_inches='tight')
+#+END_SRC
+
+#+CAPTION: Sensitivity to ~min_dTdz~. Looks like there are a lot of observations at T_z ~ 1e-3. For lower values of ~min_dTdz~, there is a lot of +/- cancellation. Which do I believe?
+file:images/526-heat-flux-dTdz.png
+
+#+CAPTION: Turns out removing IC fits removes a lot of data during Hudhud.
+[[file:images/wda-526-hudhud-jq-masking.png]]
+
 * Spectrogram
 #+BEGIN_SRC ipython :session :ipyfile images/temp/imgoi5WUg.png
 spec = dcpy.ts.Spectrogram(ra15.vel.spd.interpolate_na(dim='time').squeeze(),
@@ -2499,3 +2585,5 @@ Tested with RAMA14-810
 
 #+CAPTION: slope ≈ 1.5 (only tested for 20-Feb-2015)
 [[file:images/810-compare-hist2-chi-eps.png]]
+
+bibliography:~/Papers/bibtexLibrary.bib
