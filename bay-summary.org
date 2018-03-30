@@ -962,276 +962,6 @@ plt.clabel(hc, fmt='%1.1f')
 : <a list of 12 text.Text objects>
 [[file:images/rho-bins-TS-plot.png]]
 :END:
-* OSM 2018 figures
-** rama vs nrl | met & K_T
-#+BEGIN_SRC ipython :session :results none
-def full_extent(ax, pad=0.0):
-    """Get the full extent of an axes, including axes labels, tick labels, and
-    titles."""
-
-    from matplotlib.transforms import Bbox
-    # For text objects, we need to draw the figure first, otherwise the extents
-    # are undefined.
-    ax.figure.canvas.draw()
-    items = [ax, ax.title, ax.xaxis.label, ax.yaxis.label]
-    items += (ax.get_xticklabels() + ax.get_yticklabels())
-    bbox = Bbox.union([item.get_window_extent() for item in items])
-
-    return bbox.expanded(1.0 + pad, 1.0 + pad)
-
-ax, hkr = ra12.met_turb_summary(region={'time': '2014', 'depth': 15}, naxes=2)
-
-ktrama = ((10**KTm.KT).sel(lon=90, lat=12, time='2014')
-         .dropna(dim='depth', how='all')
-         .resample(time='D').mean(dim='time')
-         .isel(depth=0))
-hdl_pointr = ax['Kt'].plot(ktrama.time[-1], ktrama[-1],
-                           'o', ms=4, color=hkr[0].get_color(), clip_on=False)
-hdl_textr = ax['Kt'].text('2014-12-31', ktrama[-1], '  12N 15m', ha='left',
-                          clip_on=False, color=hkr[0].get_color())
-
-arrowprops = dict(arrowstyle="<->", connectionstyle="arc3")
-ha1 = ax['Kt'].annotate("",
-                        xy=('2014-04-15', 5e-5), xycoords='data',
-                        xytext=('2014-04-15', 1), textcoords='data',
-                        arrowprops=arrowprops)
-ha2 = ax['Kt'].annotate("",
-                        xy=('2014-07-15', 5e-3), xycoords='data',
-                        xytext=('2014-07-15', 1), textcoords='data',
-                        arrowprops=arrowprops)
-ha3 = ax['Kt'].annotate("",
-                        xy=('2014-10-9', 5e-2), xycoords='data',
-                        xytext=('2014-10-9', 10), textcoords='data',
-                        arrowprops=arrowprops)
-
-htxt = []
-htxt.append(
-    ax['met'].text('2014-02-01', 0.35, 'NE', va='bottom', zorder=-1)
-)
-htxt.append(
-    ax['met'].text('2014-04-15', 0.35, 'NESW', va='bottom', zorder=-1)
-)
-htxt.append(
-    ax['met'].text('2014-07-16', 0.35, 'SW', va='bottom', zorder=-1)
-)
-htxt.append(
-    ax['met'].text('2014-10-20', 0.35, 'SWNE', va='bottom', zorder=-1)
-)
-
-ax['met'].set_xlim(('2014-01', '2015-01'))
-ax['met'].set_ylim([0, 0.35])
-ax['Kt'].xaxis.set_major_formatter(mpl.dates.DateFormatter('%b-%d'))
-ax['Kt'].set_xlabel('2014')
-ax['Kt'].set_ylabel('Daily avg. $K_T$ (m²/s)')
-ax['Kt'].xaxis.set_tick_params(rotation=0)
-# plt.tight_layout()
-plt.gcf().set_size_inches((6, 3.25))
-plt.savefig('images/rama-vs-nrl-0.png', bbox_inches='tight')
-
-nrlregion = dict(lon=88.5, lat=8, time='2014')
-ktnrl = ((10**KTm.KT).sel(**nrlregion)
-         .dropna(dim='depth', how='all')
-         .resample(time='D').mean(dim='time')
-         .isel(depth=1))
-hdl = ax['Kt'].plot(ktnrl.time, ktnrl, lw=0.75)
-hdl_pointn = ax['Kt'].plot(ktnrl.time[-1], ktnrl[-1],
-                           'o', ms=4, color=hdl[0].get_color(), clip_on=False)
-hdl_textn = ax['Kt'].text('2014-12-31', ktnrl[-1], '  8N 100m', ha='left',
-                          clip_on=False, color=hdl[0].get_color())
-
-for ha in [ha1, ha2, ha3]:
-    ha.set_visible(False)
-
-ha = []
-arrowprops = dict(arrowstyle="->", connectionstyle="arc3")
-ha.append(ax['Kt'].annotate("near-molecular!",
-                       xytext=('2014-04-01', 7e-6), xycoords='data',
-                       xy=('2014-04-15', 2e-7), textcoords='data',
-                            arrowprops=arrowprops, ha='right'))
-
-plt.gcf().set_size_inches((6, 3.25))
-plt.savefig('images/rama-vs-nrl-1.png', bbox_inches='tight')
-
-# extent = full_extent(ax['Kt']).transformed(f.transFigure.inverted())
-# # We can now make the rectangle in figure coords using the "transform" kwarg.
-# rect = mpl.patches.Rectangle([extent.xmin, extent.ymin],
-#                              extent.width, extent.height,
-#                              facecolor='yellow', edgecolor='none', zorder=-1,
-#                              transform=fig.transFigure)
-# f.patches.append(rect)
-
-ax['Jq0'].set_visible(False)
-ax['met'].set_visible(False)
-
-plt.savefig('images/rama-vs-nrl-KT.png', bbox_inches='tight')
-
-hkr[0].set_visible(False)
-hdl_textr.set_visible(False)
-hdl_pointr[0].set_visible(False)
-
-ha.append(ax['Kt'].annotate("Arabian Sea water arrives",
-                       xytext=('2014-06-01', 1e-3), xycoords='data',
-                       xy=('2014-07-01', 5e-7), textcoords='data',
-                            arrowprops=arrowprops, ha='right'))
-
-ha.append(ax['Kt'].annotate("Near-inertial wave burst",
-                       xytext=('2014-09-01', 1e-2), xycoords='data',
-                       xy=('2014-07-27', 1e-3), textcoords='data',
-                            arrowprops=arrowprops, ha='center'))
-
-plt.savefig('images/nrl5-KT-labels.png', bbox_inches='tight')
-
-#ax['met'].set_visible(True)
-
-# (KTm.S.sel(**nrlregion)
-#  .dropna(dim='depth', how='all')
-#  .resample(time='D').mean(dim='time')
-#  .isel(depth=0)).plot.line(x='time', ax=ax['met'],
-#                            color=hdl[0].get_color())
-
-# ax['met'].set_ylim([34, 36])
-# ax['met'].set_title('')
-# ax['Kt'].xaxis.set_tick_params(rotation=0)
-# plt.savefig('images/rama-vs-nrl-KT-nrl-sal.png', bbox_inches='tight')
-
-#+END_SRC
-[[file:images/rama-vs-nrl-1.png]]
-** rama vs nrl | K_T distributions
-#+BEGIN_SRC ipython :session :ipyfile images/rama-vs-nrl-kt-violin.png
-<<define-vert_distrib>>
-
-moor_mask = np.logical_or(
-    np.logical_and(KTdf.moor == 'RAMA12', np.round(KTdf.depth)==15),
-    np.logical_and(KTdf.moor == 'NRL5', np.round(KTdf.depth) == 104))
-new_deep_mask = np.logical_and(mask_deep, moor_mask)
-subset = KTdf[moor_mask]
-
-bins = [1018, 1022.5, 1026]
-subset = bin_ktdf(subset, bins)
-
-subset.loc[subset.moor == 'NRL5', 'z'] -= 85
-subset.loc[subset.bin == 'ML', 'z'] -= 10
-subset.loc[subset.bin == 'BL', 'z'] -= 5
-
-with plt.rc_context({'font.size': 8}):
-    f, ax = vert_distrib(subset, subset.bin, varname='KT',
-                         label_moorings=False, label_bins=True, adjust_fig=False,
-                         width=8, percentile=False, add_offset=False)
-
-    for aa in ax:
-         ax[aa].yaxis.set_visible(True)
-         ax[aa].spines['left'].set_visible(True)
-
-    ax['NE'].set_yticklabels(['', '', '15', '//', '', '100'])
-    ax['NE'].set_ylim([28, 0])
-    plt.gcf().set_size_inches((6.2, 1.8))
-    plt.suptitle('$\log_{10}$ hourly averaged $K_T$ (m²/s)', y=-0.15, va='baseline')
-    plt.subplots_adjust(wspace=0.07)
-    sns.despine(fig=f, left=False, bottom=False, trim=True)
-
-plt.savefig('images/rama-vs-nrl-kt.svg')
-# plt.tight_layout(w_pad=-1)
-#+END_SRC
-
-#+RESULTS:
-:RESULTS:
-# Out[1754]:
-:END:
-
-** nrl5 adcp near-inertial
-#+BEGIN_SRC ipython :session :ipyfile images/nrl5-near-inertial-adcp.png
-#from dcpy.ts import xfilter
-#f,  axx = plt.subplots(3, 1, sharex=True)
-# ax = dict(Kt=axx[0], u=axx[1], v=axx[2])
-# (nrl5.KT.isel(depth=1)
-# .sel(**nrl5.select_region(['Storm+IW'])).plot(ax=ax['Kt']))
-# ax['KT'].set_yscale('log')
-# axv
-with plt.rc_context({'font.size': 14}):
-    ax, hc = nrl5.PlotVel(region='Storm+IW')
-    ax['u'].set_ylim([250, 0])
-    ax['v'].set_ylim([250, 0])
-    ax['v'].set_xlabel('')
-
-arrowprops = dict(arrowstyle="<-", connectionstyle="arc3")
-
-hanno.remove()
-hanno = ax['v'].annotate("",
-                       xy=('2014-07-18', 70), xycoords='data',
-                       xytext=('2014-08-7', 150), textcoords='data',
-                       arrowprops=arrowprops)
-#+END_SRC
-#+RESULTS:
-:RESULTS:
-# Out[1681]:
-[[file:images/nrl5-near-inertial-adcp.png]]
-:END:
-
-** χpod depths on ARGO climatology
-#+BEGIN_SRC ipython :session :ipyfile images/argo-clim-χpod-depths.png
-<<define-make_map>>
-argoT = xr.open_dataset('~/datasets/argoclim/RG_ArgoClim_Temperature_2016.nc',
-                        autoclose=True, decode_times=False)
-argoS = xr.open_dataset('~/datasets/argoclim/RG_ArgoClim_Salinity_2016.nc',
-                        autoclose=True, decode_times=False)
-
-def mark_range(ax, top, middle, bottom, color=colors['NRL']):
-   xlim = ax.get_xlim()
-   ax.fill_between([xlim[0], xlim[1]], bottom, top,
-                   facecolor=color, alpha=0.1, zorder=-5)
-   dcpy.plots.liney(middle, ax=ax,
-                 color=colors['NRL'], linestyle='-')
-
-def plot_profiles(ax, lon, lat, color):
-
-   region = {'LATITUDE': lat, 'LONGITUDE': lon, 'method': 'nearest'}
-
-   ax.plot(argoT.ARGO_TEMPERATURE_MEAN.sel(**region).squeeze(),
-           argoT.PRESSURE, color=color, lw=2)
-   ax2 = ax.twiny()
-   ax2.plot(argoS.ARGO_SALINITY_MEAN.sel(**region).squeeze(),
-            argoS.PRESSURE, '--', color=color, lw=2)
-
-   ax2.spines['top'].set_visible(True)
-   ax.set_xlim([23, 30])
-   ax.set_ylabel('Pressure')
-   ax.text(29, 10, 'T', color=color)
-   ax.text(23.75, 10, 'S', color=color)
-   ax.text(25.5, 114, 'Argo clim.', color='black',
-           ha='center', fontsize=12)
-
-   return ax2
-
-
-with plt.rc_context({'font.size': 15}):
-
-   f, ax = plt.subplots(2, 1)
-   ax20 = plot_profiles(ax[0], 90, 12, color=colors['RAMA'])
-   ax21 = plot_profiles(ax[1], 85.5, 5, color=colors['NRL'])
-   mark_range(ax[1], 55, 60, 100)
-   mark_range(ax[1], 75, 80, 115)
-   mark_range(ax[1], 28, 32, 78)
-   mark_range(ax[1], 48, 52, 100)
-   mark_range(ax[1], 60, 63, 85)
-   mark_range(ax[1], 80, 83, 105)
-   dcpy.plots.liney([85, 105], ax=ax[1],
-                    color=colors['NRL'], linestyle='-')
-   dcpy.plots.liney([15, 30, 45], ax=ax[0],
-                    color=colors['RAMA'], linestyle='-')
-
-   ax[0].set_ylim([120, 0])
-   ax[1].set_ylim([120, 0])
-
-   f.set_size_inches(3, 8)
-   plt.tight_layout()
-
-#+END_SRC
-#+RESULTS:
-:RESULTS:
-# Out[1357]:
-[[file:images/argo-clim-χpod-depths.png]]
-:END:
-
 * Surface fluxes
 #+CALL: read-tropflux()
 #+BEGIN_SRC ipython :session :ipyfile images/temp/img7tMMDR.png
@@ -1348,7 +1078,6 @@ g = syearly.plot.contourf(x='dayofyear', row='year', col='lat',
 #+CAPTION: Distribution of 5 minute averages of K_T.
 #+RESULTS:
 [[file:../images//rama12n-kt-boxplot.png]]
-
 * Barrier layers
 When the freshwater arrives, I see large values of Jqt at 30m/45m. This is at both 12N, 15N in both 2014, 2015.
 
@@ -1501,12 +1230,30 @@ for tz in [1e-4, 3e-4, 7.5e-4, 1e-3, 2e-3, 5e-3]:
     print(filename)
     est[tz] = read_Turb(filename)
 
+if ra12.sst == xr.Dataset():
+    ra12.ReadSST()
 #+END_SRC
 
 # plot results
 #+BEGIN_SRC ipython :session
 trange = slice('2014-10-07','2014-10-11')
 hudhud = slice('2014-10-08','2014-10-10 12:00')
+
+uTx = (ra12.sst.Tx.sel(time=trange)
+       ,* ra12.vel.u.squeeze().resample(time='D').mean(dim='time'))
+vTy = (ra12.sst.Ty.sel(time=trange)
+       ,* ra12.vel.v.squeeze().resample(time='D').mean(dim='time'))
+
+
+meanvel = ra12.vel.sel(time=trange).mean()
+meanSST = ra12.sst.sel(time=hudhud).mean()
+meanSST = ra12.sst.sel(time=hudhud).mean()
+
+mld = 15
+Qadv = -(uTx + vTy) * 1025 * 4200 * mld
+Qmean = -(meanvel.u * meanSST.Tx + meanvel.v * meanSST.Ty) * 1025 * 4200 * mld
+print(Qmean)
+print(Qadv.sel(time=hudhud).mean())
 
 barwidth = 1e-4
 f, ax = plt.subplots(2, 1)
@@ -1533,11 +1280,13 @@ dcpy.plots.liney([ra12.Jq.where(ra12.Jq > 0).sel(depth=15, time=hudhud).mean(),
                   ra12.Jq.where(ra12.Jq < 0).sel(depth=15, time=hudhud).mean()],
                  ax=ax, color=hwda[0].get_color(), zorder=8)
 dcpy.plots.liney(0, ax=ax, zorder=10, color='k', ls='-')
+dcpy.plots.liney([Qadv.sel(time=hudhud).mean(), Qmean],
+                 ax=ax, color='k', zorder=10)
 
 plt.savefig('/home/deepak/bay/images/526-heat-flux-dTdz.png', bbox_inches='tight')
 #+END_SRC
 
-#+CAPTION: Sensitivity to ~min_dTdz~. Looks like there are a lot of observations at T_z ~ 1e-3. For lower values of ~min_dTdz~, there is a lot of +/- cancellation. Which do I believe?
+#+CAPTION: Sensitivity to ~min_dTdz~. Looks like there are a lot of observations at T_z ~ 1e-3. For lower values of ~min_dTdz~, there is a lot of +/- cancellation. Which do I believe? Bottom time series is hourly averaged Jq (for comparison with sally's paper). The WDA estimate in pink is still 60s-average.
 file:images/526-heat-flux-dTdz.png
 
 #+CAPTION: Turns out removing IC fits removes a lot of data during Hudhud.
@@ -2292,6 +2041,275 @@ dcpy.plots.linex(ra15.mld.isel(time=it), ax=ax[2])
 #+RESULTS:
 :RESULTS:
 :END:
+* OSM 2018 figures
+** rama vs nrl | met & K_T
+#+BEGIN_SRC ipython :session :results none
+def full_extent(ax, pad=0.0):
+    """Get the full extent of an axes, including axes labels, tick labels, and
+    titles."""
+
+    from matplotlib.transforms import Bbox
+    # For text objects, we need to draw the figure first, otherwise the extents
+    # are undefined.
+    ax.figure.canvas.draw()
+    items = [ax, ax.title, ax.xaxis.label, ax.yaxis.label]
+    items += (ax.get_xticklabels() + ax.get_yticklabels())
+    bbox = Bbox.union([item.get_window_extent() for item in items])
+
+    return bbox.expanded(1.0 + pad, 1.0 + pad)
+
+ax, hkr = ra12.met_turb_summary(region={'time': '2014', 'depth': 15}, naxes=2)
+
+ktrama = ((10**KTm.KT).sel(lon=90, lat=12, time='2014')
+         .dropna(dim='depth', how='all')
+         .resample(time='D').mean(dim='time')
+         .isel(depth=0))
+hdl_pointr = ax['Kt'].plot(ktrama.time[-1], ktrama[-1],
+                           'o', ms=4, color=hkr[0].get_color(), clip_on=False)
+hdl_textr = ax['Kt'].text('2014-12-31', ktrama[-1], '  12N 15m', ha='left',
+                          clip_on=False, color=hkr[0].get_color())
+
+arrowprops = dict(arrowstyle="<->", connectionstyle="arc3")
+ha1 = ax['Kt'].annotate("",
+                        xy=('2014-04-15', 5e-5), xycoords='data',
+                        xytext=('2014-04-15', 1), textcoords='data',
+                        arrowprops=arrowprops)
+ha2 = ax['Kt'].annotate("",
+                        xy=('2014-07-15', 5e-3), xycoords='data',
+                        xytext=('2014-07-15', 1), textcoords='data',
+                        arrowprops=arrowprops)
+ha3 = ax['Kt'].annotate("",
+                        xy=('2014-10-9', 5e-2), xycoords='data',
+                        xytext=('2014-10-9', 10), textcoords='data',
+                        arrowprops=arrowprops)
+
+htxt = []
+htxt.append(
+    ax['met'].text('2014-02-01', 0.35, 'NE', va='bottom', zorder=-1)
+)
+htxt.append(
+    ax['met'].text('2014-04-15', 0.35, 'NESW', va='bottom', zorder=-1)
+)
+htxt.append(
+    ax['met'].text('2014-07-16', 0.35, 'SW', va='bottom', zorder=-1)
+)
+htxt.append(
+    ax['met'].text('2014-10-20', 0.35, 'SWNE', va='bottom', zorder=-1)
+)
+
+ax['met'].set_xlim(('2014-01', '2015-01'))
+ax['met'].set_ylim([0, 0.35])
+ax['Kt'].xaxis.set_major_formatter(mpl.dates.DateFormatter('%b-%d'))
+ax['Kt'].set_xlabel('2014')
+ax['Kt'].set_ylabel('Daily avg. $K_T$ (m²/s)')
+ax['Kt'].xaxis.set_tick_params(rotation=0)
+# plt.tight_layout()
+plt.gcf().set_size_inches((6, 3.25))
+plt.savefig('images/rama-vs-nrl-0.png', bbox_inches='tight')
+
+nrlregion = dict(lon=88.5, lat=8, time='2014')
+ktnrl = ((10**KTm.KT).sel(**nrlregion)
+         .dropna(dim='depth', how='all')
+         .resample(time='D').mean(dim='time')
+         .isel(depth=1))
+hdl = ax['Kt'].plot(ktnrl.time, ktnrl, lw=0.75)
+hdl_pointn = ax['Kt'].plot(ktnrl.time[-1], ktnrl[-1],
+                           'o', ms=4, color=hdl[0].get_color(), clip_on=False)
+hdl_textn = ax['Kt'].text('2014-12-31', ktnrl[-1], '  8N 100m', ha='left',
+                          clip_on=False, color=hdl[0].get_color())
+
+for ha in [ha1, ha2, ha3]:
+    ha.set_visible(False)
+
+ha = []
+arrowprops = dict(arrowstyle="->", connectionstyle="arc3")
+ha.append(ax['Kt'].annotate("near-molecular!",
+                       xytext=('2014-04-01', 7e-6), xycoords='data',
+                       xy=('2014-04-15', 2e-7), textcoords='data',
+                            arrowprops=arrowprops, ha='right'))
+
+plt.gcf().set_size_inches((6, 3.25))
+plt.savefig('images/rama-vs-nrl-1.png', bbox_inches='tight')
+
+# extent = full_extent(ax['Kt']).transformed(f.transFigure.inverted())
+# # We can now make the rectangle in figure coords using the "transform" kwarg.
+# rect = mpl.patches.Rectangle([extent.xmin, extent.ymin],
+#                              extent.width, extent.height,
+#                              facecolor='yellow', edgecolor='none', zorder=-1,
+#                              transform=fig.transFigure)
+# f.patches.append(rect)
+
+ax['Jq0'].set_visible(False)
+ax['met'].set_visible(False)
+
+plt.savefig('images/rama-vs-nrl-KT.png', bbox_inches='tight')
+
+hkr[0].set_visible(False)
+hdl_textr.set_visible(False)
+hdl_pointr[0].set_visible(False)
+
+ha.append(ax['Kt'].annotate("Arabian Sea water arrives",
+                       xytext=('2014-06-01', 1e-3), xycoords='data',
+                       xy=('2014-07-01', 5e-7), textcoords='data',
+                            arrowprops=arrowprops, ha='right'))
+
+ha.append(ax['Kt'].annotate("Near-inertial wave burst",
+                       xytext=('2014-09-01', 1e-2), xycoords='data',
+                       xy=('2014-07-27', 1e-3), textcoords='data',
+                            arrowprops=arrowprops, ha='center'))
+
+plt.savefig('images/nrl5-KT-labels.png', bbox_inches='tight')
+
+#ax['met'].set_visible(True)
+
+# (KTm.S.sel(**nrlregion)
+#  .dropna(dim='depth', how='all')
+#  .resample(time='D').mean(dim='time')
+#  .isel(depth=0)).plot.line(x='time', ax=ax['met'],
+#                            color=hdl[0].get_color())
+
+# ax['met'].set_ylim([34, 36])
+# ax['met'].set_title('')
+# ax['Kt'].xaxis.set_tick_params(rotation=0)
+# plt.savefig('images/rama-vs-nrl-KT-nrl-sal.png', bbox_inches='tight')
+
+#+END_SRC
+[[file:images/rama-vs-nrl-1.png]]
+** rama vs nrl | K_T distributions
+#+BEGIN_SRC ipython :session :ipyfile images/rama-vs-nrl-kt-violin.png
+<<define-vert_distrib>>
+
+moor_mask = np.logical_or(
+    np.logical_and(KTdf.moor == 'RAMA12', np.round(KTdf.depth)==15),
+    np.logical_and(KTdf.moor == 'NRL5', np.round(KTdf.depth) == 104))
+new_deep_mask = np.logical_and(mask_deep, moor_mask)
+subset = KTdf[moor_mask]
+
+bins = [1018, 1022.5, 1026]
+subset = bin_ktdf(subset, bins)
+
+subset.loc[subset.moor == 'NRL5', 'z'] -= 85
+subset.loc[subset.bin == 'ML', 'z'] -= 10
+subset.loc[subset.bin == 'BL', 'z'] -= 5
+
+with plt.rc_context({'font.size': 8}):
+    f, ax = vert_distrib(subset, subset.bin, varname='KT',
+                         label_moorings=False, label_bins=True, adjust_fig=False,
+                         width=8, percentile=False, add_offset=False)
+
+    for aa in ax:
+         ax[aa].yaxis.set_visible(True)
+         ax[aa].spines['left'].set_visible(True)
+
+    ax['NE'].set_yticklabels(['', '', '15', '//', '', '100'])
+    ax['NE'].set_ylim([28, 0])
+    plt.gcf().set_size_inches((6.2, 1.8))
+    plt.suptitle('$\log_{10}$ hourly averaged $K_T$ (m²/s)', y=-0.15, va='baseline')
+    plt.subplots_adjust(wspace=0.07)
+    sns.despine(fig=f, left=False, bottom=False, trim=True)
+
+plt.savefig('images/rama-vs-nrl-kt.svg')
+# plt.tight_layout(w_pad=-1)
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+# Out[1754]:
+:END:
+
+** nrl5 adcp near-inertial
+#+BEGIN_SRC ipython :session :ipyfile images/nrl5-near-inertial-adcp.png
+#from dcpy.ts import xfilter
+#f,  axx = plt.subplots(3, 1, sharex=True)
+# ax = dict(Kt=axx[0], u=axx[1], v=axx[2])
+# (nrl5.KT.isel(depth=1)
+# .sel(**nrl5.select_region(['Storm+IW'])).plot(ax=ax['Kt']))
+# ax['KT'].set_yscale('log')
+# axv
+with plt.rc_context({'font.size': 14}):
+    ax, hc = nrl5.PlotVel(region='Storm+IW')
+    ax['u'].set_ylim([250, 0])
+    ax['v'].set_ylim([250, 0])
+    ax['v'].set_xlabel('')
+
+arrowprops = dict(arrowstyle="<-", connectionstyle="arc3")
+
+hanno.remove()
+hanno = ax['v'].annotate("",
+                       xy=('2014-07-18', 70), xycoords='data',
+                       xytext=('2014-08-7', 150), textcoords='data',
+                       arrowprops=arrowprops)
+#+END_SRC
+#+RESULTS:
+:RESULTS:
+# Out[1681]:
+[[file:images/nrl5-near-inertial-adcp.png]]
+:END:
+
+** χpod depths on ARGO climatology
+#+BEGIN_SRC ipython :session :ipyfile images/argo-clim-χpod-depths.png
+<<define-make_map>>
+argoT = xr.open_dataset('~/datasets/argoclim/RG_ArgoClim_Temperature_2016.nc',
+                        autoclose=True, decode_times=False)
+argoS = xr.open_dataset('~/datasets/argoclim/RG_ArgoClim_Salinity_2016.nc',
+                        autoclose=True, decode_times=False)
+
+def mark_range(ax, top, middle, bottom, color=colors['NRL']):
+   xlim = ax.get_xlim()
+   ax.fill_between([xlim[0], xlim[1]], bottom, top,
+                   facecolor=color, alpha=0.1, zorder=-5)
+   dcpy.plots.liney(middle, ax=ax,
+                 color=colors['NRL'], linestyle='-')
+
+def plot_profiles(ax, lon, lat, color):
+
+   region = {'LATITUDE': lat, 'LONGITUDE': lon, 'method': 'nearest'}
+
+   ax.plot(argoT.ARGO_TEMPERATURE_MEAN.sel(**region).squeeze(),
+           argoT.PRESSURE, color=color, lw=2)
+   ax2 = ax.twiny()
+   ax2.plot(argoS.ARGO_SALINITY_MEAN.sel(**region).squeeze(),
+            argoS.PRESSURE, '--', color=color, lw=2)
+
+   ax2.spines['top'].set_visible(True)
+   ax.set_xlim([23, 30])
+   ax.set_ylabel('Pressure')
+   ax.text(29, 10, 'T', color=color)
+   ax.text(23.75, 10, 'S', color=color)
+   ax.text(25.5, 114, 'Argo clim.', color='black',
+           ha='center', fontsize=12)
+
+   return ax2
+
+
+with plt.rc_context({'font.size': 15}):
+
+   f, ax = plt.subplots(2, 1)
+   ax20 = plot_profiles(ax[0], 90, 12, color=colors['RAMA'])
+   ax21 = plot_profiles(ax[1], 85.5, 5, color=colors['NRL'])
+   mark_range(ax[1], 55, 60, 100)
+   mark_range(ax[1], 75, 80, 115)
+   mark_range(ax[1], 28, 32, 78)
+   mark_range(ax[1], 48, 52, 100)
+   mark_range(ax[1], 60, 63, 85)
+   mark_range(ax[1], 80, 83, 105)
+   dcpy.plots.liney([85, 105], ax=ax[1],
+                    color=colors['NRL'], linestyle='-')
+   dcpy.plots.liney([15, 30, 45], ax=ax[0],
+                    color=colors['RAMA'], linestyle='-')
+
+   ax[0].set_ylim([120, 0])
+   ax[1].set_ylim([120, 0])
+
+   f.set_size_inches(3, 8)
+   plt.tight_layout()
+
+#+END_SRC
+#+RESULTS:
+:RESULTS:
+# Out[1357]:
+[[file:images/argo-clim-χpod-depths.png]]
+:END:
 
 * sampling considerations
 ** ISO signals
@@ -2403,7 +2421,6 @@ plt.gcf().set_size_inches((6.5, 6.5))
 #+BEGIN_SRC ipython :session :ipyfile images/temp/img10427SMu.png
 
 #+END_SRC
-
 * χ processing
 ** Winters & D'Asaro methodology
 *** Convection
