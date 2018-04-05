@@ -1,5 +1,6 @@
 import numpy as np
 import xarray as xr
+import tqdm
 
 
 def make_merged_nc(moorings):
@@ -15,9 +16,9 @@ def make_merged_nc(moorings):
     '''
 
     vards = []
-    for var in ['KT', 'Jq', 'χ', 'ε']:
+    for var in tqdm.tqdm(['KT', 'Jq', 'χ', 'ε']):
         varlist = []
-        print('Merging  ' + var)
+        print('Processing ' + var)
         for m in moorings:
             subset = (m.__dict__[var].copy()
                       .reset_coords(['ρ', 'S', 'T', 'z', 'mld', 'ild']))
@@ -27,27 +28,6 @@ def make_merged_nc(moorings):
 
             subset = subset.expand_dims(['lat', 'lon'])
             subset['season'] = subset.time.monsoon.labels
-
-            # if m.name == 'RAMA 12N':
-            #     subset['depth'].values += 0.012
-
-            # if m.name == 'RAMA 15N':
-            #     subset['depth'].values += 0.015
-
-            # if m.name == 'NRL1':
-            #     subset['depth'].values += 0.001
-
-            # if m.name == 'NRL2':
-            #     subset['depth'].values += 0.002
-
-            # if m.name == 'NRL3':
-            #     subset['depth'].values += 0.003
-
-            # if m.name == 'NRL4':
-            #     subset['depth'].values += 0.004
-
-            # if m.name == 'NRL5':
-            #     subset['depth'].values += 0.005
 
             depth_season = np.round(subset.z.groupby(subset['season'])
                                     .median(dim='time')).astype('int64')
@@ -92,6 +72,7 @@ def make_merged_nc(moorings):
 
             varlist.append(subset.reset_coords())
 
+        print('\t\t merging ' + var)
         vards.append(xr.merge(varlist))
 
         # make sure the merging worked
