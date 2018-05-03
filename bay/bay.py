@@ -88,7 +88,33 @@ def make_merged_nc(moorings):
             xr.testing.assert_equal(merged, orig)
 
     Turb = xr.merge(vards)
-    Turb = Turb.rename({'ε': 'epsilon', 'χ': 'chi'})
+    Turb = Turb.rename({'ε': 'epsilon',
+                        'χ': 'chi-t'})
+
+    Turb.epsilon.attrs['long_name'] = 'Ocean turbulence kinetic energy dissipation rate'
+    Turb.epsilon.attrs['standard_name'] = 'Ocean_turbulence_kinetic_energy_dissipation_rate'
+    Turb.epsilon.attrs['units'] = 'W kg^-1'
+
+    Turb['chi-t'].attrs['long_name'] = 'Ocean dissipation rate of thermal variance from microtemperature'
+    Turb['chi-t'].attrs['standard_name'] = 'Ocean_dissipation_rate_of_thermal_variance_from_microtemperature'
+    Turb['chi-t'].attrs['units'] = 'C^2 s^-1'
+
+    Turb.lat.attrs['long_name'] = 'latitude'
+    Turb.lat.attrs['units'] = 'degrees North'
+    Turb.lon.attrs['long_name'] = 'longitude'
+    Turb.lon.attrs['units'] = 'degrees East'
+
+    Turb['T'].attrs['standard_name'] = 'sea_water_potential_temperature'
+    Turb['ρ'].attrs['standard_name'] = 'sea_water_potential_density'
+    Turb['S'].attrs['standard_name'] = 'sea_water_practical_salinity'
+
+    # Turb.attrs['Conventions'] = 'CF-1.6'
+    Turb.attrs['netcdf_version'] = '4'
+    Turb.attrs['title'] = 'Merged and processed χpod data from the Bay of Bengal'
+    Turb.attrs['institution'] = 'OSU'
+    Turb.attrs['data_originator'] = 'Shroyer and Moum'
+    Turb.attrs['chief_scientist'] = 'Emily L. Shroyer'
+
     print('Writing to file.')
     # Turb.to_netcdf('merged_KT_test.nc', format='netCDF4')
     Turb.resample(time='1H').mean(dim='time').to_netcdf('bay_merged_hourly.nc')
