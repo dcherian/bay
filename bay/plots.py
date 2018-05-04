@@ -284,7 +284,7 @@ def vert_distrib(KTdf, bins, varname='KT', pal=None, f=None, ax=None,
         ax = {'NE': axx[0], 'NESW': axx[1], 'SW': axx[2], 'SWNE': axx[3]}
 
     if varname is 'KT':
-        title = '$\log_{10}$ hourly averaged $K_T$ (m²/s)'
+        title = '$\\log_{10}$ hourly averaged $K_T$ (m²/s)'
         xlim = kwargs.pop('xlim', [-7.5, 2])
         xlines = kwargs.pop('xlines', [-5, -4, -1])
     else:
