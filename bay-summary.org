@@ -187,6 +187,7 @@ import bay
 bay = importlib.reload(bay)
 
 bins = [1018, 1021, 1022, 1022.5, 1023, 1023.5, 1024.25, 1029]
+moors = ['RAMA12', 'RAMA15', 'NRL1', 'NRL2', 'NRL3', 'NRL4', 'NRL5']
 
 bay.make_vert_distrib_plot('KT', bins)
 # sns.despine(fig=f, left=False, bottom=False, trim=True)
@@ -195,14 +196,31 @@ plt.savefig('images/vert-profile.svg', bbox_inches='tight')
 #+ATTR_HTML: :class full-width
 #+RESULTS: vert-profile
 :RESULTS:
-# Out[1435]:
+# Out[46]:
 [[file:images/bay-KT-vert-profile.png]]
 :END:
+
+Some sensitivities:
+1. Changing 505 to 'mmw': not much
 
 1. High mixing at 70-100m depth in SW monsoon, compared to NE monsoon.
    1. Connected to SMC/SLD?
    2. Near-inertial waves from storms could be a thing
    3. Something happens in NRL5, around SW monsoon start to see temperature inversions semi-regularly (rare, but regular)
+
+
+#+BEGIN_SRC ipython :session :results none
+import bay
+bay = importlib.reload(bay)
+
+bins = [1018, 1021, 1022, 1022.5, 1023, 1023.5, 1024.25, 1029]
+moors = ['RAMA12', 'RAMA15', 'NRL1', 'NRL2', 'NRL3', 'NRL4', 'NRL5']
+
+for mm in moors:
+    bay.make_vert_distrib_plot('KT', bins, mm)
+    plt.gcf().suptitle(mm)
+    plt.savefig('images/vert-profile-moor/'+mm+'.png', bbox_inches='tight')
+#+END_SRC
 
 #+BEGIN_SRC ipython :session :ipyfile images/temp/imgrtIJ8z.png
 season = 'SW'
@@ -220,7 +238,6 @@ else:
 subset = KTdf[mask]
 f, ax = vert_distrib(subset, subset.moor, varname='ρ')
 #+END_SRC
-
 #+RESULTS:
 :RESULTS:
 # Out[702]:
@@ -880,6 +897,43 @@ file:images/526-heat-flux-dTdz.png
 
 #+CAPTION: Turns out removing IC fits removes a lot of data during Hudhud.
 [[file:images/wda-526-hudhud-jq-masking.png]]
+
+* ECCO $K_d$
+#+BEGIN_SRC ipython :session :ipyfile images/temp/imgrONH8U.png
+ecco = xr.open_dataset('../datasets/ecco/interp_Kd_ECCOv4.nc');
+
+Kd = ecco.Kd_ECCOv4
+Kd = xr.DataArray(Kd.values,
+                  coords={'lon': Kd.lon.sel(i1=1).values,
+                          'lat': Kd.lat.sel(i2=1).values,
+                          'dep': Kd.dep.values},
+                  dims=['lat', 'lon', 'dep'])
+
+np.log10(Kd.sel(dep=50)).plot.contourf(levels=15);
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+# Out[200]:
+[[file:images/temp/imgrONH8U.png]]
+:END:
+
+
+#+BEGIN_SRC ipython :session :ipyfile images/temp/imgfv1To1.png
+np.log10(Kd).sel(lon=90, lat=[12, 15], method='nearest').plot.line(y='dep', yincrease=False)
+np.log10(Kd).sel(lon=[85.5, 87, 88.5], lat=8, method='nearest').plot.line(y='dep', yincrease=False)
+plt.gca().set_ylim([500, 0])
+dcpy.plots.linex(np.log10([1e-6, 1e-5, 5e-4]))
+dcpy.plots.liney([15, 30, 45])
+plt.xlim([-6.5, -3])
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+# Out[388]:
+: (-6.5, -3)
+[[file:images/temp/imgfv1To1.png]]
+:END:
 
 * Spectrogram
 #+BEGIN_SRC ipython :session :ipyfile images/temp/imgoi5WUg.png
@@ -1609,7 +1663,7 @@ plt.legend()
 #+RESULTS:
 [[file:../images//temp/img3907e_A.png]]
 
-* ARGO data : S_min and S_max
+* [#B] ARGO data : S_min and S_max
 [[file:../images//argo-smin-smax.png]]
 * code tests
 ** MLD calc
@@ -1896,7 +1950,6 @@ with plt.rc_context({'font.size': 15}):
 #+END_SRC
 #+RESULTS:
 :RESULTS:
-# Out[1357]:
 [[file:images/argo-clim-χpod-depths.png]]
 :END:
 
@@ -2012,6 +2065,8 @@ plt.gcf().set_size_inches((6.5, 6.5))
 #+END_SRC
 * χ processing
 ** Winters & D'Asaro methodology
+*** Smyth et al 2001
+As of now, it looks like the Smyth approach is to use a single value for a patch. The Winters & D'Asaro approach is the "high resolution" version I guess.
 *** Convection
 *** determining sign
 1. Use mooring dT/dz (10-20m scale)

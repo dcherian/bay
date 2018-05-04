@@ -1,4 +1,4 @@
-#+TITLE: EBoB: χ-estimates
+#+TITLE: EBoB: χestimates
 
 #+OPTIONS: html-link-use-abs-url:nil html-postamble:auto
 #+OPTIONS: html-preamble:t html-scripts:nil html-style:nil
@@ -56,7 +56,9 @@ plt.show()
 #+END_SRC
 #+ATTR_HTML: :class full-width
 #+RESULTS: nrl1-summary
-[[file:images/nrl1-summary.png]]
+:RESULTS:
+# Out[75]:
+:END:
 #+BEGIN_SRC ipython :session :ipyfile images/temp/py28335p-H.png
 nrl1.PlotMetCoherence()
 #+END_SRC
@@ -187,14 +189,18 @@ ax = nrl4.Plotχpods()
 #+CALL: read-nrl5()
 #+NAME: nrl5-summary
 #+BEGIN_SRC ipython :session :ipyfile images/nrl5-summary.png
-ax = nrl5.Plotχpods(TSkind='pcolor')
+ax = nrl5.Plotχpods(TSkind='pcolor', filter_len=12*3600)
 ax['Tz'].set_yscale('linear')
 ax['u'].set_ylim([250, 0])
 ax['Jq'].set_ylim([-40, 0])
 #+END_SRC
 #+ATTR_HTML: :class full-width
 #+RESULTS: nrl5-summary
+:RESULTS:
+# Out[1281]:
+: (-40, 0)
 [[file:images/nrl5-summary.png]]
+:END:
 
 #+NAME: nrl5-storm
 #+BEGIN_SRC ipython :session :ipyfile images/nrl5-storm-near-inertial-waves.png
@@ -262,6 +268,10 @@ nrl5.ChipodSeasonalSummary(filter_len=3600)
 
 #+RESULTS:
 [[file:images/nrl5-boxplot.png]]
+
+#+CAPTION: Really strong stratification in sorted gradients (O(1)) are because of times like these. Note that internal estimate is also high. Seems like there is a stratified layer that the mooring isn't seeing.
+[[file:images/wda-518-strong-strat-25-Jan-2015.png]]
+
 
 ** 518
 #+BEGIN_SRC ipython :session :ipyfile images/518-chi.png
