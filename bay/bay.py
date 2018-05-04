@@ -152,3 +152,16 @@ def bin_and_to_dataframe(KTm, ρbins=None, Sbins=None):
     KTdf['moor'] = KTdf['latlon'].map(dict(zip(moornames.values(),
                                                moornames.keys()))).astype('category')
     return KTdf
+
+
+def remake_summaries(moorings=None):
+    ''' Remake all summary images '''
+
+    from .read_data import read_all_moorings
+
+    if moorings is None:
+        moorings = read_all_moorings()
+
+    print('making all summaries')
+    for m in moorings:
+        m.Summarize(savefig=True)
