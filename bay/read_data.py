@@ -23,9 +23,9 @@ def read_ra12():
     ra12 = moor.moor(90, 12, 'RAMA 12N', 'rama', '../rama/RAMA13/')
     ra12.AddChipod(526, 15, 'mm1w', 'Turb.mat')
     ra12.AddChipod(527, 30, 'mm1w', 'Turb.mat')
-    ra12.AddChipod(810, 15, 'mm', 'Turb.mat', dir='../rama/RAMA14/')
-    ra12.AddChipod(811, 30, 'mm1', 'Turb.mat', dir='../rama/RAMA14/')
-    ra12.AddChipod(812, 45, 'mm2', 'Turb.mat', dir='../rama/RAMA14/')
+    ra12.AddChipod(810, 15, 'mmw', 'Turb.mat', dir='../rama/RAMA14/')
+    ra12.AddChipod(811, 30, 'mm1w', 'Turb.mat', dir='../rama/RAMA14/')
+    ra12.AddChipod(812, 45, 'mm2w', 'Turb.mat', dir='../rama/RAMA14/')
     ra12.ReadMet('../rama/data/met12n90e_10m.cdf', WindType='pmel')
     # ra12.ReadMet('../rama/data/jq0_12n90e_hr.mat', FluxType='merged')
     ra12.ReadMet(FluxType='precip')
@@ -51,8 +51,8 @@ def read_ra12():
 def read_ra15():
 
     ra15 = moor.moor(90, 15, 'RAMA 15N', 'rama', '../rama/RAMA14/')
-    ra15.AddChipod(813, 15, 'pm', 'Turb.mat')
-    ra15.AddChipod(814, 30, 'mm1', 'Turb.mat')
+    ra15.AddChipod(813, 15, 'pmw', 'Turb.mat')
+    ra15.AddChipod(814, 30, 'mm1w', 'Turb.mat')
     ra15.χpod[813].load_pitot()
     ra15.χpod[814].load_pitot()
     ra15.ReadMet('../rama/data/met15n90e_10m.cdf', WindType='pmel')
@@ -116,7 +116,7 @@ def read_nrl4():
     nrl4 = moor.moor(87, 8, 'NRL4', 'ebob', '../ebob/')
     nrl4.ReadCTD('NRL4', FileType='ebob')
     nrl4.AddChipod(514, 55, 'mm1', 'Turb.mat')
-    nrl4.AddChipod(516, 75, 'mm', 'Turb.mat')
+    nrl4.AddChipod(516, 75, 'mm2', 'Turb.mat')
     nrl4.ReadVel('NRL4', FileType='ebob')
     nrl4.AddEvents('SLD', '2014-06-01', '2014-09-01')
 
@@ -129,7 +129,7 @@ def read_nrl5():
 
     nrl5 = moor.moor(88.5, 8, 'NRL5', 'ebob', '../ebob/')
     nrl5.ReadCTD('NRL5', FileType='ebob')
-    nrl5.AddChipod(518, depth=84, best='mmw', fname='Turb.mat')
+    nrl5.AddChipod(518, depth=84, best='mm2', fname='Turb.mat')
     nrl5.AddChipod(519, depth=104, best='mm1', fname='Turb.mat')
     nrl5.ReadVel('NRL5', FileType='ebob')
     nrl5.AddEvents('Storm+IW', '2014-07-01', '2014-09-01')
