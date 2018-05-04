@@ -373,12 +373,12 @@ def vert_distrib(KTdf, bins, varname='KT', pal=None, f=None, ax=None,
     # ax['NE'].set_yticklabels(np.arange(120,0,-10).astype('str'))
 
     for season in ax:
-        args = {'linestyle': '--', 'color': 'dimgray'}
-        idx = np.argsort(zvec)
-        ax[season].plot(np.array(mdnvec[season])[idx],
-                        np.array(zvec[season])[idx], **args)
-        ax[season].plot(np.array(meanvec[season])[idx],
-                        np.array(zvec[season])[idx], **args)
+        # args = {'linestyle': '--', 'color': 'dimgray'}
+        # idx = np.argsort(zvec)
+        # ax[season].plot(np.array(mdnvec[season])[idx],
+        #                 np.array(zvec[season])[idx], **args)
+        # ax[season].plot(np.array(meanvec[season])[idx],
+        #                 np.array(zvec[season])[idx], **args)
         aa = ax[season]
         for xx in xlines:
             aa.axvline(xx, lw=0.5, ls='dotted', zorder=-50, color='gray')
