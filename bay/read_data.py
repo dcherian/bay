@@ -7,6 +7,7 @@ chipy = importlib.reload(chipy)
 
 
 def read_all_moorings():
+    print('Reading all moorings...')
     ra12 = read_ra12()
     ra15 = read_ra15()
     nrl1 = read_nrl1()
@@ -43,6 +44,8 @@ def read_ra12():
     ra12.AddEvents('FW2', '2015-Apr-05', '2015-Apr-10')
     ra12.AddEvents('FW3', '2015-Oct-28', '2015-Nov-05')
 
+    ra12.ReadSSH()
+
     ra12 = __common(ra12)
 
     return ra12
@@ -66,6 +69,8 @@ def read_ra15():
 
     ra15.AddEvents('FW4', '2015-Aug-10', '2015-Aug-20', 813)
 
+    ra15.ReadSSH()
+
     ra15 = __common(ra15)
 
     return ra15
@@ -79,6 +84,8 @@ def read_nrl1():
     nrl1.ReadVel('NRL1', FileType='ebob')
 
     nrl1.AddEvents("SW1", '2014-01-23', '2014-02-02')
+    nrl1.AddEvents("FW1", '2014-07-18', '2014-07-30')
+    nrl1.ReadSSH()
 
     nrl1 = __common(nrl1)
 
@@ -91,6 +98,7 @@ def read_nrl2():
     nrl2.ReadCTD('NRL2', FileType='ebob')
     nrl2.AddChipod(504, 69, 'mm', 'Turb.mat')
     nrl2.ReadVel('NRL2', FileType='ebob')
+    nrl2.ReadSSH()
 
     nrl2 = __common(nrl2)
 
@@ -105,6 +113,7 @@ def read_nrl3():
     nrl3.AddChipod(511, 48, 'mm1', 'Turb.mat')
     nrl3.ReadVel('NRL3', FileType='ebob')
     nrl3.AddEvents('SLD', '2014-06-01', '2014-09-01')
+    nrl3.ReadSSH()
 
     nrl3 = __common(nrl3)
 
@@ -119,6 +128,7 @@ def read_nrl4():
     nrl4.AddChipod(516, 75, 'mm2', 'Turb.mat')
     nrl4.ReadVel('NRL4', FileType='ebob')
     nrl4.AddEvents('SLD', '2014-06-01', '2014-09-01')
+    nrl4.ReadSSH()
 
     nrl4 = __common(nrl4)
 
@@ -133,6 +143,7 @@ def read_nrl5():
     nrl5.AddChipod(519, depth=104, best='mm1', fname='Turb.mat')
     nrl5.ReadVel('NRL5', FileType='ebob')
     nrl5.AddEvents('Storm+IW', '2014-07-01', '2014-09-01')
+    nrl5.ReadSSH()
 
     nrl5 = __common(nrl5)
 
