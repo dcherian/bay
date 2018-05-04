@@ -392,7 +392,7 @@ def vert_distrib(KTdf, bins, varname='KT', pal=None, f=None, ax=None,
     return f, ax
 
 
-def make_vert_distrib_plot(varname, bins):
+def make_vert_distrib_plot(varname, bins, moor=None):
 
     turb = xr.open_dataset('bay_merged_hourly.nc', autoclose=True).load()
 
@@ -422,6 +422,9 @@ def make_vert_distrib_plot(varname, bins):
                   .map(dict(zip(moornames.values(),
                               moornames.keys())))
                   .astype('category'))
+
+    if moor is not None:
+        df = df[df.moor == moor]
 
     df = bin_ktdf(df, bins)
 
