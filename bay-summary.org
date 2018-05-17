@@ -139,30 +139,30 @@ plt.savefig('../images/map-misobob.png', bbox_inches='tight')
 * All χpods
 ** RAMA
 #+ATTR_HTML: :class full-width
-[[file:images/ra12-2014-summary.png]]
+[[file:images/summary-RAMA-12N-2014.png]]
 
 #+ATTR_HTML: :class full-width
-[[file:images/ra12-2015-summary.png]]
+[[file:images/summary-RAMA-12N-2015.png]]
 
 #+ATTR_HTML: :class full-width
-[[file:images/ra15-summary.png]]
+[[file:images/summary-RAMA-15N.png]]
 
 ** EBOB
 
 #+ATTR_HTML: :class full-width
-[[file:images/nrl1-summary.png]]
+[[file:images/summary-NRL1.png]]
 
 #+ATTR_HTML: :class full-width
-[[file:images/nrl2-summary.png]]
+[[file:images/summary-NRL2.png]]
 
 #+ATTR_HTML: :class full-width
-[[file:images/nrl3-summary.png]]
+[[file:images/summary-NRL3.png]]
 
 #+ATTR_HTML: :class full-width
-[[file:images/nrl4-summary.png]]
+[[file:images/summary-NRL4.png]]
 
 #+ATTR_HTML: :class full-width
-[[file:images/nrl5-summary.png]]
+[[file:images/summary-NRL5.png]]
 
 * vertical distribution of $K_T$
 ** Make plot
@@ -943,6 +943,81 @@ plt.xlim([-6.5, -3])
 : (-6.5, -3)
 [[file:images/temp/imgfv1To1.png]]
 :END:
+
+* O_2, nutrients
+
+** climatological profiles
+#+NAME: read-nutrients
+#+BEGIN_SRC ipython :session :ipyfile :results none
+o2 = xr.open_dataset('../datasets/woa13/woa13_all_o00_01.nc',
+                     autoclose=True, decode_times=False)
+o2seas = xr.open_mfdataset('../datasets/woa13/woa13-season/woa13_all_o*_01.nc',
+                           autoclose=True, decode_times=False)
+
+n = xr.open_dataset('../datasets/woa13/woa13_all_n00_01.nc',
+                     autoclose=True, decode_times=False)
+nseas = xr.open_mfdataset('../datasets/woa13/woa13-season/woa13_all_n*_01.nc',
+                           autoclose=True, decode_times=False)
+
+p = xr.open_dataset('../datasets/woa13/woa13_all_p00_01.nc',
+                    autoclose=True, decode_times=False)
+pseas = xr.open_mfdataset('../datasets/woa13/woa13-season/woa13_all_p*_01.nc',
+                          autoclose=True, decode_times=False)
+i = xr.open_dataset('../datasets/woa13/woa13_all_i00_01.nc',
+                     autoclose=True, decode_times=False)
+#+END_SRC
+
+#+BEGIN_SRC ipython :session :ipyfile images/bay-chem-annual-mean.png
+import bay
+
+def plot_nutrients(nut, nutseas, var, ax, **kwargs):
+    mean = (nut[var+'_mn'].sel(**bay.region)
+            .mean(dim=['lat', 'lon']).squeeze())
+    if ax[0] is not None:
+        (mean.plot(ax=ax[0], y='depth', yincrease=False, color='k',
+                   lw=2, zorder=10, **kwargs))
+        plt.gca().set_ylim([150, 0])
+
+    if var != 'o':
+        ((mean/mean.sel(depth=150, method='nearest'))
+         .plot(ax=ax[1], y='depth', yincrease=False, **kwargs))
+    else:
+        ((mean/mean.max())
+         .plot(ax=ax[1], y='depth', yincrease=False, **kwargs))
+
+    if nutseas is not None:
+        (nutseas[var+'_mn'].sel(**bay.region)
+         .mean(dim=['lat', 'lon']).squeeze()
+         .plot.line(ax=ax[0], y='depth', yincrease=False, hue='time', **kwargs))
+
+f, ax = plt.subplots(1, 4, sharey=True)
+f.set_size_inches(8,4)
+plot_nutrients(o2, o2seas, 'o', [ax[0], ax[-1]], add_legend=False)
+plot_nutrients(n, nseas, 'n', [ax[1], ax[-1]], add_legend=False)
+plot_nutrients(p, pseas, 'p', [ax[2], ax[-1]])
+plot_nutrients(i, None, 'i', [None, ax[-1]])
+
+ax[-1].set_title('')
+ax[-1].set_xlabel('Normalized profile')
+ax[-1].set_xlim([0, 1])
+ax[-1].legend(['O₂', 'N', 'P', 'Si'])
+
+[aa.set_ylabel('') for aa in ax[1:]]
+f.suptitle('Average oxygen, nutrient distributions (WOA13) for Bay of Bengal')
+#+END_SRC
+#+RESULTS:
+:RESULTS:
+# Out[166]:
+: Text(0.5,0.98,'Average oxygen, nutrient distributions (WOA13) for Bay of Bengal')
+[[file:images/bay-chem-annual-mean.png]]
+:END:
+
+** gyaan
+cite:Sarma2016
+1. Primary production is comparable to AS for NE and transitions but /lower/ for SW.
+2. Cold-core eddies uplift nutrients?
+3. Silicate is not a limiting nutrient
+4. More depletion of N, P in the north
 
 * Spectrogram
 #+BEGIN_SRC ipython :session :ipyfile images/temp/imgoi5WUg.png
