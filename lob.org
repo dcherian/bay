@@ -86,25 +86,23 @@ if 'nrl5' in locals():
     nrl5.CombineTurb()
 #+END_SRC
 
-#+BEGIN_COMMENT
 #+NAME: summary-all
 #+BEGIN_SRC ipython :session :results none
 if 'ra12' in locals():
-    <<ra12-summary()>>
-    <<ra12-2014-summary()>>
-    <<ra12-2015-summary()>>
+    ra12.Summarize(True)
 if 'ra15' in locals():
-    <<ra15-summary()>>
+    ra15.Summarize(True)
 if 'nrl1' in locals():
-    <<nrl1-summary()>>
+    nrl1.Summarize(True)
+if 'nrl2' in locals():
+    nrl2.Summarize(True)
 if 'nrl3' in locals():
-    <<nrl3-summary()>>
+    nrl3.Summarize(True)
 if 'nrl4' in locals():
-    <<nrl4-summary()>>
+    nrl4.Summarize(True)
 if 'nrl5' in locals():
-    <<nrl5-summary()>>
+    nrl5.Summarize(True)
 #+END_SRC
-#+END_COMMENT
 ** RAMA
 #+NAME: read-ra12
 #+BEGIN_SRC ipython :session :results none
