@@ -43,7 +43,7 @@ Emily: /A lot of these χ-pods did not have pitots installed/
 
 * NRL-1
 ** full mooring
-Interestingly, there's not really a seasonal cycle in K_T!
+1. Interestingly, there's not really a seasonal cycle in K_T!
 
 #+CALL: read-nrl1()
 #+NAME: nrl1-summary
