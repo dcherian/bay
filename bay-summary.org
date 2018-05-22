@@ -166,7 +166,7 @@ plt.savefig('../images/map-misobob.png', bbox_inches='tight')
 
 * vertical distribution of $K_T$
 ** Make plot
-*** Mangle together and change to dataframe
+*** Mangle together and change to dataframe :noexport:
 #+CALL: read-all-moorings()
 #+NAME: make-merged-KT
 #+BEGIN_SRC ipython :session :results none
@@ -183,30 +183,28 @@ bay.make_merged_nc(moorings)
 #+END_SRC
 *** means/medians profile
 #+NAME: vert-profile
-#+BEGIN_SRC ipython :session :ipyfile images/bay-KT-vert-profile.png :results drawer
+#+BEGIN_SRC ipython :session :results none
 import bay
 bay = importlib.reload(bay)
 
-bins = [1018, 1021, 1022, 1022.5, 1023, 1023.5, 1024.25, 1029]
 moors = ['RAMA12', 'RAMA15', 'NRL1', 'NRL2', 'NRL3', 'NRL4', 'NRL5']
 
-bay.make_vert_distrib_plot('KT', bins)
+bay.make_vert_distrib_plot('KT')
 plt.savefig('images/vert-profile.svg', bbox_inches='tight')
+plt.savefig('images/bay-KT-vert-profile.png', bbox_inches='tight')
 #+END_SRC
 #+ATTR_HTML: :class full-width
-#+RESULTS: vert-profile
-:RESULTS:
-# Out[46]:
 [[file:images/bay-KT-vert-profile.png]]
-:END:
 
 Some sensitivities:
 1. Changing 505 to 'mmw': not much
 
-1. High mixing at 70-100m depth in SW monsoon, compared to NE monsoon.
+2. High mixing at 70-100m depth in SW monsoon, compared to NE monsoon.
    1. Connected to SMC/SLD?
    2. Near-inertial waves from storms could be a thing
    3. Something happens in NRL5, around SW monsoon start to see temperature inversions semi-regularly (rare, but regular)
+
+3. High values near surface are usually base of mixed layer/barrier layer χpods (527, 814)
 
 
 #+NAME: save-distrib-for-each-mooring
@@ -945,7 +943,6 @@ plt.xlim([-6.5, -3])
 :END:
 
 * O_2, nutrients
-
 ** climatological profiles
 #+NAME: read-nutrients
 #+BEGIN_SRC ipython :session :ipyfile :results none
@@ -1846,8 +1843,10 @@ def full_extent(ax, pad=0.0):
     return bbox.expanded(1.0 + pad, 1.0 + pad)
 
 ax, hkr = ra12.met_turb_summary(region={'time': '2014', 'depth': 15}, naxes=2)
+ax['met'].set_xlabel('')
+plt.gcf().set_size_inches((6, 3.25))
 
-ktrama = ((10**turb.KT).sel(lon=90, lat=12, time='2014')
+ktrama = (ra12.KT.sel(time='2014')
          .dropna(dim='depth', how='all')
          .resample(time='D').mean(dim='time')
          .isel(depth=0))
@@ -1890,12 +1889,10 @@ ax['Kt'].xaxis.set_major_formatter(mpl.dates.DateFormatter('%b-%d'))
 ax['Kt'].set_xlabel('2014')
 ax['Kt'].set_ylabel('Daily avg. $K_T$ (m²/s)')
 ax['Kt'].xaxis.set_tick_params(rotation=0)
-# plt.tight_layout()
-plt.gcf().set_size_inches((6, 3.25))
+plt.tight_layout()
 plt.savefig('images/rama-vs-nrl-0.png', bbox_inches='tight')
 
-nrlregion = dict(lon=88.5, lat=8, time='2014')
-ktnrl = ((10**turb.KT).sel(**nrlregion)
+ktnrl = (nrl5.KT.sel(time='2014')
          .dropna(dim='depth', how='all')
          .resample(time='D').mean(dim='time')
          .isel(depth=1))
