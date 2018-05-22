@@ -392,7 +392,20 @@ def vert_distrib(KTdf, bins, varname='KT', pal=None, f=None, ax=None,
     return f, ax
 
 
-def make_vert_distrib_plot(varname, bins, moor=None):
+def mark_moors(color='w', ax=None):
+    lons = [85.5, 85.5, 87, 88.5, 90, 90]
+    lats = [5, 8, 8, 8, 12, 15]
+
+    if ax is None:
+        ax = plt.gca()
+
+    ax.plot(lons, lats, color+'o')
+
+
+def make_vert_distrib_plot(varname,
+                           bins=[1018, 1021, 1022, 1022.5, 1023,
+                                 1023.5, 1024.25, 1029],
+                           moor=None):
 
     turb = xr.open_dataset('bay_merged_hourly.nc', autoclose=True).load()
 

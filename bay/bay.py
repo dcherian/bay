@@ -2,7 +2,7 @@ import numpy as np
 import xarray as xr
 import tqdm
 
-region = dict(lon=slice(80, 94), lat=slice(6, 24))
+region = dict(lon=slice(80, 94), lat=slice(4, 24))
 
 
 def make_merged_nc(moorings):
