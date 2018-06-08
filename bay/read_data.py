@@ -82,6 +82,7 @@ def read_nrl1():
     nrl1.AddChipod(500, depth=56, best='mm', fname='Turb.mat')
     nrl1.AddChipod(501, depth=76, best='mm1', fname='Turb.mat')
     nrl1.ReadVel('NRL1', FileType='ebob')
+    nrl1.ReadNIW()
 
     nrl1.AddEvents("SW1", '2014-01-23', '2014-02-02')
     nrl1.AddEvents("FW1", '2014-07-18', '2014-07-30')
@@ -99,6 +100,7 @@ def read_nrl2():
     nrl2.AddChipod(504, 69, 'mm', 'Turb.mat')
     nrl2.ReadVel('NRL2', FileType='ebob')
     nrl2.ReadSSH()
+    nrl2.ReadNIW()
 
     nrl2 = __common(nrl2)
 
@@ -114,6 +116,7 @@ def read_nrl3():
     nrl3.ReadVel('NRL3', FileType='ebob')
     nrl3.AddEvents('SLD', '2014-06-01', '2014-09-01')
     nrl3.ReadSSH()
+    nrl3.ReadNIW()
 
     nrl3 = __common(nrl3)
 
@@ -129,6 +132,7 @@ def read_nrl4():
     nrl4.ReadVel('NRL4', FileType='ebob')
     nrl4.AddEvents('SLD', '2014-06-01', '2014-09-01')
     nrl4.ReadSSH()
+    nrl4.ReadNIW()
 
     nrl4 = __common(nrl4)
 
@@ -142,8 +146,9 @@ def read_nrl5():
     nrl5.AddChipod(518, depth=84, best='mm2', fname='Turb.mat')
     nrl5.AddChipod(519, depth=104, best='mm1', fname='Turb.mat')
     nrl5.ReadVel('NRL5', FileType='ebob')
-    nrl5.AddEvents('Storm+IW', '2014-07-01', '2014-09-01')
+    nrl5.AddEvents('Storm+IW', '2014-07-17', '2014-08-07')
     nrl5.ReadSSH()
+    nrl5.ReadNIW()
 
     nrl5 = __common(nrl5)
 
