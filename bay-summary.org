@@ -691,6 +691,34 @@ g = syearly.plot.contourf(x='dayofyear', row='year', col='lat',
 #+CAPTION: Distribution of 5 minute averages of K_T.
 #+RESULTS:
 [[file:../images//rama12n-kt-boxplot.png]]
+** Seasonal cycle in M_2 tide!
+There is a seasonal cycle in M2. There are also prominent tidal harmonics = nonlinear tide?
+
+Spectra of KT is contaminated by instrument moving down in the water column :(
+
+#+BEGIN_SRC ipython :session :ipyfile images/seasonal-nrl3.png
+nrl3.plot_spectrogram()
+plt.gcf().set_size_inches((5, 6))
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+# Out[358]:
+[[file:images/seasonal-nrl3.png]]
+:END:
+
+#+BEGIN_SRC ipython :session :ipyfile images/temp/imgoi5WUg.png
+spec = dcpy.ts.Spectrogram(ra15.vel.spd.interpolate_na(dim='time').squeeze(),
+                           dim='time',
+                           window=(7*86400)/(30*60),
+                           shift=(3.5*86400)/(30*60), nsmooth=15)
+np.log10(spec).plot.contourf(x='time', levels=40);
+plt.gca().set_yscale('log')
+#+END_SRC
+
+#+RESULTS:
+
+
 * Barrier layers
 When the freshwater arrives, I see large values of Jqt at 30m/45m. This is at both 12N, 15N in both 2014, 2015.
 
@@ -1017,7 +1045,6 @@ cite:Sarma2016
 4. More depletion of N, P in the north
 
 * Ewa NIW @ NRL
-
 #+NAME: read-ewa
 #+BEGIN_SRC ipython :session :results none
 for fname in ['NRL1', 'NRL3', 'NRL4', 'NRL5']:
@@ -1052,6 +1079,7 @@ for fname in ['NRL1', 'NRL3', 'NRL4', 'NRL5']:
     nrl.to_netcdf('../datasets/ewa/'+fname+'.nc')
 #+END_SRC
 
+#+NAME: plot-niw
 #+BEGIN_SRC ipython :session :ipyfile images/temp/img19kudT.png
 def plot_ewa_niw(nrl):
     import cmocean
@@ -1076,18 +1104,6 @@ for nn in ['NRL1', 'NRL3', 'NRL4', 'NRL5']:
 
 
 #+END_SRC
-* Spectrogram
-#+BEGIN_SRC ipython :session :ipyfile images/temp/imgoi5WUg.png
-spec = dcpy.ts.Spectrogram(ra15.vel.spd.interpolate_na(dim='time').squeeze(),
-                           dim='time',
-                           window=(7*86400)/(30*60),
-                           shift=(3.5*86400)/(30*60), nsmooth=15)
-np.log10(spec).plot.contourf(x='time', levels=40);
-plt.gca().set_yscale('log')
-#+END_SRC
-
-#+RESULTS:
-
 * MISO signals?
 ** Summary
 cite:Sobel2010 show large TRMM 30-90 day variance between May and October in the Bay.
