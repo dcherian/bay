@@ -100,7 +100,7 @@ def read_nrl2():
     nrl2.AddChipod(504, 69, 'mm', 'Turb.mat')
     nrl2.ReadVel('NRL2', FileType='ebob')
     nrl2.ReadSSH()
-    nrl2.ReadNIW()
+    # nrl2.ReadNIW()
 
     nrl2 = __common(nrl2)
 
