@@ -691,23 +691,214 @@ g = syearly.plot.contourf(x='dayofyear', row='year', col='lat',
 #+CAPTION: Distribution of 5 minute averages of K_T.
 #+RESULTS:
 [[file:../images//rama12n-kt-boxplot.png]]
-** Seasonal cycle in M_2 tide!
-There is a seasonal cycle in M2. There are also prominent tidal harmonics = nonlinear tide?
+** Seasonal cycle in internal wave energy?
 
-Spectra of KT is contaminated by instrument moving down in the water column :(
+Given a mooring calculate spectra at all depths. Average over season?
 
-#+BEGIN_SRC ipython :session :ipyfile images/seasonal-nrl3.png
-nrl3.plot_spectrogram()
-plt.gcf().set_size_inches((5, 6))
+#+BEGIN_SRC ipython :session :ipyfile images/temp/imgjHIylm.png
+
+# T = nrl5.ctd['T_S']
+
+kwargs = dict(dim='time', window=15*86400/10/60, shift=5*86400/10/60)
+plot_kwargs = dict(cmap=svc.cm.blue_orange_div, add_colorbar=True)
+
+spec = dcpy.ts.Spectrogram(nrl5.ctd.T_S.isel(z=3), **kwargs,
+                           dt=10/24/60)
+spec.freq.attrs['units'] = 'cpd'
+spec.name = 'PSD(T)'
+
+np.log10(spec).plot(robust=True, x='time', **plot_kwargs)
+
 #+END_SRC
 
 #+RESULTS:
 :RESULTS:
-# Out[358]:
+# Out[62]:
+: <matplotlib.collections.QuadMesh at 0x7fde680e0278>
+[[file:images/temp/imgjHIylm.png]]
+:END:
+
+#+BEGIN_SRC ipython :session :ipyfile images/temp/imgnRA15P.png
+T = nrl5.ctd.T_S.isel(z=3)
+
+kwargs = {'dt': 600/86400,
+          'multitaper': True,
+          'nsmooth': 5}
+dcpy.ts.PlotSpectrum(T.monsoon.ne, **kwargs)
+dcpy.ts.PlotSpectrum(T.monsoon.nesw, **kwargs)
+dcpy.ts.PlotSpectrum(T.monsoon.sw, **kwargs)
+dcpy.ts.PlotSpectrum(T.monsoon.swne, **kwargs)
+tides = dcpy.ts.TidalAliases(600/86400)
+
+plt.gca().axvline(1/(2*np.pi/dcpy.oceans.coriolis(8.5)/86400))
+plt.gca().axvline(1/(2*np.pi/dcpy.oceans.coriolis(8.5)/86400))
+
+dcpy.plots.linex([tt for tt in tides.values()])
+
+plt.gca().legend(['NE', 'NESW', 'SW', 'SWNE'])
+
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+# Out[22]:
+: <matplotlib.legend.Legend at 0x7f4248874b70>
+[[file:images/temp/imgnRA15P.png]]
+:END:
+
+
+Let's integrate temperature spectrum in 3 bands:
+1. Internal waves: 1.2f < freq < 20 minutes
+2. Near-inertial:
+3. M2 : 0.9*f_M2 < freq < 1.1*f_M2
+
+#+NAME: integrate_temperature_spectrum
+#+BEGIN_SRC ipython :session :results none
+kwargs = {'dt': 600/86400,
+          'multitaper': True,
+          'nsmooth': 5}
+
+Eiw = pd.DataFrame(index=['NE', 'NESW', 'SW', 'SWNE'],
+                 columns=['NRL1', 'NRL2', 'NRL3', 'NRL4', 'NRL5'],
+                 dtype=np.float64)
+Eniw = pd.DataFrame(index=['NE', 'NESW', 'SW', 'SWNE'],
+                    columns=['NRL1', 'NRL2', 'NRL3', 'NRL4', 'NRL5'],
+                    dtype=np.float64)
+Em2 = pd.DataFrame(index=['NE', 'NESW', 'SW', 'SWNE'],
+                   columns=['NRL1', 'NRL2', 'NRL3', 'NRL4', 'NRL5'],
+                   dtype=np.float64)
+
+tides = dcpy.ts.TidalAliases(dt=600/86400)
+
+def integrate_spectrum(spec, flo, fhi, debug=False):
+    spec_iw = spec.where(np.logical_and(spec.freq > flo,
+                                        spec.freq < fhi))
+
+    if debug:
+        spec.plot()
+        spec_iw.dropna(dim='freq', how='all').plot()
+        dcpy.plots.linex([flo, fhi])
+        plt.gca().set_xscale('log')
+        plt.gca().set_yscale('log')
+
+    return (xrsp.integrate.trapz(spec_iw.dropna(dim='freq'),
+                                 coord='freq')
+            .values.ravel()[0])
+
+
+for moor in [nrl1, nrl2, nrl3, nrl4, nrl5]:
+    print(moor.name)
+    f0 = 1/(dcpy.oceans.coriolis(moor.lat)*86400)
+    for season in E.index:
+        T = moor.ctd['T'].sel(depth2=200, method='nearest')
+        T = (T.where(T.monsoon.labels == season))
+
+        if np.all(np.isnan(T)):
+            continue
+
+        S, freq, conf = dcpy.ts.SpectralDensity(T, **kwargs)
+        spec = xr.DataArray(S, dims=['freq'], coords={'freq': freq})
+
+        Eiw[moor.name][season] = (
+            integrate_spectrum(spec, 0.9*f0, 1/1200*86400))
+        Eniw[moor.name][season] = (
+            integrate_spectrum(spec, 0.9*f0, 1.2*f0))
+        Em2[moor.name][season] = (integrate_spectrum(spec,
+                                                     0.9*tides['M2'],
+                                                     1.1*tides['M2']))
+#+END_SRC
+
+#+BEGIN_SRC ipython :session :ipyfile images/temperature-seasonal-variance.png
+f, ax = plt.subplots(1, 3)
+sns.heatmap(Eiw, ax=ax[0], robust=True, annot=True, linecolor='w', linewidths=3,
+            cmap=mpl.cm.Reds, fmt='.2f')
+ax[0].set_title('internal wave band')
+
+sns.heatmap(Eniw, ax=ax[1], robust=True, annot=True, linecolor='w', linewidths=3,
+            cmap=mpl.cm.Reds, fmt='.2f')
+ax[1].set_title('NIW band')
+
+sns.heatmap(Em2, ax=ax[2], robust=True, annot=True, linecolor='w', linewidths=3,
+            cmap=mpl.cm.Reds, fmt='.2f')
+ax[2].set_title('M2 band')
+
+f.suptitle('Temperature variance at 200m')
+f.set_size_inches(16, 5)
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+# Out[119]:
+[[file:images/temperature-seasonal-variance.png]]
+:END:
+
+** Seasonal cycle in M_2 tide!
+There is a seasonal cycle in M2. There are also prominent tidal harmonics = nonlinear tide?
+
+Most of these KT are contaminated by instrument moving down in the water column :(
+
+#+BEGIN_SRC ipython :session :ipyfile images/seasonal-nrl1.png
+nrl1.plot_spectrogram()
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+# Out[171]:
+[[file:images/seasonal-nrl1.png]]
+:END:
+
+#+BEGIN_SRC ipython :session :ipyfile images/seasonal-nrl2.png
+nrl2.plot_spectrogram()
+#+END_SRC
+
+#+BEGIN_SRC ipython :session :ipyfile images/seasonal-nrl3.png
+nrl3.plot_spectrogram()
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+# Out[176]:
 [[file:images/seasonal-nrl3.png]]
 :END:
 
-#+BEGIN_SRC ipython :session :ipyfile images/temp/imgoi5WUg.png
+#+BEGIN_SRC ipython :session :ipyfile images/seasonal-nrl4.png
+nrl4.plot_spectrogram()
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+# Out[175]:
+[[file:images/seasonal-nrl4.png]]
+:END:
+
+#+BEGIN_SRC ipython :session :ipyfile images/seasonal-nrl5.png
+nrl5.plot_spectrogram()
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+# Out[174]:
+[[file:images/seasonal-nrl5.png]]
+:END:
+
+
+#+BEGIN_SRC ipython :session :ipyfile images/temp/imgdYM4bm.png
+dt = 10/24/60
+kwargs = dict(dim='time', dt=dt, window=25/dt, shift=5/dt)
+
+spec = dcpy.ts.Spectrogram(self.ctd['T'].sel(depth2=150), **kwargs)
+np.log10(spec).plot(robust=True, x='time')
+plt.gca().set_yscale('log')
+
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+# Out[157]:
+:END:
+
+
+#+begin_SRC ipython :session :ipyfile images/temp/imgoi5WUg.png
 spec = dcpy.ts.Spectrogram(ra15.vel.spd.interpolate_na(dim='time').squeeze(),
                            dim='time',
                            window=(7*86400)/(30*60),
