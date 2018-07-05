@@ -746,21 +746,22 @@ plt.gca().legend(['NE', 'NESW', 'SW', 'SWNE'])
 [[file:images/temp/imgnRA15P.png]]
 :END:
 
-
 Let's integrate temperature spectrum in 3 bands:
-1. Internal waves: 1.2f < freq < 20 minutes
-2. Near-inertial:
+1. Internal waves: 1/1.2f < freq < 1/20 minutes
+2. Near-inertial: 1/1.2f < freq < 1/0.9f (*clockwise only*)
 3. M2 : 0.9*f_M2 < freq < 1.1*f_M2
+4. K1 : 0.9*f_K1 < freq < 1.1*f_K1
 
-#+NAME: integrate_temperature_spectrum
+Compute the rotary spectra and integrate the sum if not near-inertial (in that case, I do clockwise only).
+#+NAME: integrate_velocity_spectrum
 #+BEGIN_SRC ipython :session :results none
-kwargs = {'dt': 600/86400,
+kwargs = {'dt': 3600/86400,
           'multitaper': True,
           'nsmooth': 5}
 
 Eiw = pd.DataFrame(index=['NE', 'NESW', 'SW', 'SWNE'],
-                 columns=['NRL1', 'NRL2', 'NRL3', 'NRL4', 'NRL5'],
-                 dtype=np.float64)
+                   columns=['NRL1', 'NRL2', 'NRL3', 'NRL4', 'NRL5'],
+                   dtype=np.float64)
 Eniw = pd.DataFrame(index=['NE', 'NESW', 'SW', 'SWNE'],
                     columns=['NRL1', 'NRL2', 'NRL3', 'NRL4', 'NRL5'],
                     dtype=np.float64)
@@ -768,7 +769,13 @@ Em2 = pd.DataFrame(index=['NE', 'NESW', 'SW', 'SWNE'],
                    columns=['NRL1', 'NRL2', 'NRL3', 'NRL4', 'NRL5'],
                    dtype=np.float64)
 
+Ek1 = pd.DataFrame(index=['NE', 'NESW', 'SW', 'SWNE'],
+                   columns=['NRL1', 'NRL2', 'NRL3', 'NRL4', 'NRL5'],
+                   dtype=np.float64)
+
 tides = dcpy.ts.TidalAliases(dt=600/86400)
+
+debug = True
 
 def integrate_spectrum(spec, flo, fhi, debug=False):
     spec_iw = spec.where(np.logical_and(spec.freq > flo,
@@ -785,40 +792,108 @@ def integrate_spectrum(spec, flo, fhi, debug=False):
                                  coord='freq')
             .values.ravel()[0])
 
+if debug:
+    with plt.style.context('ggplot'):
+        fall, axall = plt.subplots(1, 2);
+        fall.set_size_inches((10, 10/2.5))
 
-for moor in [nrl1, nrl2, nrl3, nrl4, nrl5]:
+for moor in [nrl1, nrl3, nrl4, nrl5]:
     print(moor.name)
-    f0 = 1/(dcpy.oceans.coriolis(moor.lat)*86400)
-    for season in E.index:
-        T = moor.ctd['T'].sel(depth2=200, method='nearest')
-        T = (T.where(T.monsoon.labels == season))
+    inertial = 1/(2*np.pi/(dcpy.oceans.coriolis(moor.lat)*86400))
 
-        if np.all(np.isnan(T)):
-            continue
+    T = ((moor.vel.u + 1j * moor.vel.v)
+         .sel(depth=100, method='nearest'))
 
-        S, freq, conf = dcpy.ts.SpectralDensity(T, **kwargs)
-        spec = xr.DataArray(S, dims=['freq'], coords={'freq': freq})
+    if np.all(np.isnan(T)):
+        continue
 
-        Eiw[moor.name][season] = (
-            integrate_spectrum(spec, 0.9*f0, 1/1200*86400))
-        Eniw[moor.name][season] = (
-            integrate_spectrum(spec, 0.9*f0, 1.2*f0))
-        Em2[moor.name][season] = (integrate_spectrum(spec,
-                                                     0.9*tides['M2'],
-                                                     1.1*tides['M2']))
+    with plt.style.context('ggplot'):
+        if debug:
+            dcpy.ts.PlotSpectrum(T.dropna(dim='time'),
+                                 preserve_area=True,
+                                 ax=axall, twoside=True, **kwargs)
+
+            f, ax = plt.subplots(2, 2, sharex=True, sharey=True)
+            f.set_size_inches(8, 5)
+            plt.suptitle(moor.name)
+            axes = dict(NE=ax[0,0], SW=ax[0,1],
+                        NESW=ax[1,0], SWNE=ax[1,1])
+
+        for season in Eiw.index:
+            # T = (np.hypot(moor.vel.u, moor.vel.v)
+            #      .sel(depth=100, method='nearest'))
+
+            Tsub = (T.where(T.monsoon.labels == season)
+                    .sel(time='2014')
+                    .dropna(dim='time'))
+
+            # S, freq, conf = dcpy.ts.SpectralDensity(T, **kwargs)
+            cw, ccw, freq, conf_cw, conf_ccw = dcpy.ts.RotaryPSD(Tsub, **kwargs)
+
+            dakwargs = dict(dims=['freq'], coords={'freq': freq})
+            spec = xr.Dataset()
+            spec['cw'] = xr.DataArray(cw, **dakwargs)
+            spec['ccw'] = xr.DataArray(ccw, **dakwargs)
+
+            if debug:
+                dcpy.ts.PlotSpectrum(Tsub, axes[season], twoside=False,
+                                     preserve_area=True,
+                                     ,**kwargs)
+                axes[season].set_title(season)
+
+            # spec = xr.DataArray(S, dims=['freq'], coords={'freq': freq})
+            # integrate_spectrum(spec.cw, 0.9*inertial, 1.2*inertial)
+
+            Eiw[moor.name][season] = (integrate_spectrum(spec.cw + spec.ccw,
+                                                         0.9*inertial,
+                                                         1/1200*86400))
+            Eniw[moor.name][season] = (
+                integrate_spectrum(spec.cw, 0.9*inertial, 1.2*inertial))
+            Em2[moor.name][season] = (integrate_spectrum(spec.cw+spec.ccw,
+                                                         0.9*tides['M2'],
+                                                         1.1*tides['M2']))
+            Ek1[moor.name][season] = (integrate_spectrum(spec.cw+spec.ccw,
+                                                         0.9*tides['K1'],
+                                                         1.1*tides['K1']))
+
+        if debug:
+            dcpy.plots.linex([0.9*inertial, 1.2*inertial,
+                              0.9*tides['M2'], 1.1*tides['M2'],
+                              0.9*tides['K1'], 1.1*tides['K1']],
+                             ax=ax.ravel())
+            [aa.set_xlabel('') for aa in ax[0, :]]
+            [aa.set_ylabel('') for aa in ax[:, 1]]
+            [aa.set_xlabel('Freq (cpd)') for aa in ax[1, :]]
+            [aa.set_ylim([0, 0.013]) for aa in ax.flat]
+
+            f.savefig('images/rotary-vel-spectra-'+moor.name+'.png',
+                      bbox_inches='tight', transparent=False)
+
+axall[0].set_ylim(axall[1].get_ylim())
+axall[1].legend(['NRL1', 'NRL3', 'NRL4', 'NRL5'])
+fall.savefig('images/rotary-vel-spectra-NRL.png', bbox_inches='tight',
+             transparent=False)
 #+END_SRC
+
+#+CAPTION: Seasonal area/variance-preserving two-sided spectra of velocity at 100m for NRL1,3,4,5.
+[[file:images/rotary-vel-spectra-NRL.png]]
+
+[[file:images/rotary-vel-spectra-NRL1.png]]
+[[file:images/rotary-vel-spectra-NRL3.png]]
+[[file:images/rotary-vel-spectra-NRL4.png]]
+[[file:images/rotary-vel-spectra-NRL5.png]]
 
 #+BEGIN_SRC ipython :session :ipyfile images/temperature-seasonal-variance.png
 f, ax = plt.subplots(1, 3)
-sns.heatmap(Eiw, ax=ax[0], robust=True, annot=True, linecolor='w', linewidths=3,
+sns.heatmap(Eiw*1e3, ax=ax[0], robust=True, annot=True, linecolor='w', linewidths=3,
             cmap=mpl.cm.Reds, fmt='.2f')
 ax[0].set_title('internal wave band')
 
-sns.heatmap(Eniw, ax=ax[1], robust=True, annot=True, linecolor='w', linewidths=3,
+sns.heatmap(Eniw*1e3, ax=ax[1], robust=True, annot=True, linecolor='w', linewidths=3,
             cmap=mpl.cm.Reds, fmt='.2f')
 ax[1].set_title('NIW band')
 
-sns.heatmap(Em2, ax=ax[2], robust=True, annot=True, linecolor='w', linewidths=3,
+sns.heatmap(Em2*1e3, ax=ax[2], robust=True, annot=True, linecolor='w', linewidths=3,
             cmap=mpl.cm.Reds, fmt='.2f')
 ax[2].set_title('M2 band')
 
@@ -828,12 +903,13 @@ f.set_size_inches(16, 5)
 
 #+RESULTS:
 :RESULTS:
-# Out[119]:
-[[file:images/temperature-seasonal-variance.png]]
+# Out[475]:
 :END:
 
 ** Seasonal cycle in M_2 tide!
 There is a seasonal cycle in M2. There are also prominent tidal harmonics = nonlinear tide?
+
+There is a more prominent seasonal cycle in the K1 tide too?
 
 Most of these KT are contaminated by instrument moving down in the water column :(
 
