@@ -984,7 +984,121 @@ plt.gca().set_yscale('log')
 #+END_SRC
 
 #+RESULTS:
+** Seasonal cycle in NIW?
+*** NIW input u⋅τ
+#+BEGIN_SRC ipython :session :ipyfile images/temp/imgCv7Gly.png
+self = nrl5
 
+ut = (self.vel.u.isel(depth=0) * self.tropflux.taux
+)
+#+END_SRC
+*** NIW energy at moorings
+
+#+BEGIN_SRC ipython :session :ipyfile images/seasonal-niw-nrl.png
+import bay
+
+if 'nrl1' not in locals():
+    nrl1 = bay.read_nrl1()
+
+def depth_average(da, depth_range):
+    import xrscipy as xrsp
+    return (xrsp.integrate.trapz(da.sel(depth=depth_range),
+                                 coord='depth'))
+
+f, ax = plt.subplots(2, 2, constrained_layout=True)
+
+for idx, moor in enumerate([nrl1, nrl3, nrl4, nrl5]):
+    aa = ax.flat[idx]
+    top = depth_average(moor.niw.KE, slice(0, 40))
+    bottom = depth_average(moor.niw.KE, slice(40, None))
+
+    def plot_monthly_average(da):
+        mean = da.groupby('time.month').mean(dim='time')
+        std = da.groupby('time.month').std(dim='time')
+
+        norm = mean.max()
+        (mean/norm).plot(yerr=std/norm/np.sqrt(2), ax=aa)
+
+    plot_monthly_average(top)
+    plot_monthly_average(bottom)
+    aa.set_title(moor.name)
+    f.legend(['0-40m', 'below 40m'], loc='outside')
+    f.suptitle('Normalized seasonal mean depth integrated NIW KE + std')
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+# Out[290]:
+[[file:images/seasonal-niw-nrl.png]]
+:END:
+:END:
+*** Ewa NIW @ NRL processing :noexport:
+#+NAME: read-ewa
+#+BEGIN_SRC ipython :session :results none
+for fname in ['NRL1', 'NRL3', 'NRL4', 'NRL5']:
+
+    nn = sp.io.loadmat('../datasets/ewa/' + fname + 'cxdm_out.mat', squeeze_me=True)
+
+    time = dcpy.util.datenum2datetime(nn['date_time'])
+    nrl = xr.Dataset()
+    nrl['amp'] = xr.DataArray(nn['CA'].T/100,
+                             dims=['depth', 'time'],
+                             coords={'time': time,
+                                     'depth': nn['depth_levels']})
+    nrl['amp'].attrs['long_name'] = 'Clockwise amplitude'
+    nrl['amp'].attrs['units'] = 'm/s'
+
+    nrl['pha'] = xr.DataArray(nn['Cp'].T,
+                             dims=['depth', 'time'],
+                             coords={'time': time,
+                                     'depth': nn['depth_levels']})
+    nrl['pha'].attrs['long_name'] = 'Clockwise phase'
+    nrl['pha'].attrs['units'] = 'rad'
+
+    nrl['KE'] = xr.DataArray(nn['CKE'].T,
+                             dims=['depth', 'time'],
+                             coords={'time': time,
+                                     'depth': nn['depth_levels']})
+    nrl['KE'].attrs['long_name'] = 'Clockwise KE'
+    nrl['KE'].attrs['units'] = 'J/m³'
+
+    nrl.attrs['name'] = fname
+
+    nrl.to_netcdf('../datasets/ewa/'+fname+'.nc')
+#+END_SRC
+
+#+NAME: plot-niw
+#+BEGIN_SRC ipython :session :results none
+def plot_ewa_niw(nrl):
+    import cmocean
+
+    kwargs = dict(robust=True, yincrease=False, cmap=mpl.cm.Reds)
+
+    f, ax = plt.subplots(3, 1, sharex=True, sharey=True)
+
+    nrl.amp.plot(ax=ax[0], **kwargs)
+    nrl.pha.plot(ax=ax[1], robust=True, cmap=cmocean.cm.phase, yincrease=False, center=0)
+    nrl.KE.plot(ax=ax[2], **kwargs)
+
+    f.suptitle(nrl.name, y=0.91)
+    ax[0].set_xlabel('')
+    ax[1].set_xlabel('')
+
+
+for nn in ['NRL1', 'NRL3', 'NRL4', 'NRL5']:
+    nrl = xr.open_dataset('../datasets/ewa/' + nn + '.nc', autoclose=True).load()
+    plot_ewa_niw(nrl)
+    plt.savefig('../images/niw-' + nn + '.png', bbox_inches='tight')
+
+
+#+END_SRC
+** Seasonal cycle code
+#+BEGIN_SRC ipython :session :ipyfile images/temp/imgDcsXFa.png
+
+
+
+
+#+END_SRC
 
 * Barrier layers
 When the freshwater arrives, I see large values of Jqt at 30m/45m. This is at both 12N, 15N in both 2014, 2015.
