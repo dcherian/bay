@@ -4,20 +4,36 @@ import scipy as sp
 import pandas as pd
 import seaborn as sns
 import xarray as xr
+import dcpy
+import cartopy.crs as ccrs
+from cartopy import feature
+
+# markers = {'RAMA': 'o', 'NRL': '^', 'OMM/WHOI': 'o'}
+# colors = {'RAMA': '#0074D9', 'NRL': '#3D9970', 'OMM/WHOI': '#FF4136'}
+# colors = {'RAMA': '#1696A3', 'NRL': '#F89B1F', 'OMM/WHOI': '#EA4D5B'}
+# colors = {'RAMA': '#1696A3', 'NRL': '#F89B1F', 'OMM/WHOI': '#EA4D5B'}
+colors = {'RAMA': '#1696A3', 'NRL': '#F89B1F', 'OMM/WHOI': 'gray'}
 
 
-def make_map(pods, DX=0.6, DY=0.55, add_year=True, highlight=[]):
+def plot_coastline(ax, facecolor="#FEF9E4"):
 
-    # markers = {'RAMA': 'o', 'NRL': '^', 'OMM/WHOI': 'o'}
-    # colors = {'RAMA': '#0074D9', 'NRL': '#3D9970', 'OMM/WHOI': '#FF4136'}
-    # colors = {'RAMA': '#1696A3', 'NRL': '#F89B1F', 'OMM/WHOI': '#EA4D5B'}
-    colors = {'RAMA': '#1696A3', 'NRL': '#F89B1F', 'OMM/WHOI': '#EA4D5B'}
+    # facecolor = '#b2ccba'
+    coastline = feature.NaturalEarthFeature(name='coastline',
+                                            category='physical',
+                                            scale='50m',
+                                            edgecolor='black',
+                                            facecolor=facecolor)
 
-    import cartopy.crs as ccrs
-    from cartopy import feature
-    # from mpl_toolkits.basemap import cm
+    ax.set_extent([80, 96, 2, 24])
+    ax.add_feature(coastline)
 
-    labelargs = {'fontsize': 11.5,
+    # ax.coastlines('10m', color='slategray', facecolor='slategray', lw=1)
+
+
+def make_map(pods, DX=0.6, DY=0.55, add_year=True, highlight=[],
+             ax=None, topo=True):
+
+    labelargs = {'fontsize': 'small',
                  'bbox': {
                      'alpha': 0.25,
                      'edgecolor': 'none',
@@ -29,83 +45,78 @@ def make_map(pods, DX=0.6, DY=0.55, add_year=True, highlight=[]):
     # }
     proj = ccrs.PlateCarree()
 
-    coastline = feature.NaturalEarthFeature(name='coastline',
-                                            category='physical',
-                                            scale='50m',
-                                            edgecolor='black',
-                                            facecolor='#b2ccba')
-
-    etopo = xr.open_dataset('~/datasets/ETOPO2v2g_f4.nc4', autoclose=True)
-    extract = {'x': slice(60, 96), 'y': slice(-5, 25)}
-
     def get_color(name, highlight):
         if name in highlight or len(highlight) == 0:
             return colors[name]
         else:
             return '#888888'
 
-    with plt.rc_context({'font.size': 14}):
+    if ax is None:
         ax = plt.axes(projection=proj)
-        ax.set_extent([80, 96, 2, 24])
-        ax.add_feature(coastline)
-        # ax.coastlines('10m', color='slategray', facecolor='slategray', lw=1)
+
+    plot_coastline(ax)
+
+    if topo:
+        etopo = xr.open_dataset('~/datasets/ETOPO2v2g_f4.nc4', autoclose=True)
+        extract = {'x': slice(60, 96), 'y': slice(-5, 25)}
 
         etopo.z.sel(**extract).plot.contour(
             transform=ccrs.PlateCarree(),
             add_colorbar=False,
             levels=np.sort([-100, -500, -1000,
                             -2500, -4000, -5000]),
-            colors=['gray'], linewidths=0.5)
-        ax.set_xlabel('')
-        ax.set_ylabel('')
+            colors=['gray'], linewidths=0.5, ax=ax)
 
-        for name in pods:
-            pod = pods[name]
-            ax.plot(pod['lon'], pod['lat'], transform=ccrs.PlateCarree(),
-                    linestyle='',
-                    marker='o',
-                    color=get_color(pod['label'], highlight),
-                    label=pod['label'], zorder=10)
+    ax.set_xlabel('')
+    ax.set_ylabel('')
 
-            text = ''
-            if add_year:
-                if pod['label'] == 'RAMA' and pod['lat'] == 15:
-                    text += '2015\n\n'
-                if pod['label'] == 'OMM/WHOI':
-                    text += '2014-15\n\n'
+    for name in pods:
+        pod = pods[name]
+        ax.plot(pod['lon'], pod['lat'], transform=ccrs.PlateCarree(),
+                linestyle='',
+                marker='o',
+                color=get_color(pod['label'], highlight),
+                label=pod['label'], zorder=10)
 
-            for z in pod['depths']:
-                text += z
-                if pod['label'] == 'RAMA' and pod['lat'] == 12 and add_year:
-                    text += ' / ' + pod['depths'][z]
-
-                text += '\n'
-
-            text = text[:-1]
-
-            dx = 0
-            dy = 0
-            if pod['ha'] is 'left':
-                dx = DX
-            elif pod['ha'] is 'right':
-                dx = -1 * DX
-            if pod['va'] is 'bottom':
-                dy = DY
-            elif pod['va'] is 'top':
-                dy = - DY
-
-            if name == 'NRL3':
-                dx += 0.6
-
+        text = ''
+        if add_year:
+            if pod['label'] == 'RAMA' and pod['lat'] == 15:
+                text += '2015\n\n'
             if pod['label'] == 'OMM/WHOI':
-                dy += 1.25
+                text += '2014-15\n\n'
 
-            labelargs['bbox']['facecolor'] = get_color(pod['label'], highlight)
+        for z in pod['depths']:
+            text += z
+            if pod['label'] == 'RAMA' and pod['lat'] == 12 and add_year:
+                text += ' / ' + pod['depths'][z]
 
-            ax.text(pod['lon']+dx, pod['lat']+dy, text,
-                    transform=ccrs.PlateCarree(),
-                    ha=pod['ha'], va=pod['va'],
-                    multialignment='center', **labelargs)
+            text += '\n'
+
+        text = text[:-1]
+
+        dx = 0
+        dy = 0
+        if pod['ha'] is 'left':
+            dx = DX
+        elif pod['ha'] is 'right':
+            dx = -1 * DX
+        if pod['va'] is 'bottom':
+            dy = DY
+        elif pod['va'] is 'top':
+            dy = - DY
+
+        if name == 'NRL3':
+            dx += 0.6
+
+        if pod['label'] == 'OMM/WHOI':
+            dy += 1.25
+
+        labelargs['bbox']['facecolor'] = get_color(pod['label'], highlight)
+
+        ax.text(pod['lon']+dx, pod['lat']+dy, text,
+                transform=ccrs.PlateCarree(),
+                ha=pod['ha'], va=pod['va'],
+                multialignment='center', **labelargs)
 
         ax.set_facecolor(None)
 
@@ -444,3 +455,122 @@ def make_vert_distrib_plot(varname,
     f, ax = vert_distrib(df, df.bin, label_moorings=False, percentile=True)
 
     plt.subplots_adjust(wspace=-0.06)
+
+
+def make_labeled_map(ax=None):
+
+    pods = {
+        'RAMA12':
+            {'lon': 90, 'lat': 12, 'label': 'RAMA',
+             'ha': 'right', 'va': 'center',
+             'depths': {
+                 '15 m': '2014-15',
+                 '30 m': '2014-15',
+                 '45 m': '2015'}},
+        'RAMA15':
+            {'lon': 90, 'lat': 15, 'label': 'RAMA',
+             'ha': 'right', 'va': 'center',
+             'depths': {
+                 '15 m': '2015',
+                 '30 m': '2015'}},
+        'WHOI':
+            {'lon': 90, 'lat': 18, 'label': 'OMM/WHOI',
+             'ha': 'left', 'va': 'top',
+             'depths': {
+                 '22 m': '2014-15',
+                 '30 m': '2014-15',
+                 '46 m': '2014-15',
+                 '55 m': '2014-15',
+                 '65 m': '2014-15'}},
+        'NRL1':
+            {'lon': 85.5, 'lat': 5, 'label': 'NRL',
+             'ha': 'center', 'va': 'top',
+             'depths': {
+                 '60 m (55-100)': '2015',
+                 '80 m (75-115)': '2015'}},
+        'NRL3':
+            {'lon': 85.5, 'lat': 8, 'label': 'NRL',
+             'ha': 'right', 'va': 'top',
+             'depths': {
+                 '32 m (28-78)': '2015',
+                 '52 m (48-100)': '2015'}},
+        'NRL4':
+            {'lon': 87, 'lat': 8, 'label': 'NRL',
+             'ha': 'center', 'va': 'bottom',
+             'depths': {
+                 '63 m (60-85)': '2015',
+                 '83 m (80-105)': '2015'}},
+        'NRL5':
+            {'lon': 88.5, 'lat': 8, 'label': 'NRL',
+             'ha': 'left', 'va': 'top',
+             'depths': {
+                 '  85 m': '2015',
+                 '105 m': '2015'}},
+    }
+
+    ax, colors = make_map(pods, DX=0.6, DY=0.55,
+                          add_year=True, highlight=['RAMA', 'NRL'],
+                          ax=ax)
+
+    ax.text(87, 6.8, 'NRL\n(2014)',
+            color=colors['NRL'], ha='center', va='center')
+    ax.text(90-0.35, 18, 'OMM/WHOI',
+            color=colors['OMM/WHOI'], ha='right', va='center')
+    ax.text(90, 13.5, 'RAMA',
+            color=colors['RAMA'], ha='left', va='center')
+    ax.set_xticks([80, 82, 84, 85.5, 87, 88.5, 90, 92, 94, 96])
+    ax.set_yticks([2, 4, 5, 8, 12, 15, 18, 20, 22, 24])
+
+
+def mark_χpod_depths_on_clim(ax=[]):
+
+    argoT = xr.open_dataset('~/datasets/argoclim/RG_ArgoClim_Temperature_2016.nc',
+                            autoclose=True, decode_times=False)
+    argoS = xr.open_dataset('~/datasets/argoclim/RG_ArgoClim_Salinity_2016.nc',
+                            autoclose=True, decode_times=False)
+
+    def mark_range(ax, top, middle, bottom, color=colors['NRL']):
+        xlim = ax.get_xlim()
+        ax.fill_between([xlim[0], xlim[1]], bottom, top,
+                        facecolor=color, alpha=0.1, zorder=-5)
+        dcpy.plots.liney(middle, ax=ax,
+                         color=colors['NRL'], linestyle='-')
+
+    def plot_profiles(ax, lon, lat, color):
+
+        region = {'LATITUDE': lat, 'LONGITUDE': lon, 'method': 'nearest'}
+
+        ax.plot(argoT.ARGO_TEMPERATURE_MEAN.sel(**region).squeeze(),
+                argoT.PRESSURE, color=color, lw=2)
+        ax2 = ax.twiny()
+        ax2.plot(argoS.ARGO_SALINITY_MEAN.sel(**region).squeeze(),
+                 argoS.PRESSURE, '--', color=color, lw=2)
+
+        ax2.spines['top'].set_visible(True)
+        ax.set_xlim([23, 30])
+        ax.set_ylabel('Pressure')
+        ax.text(29, 10, 'T', color=color)
+        ax.text(23.75, 10, 'S', color=color)
+        # ax.text(25.5, 114, 'Argo clim.', color='black',
+        #         ha='center', fontsize=12)
+
+        return ax2
+
+    if len(ax) == 0:
+        _, ax = plt.subplots(1, 2, sharey=True, constrained_layout=True)
+
+    plot_profiles(ax[0], 90, 12, color=colors['RAMA'])
+    plot_profiles(ax[1], 85.5, 5, color=colors['NRL'])
+    mark_range(ax[1], 55, 60, 100)
+    mark_range(ax[1], 75, 80, 115)
+    mark_range(ax[1], 28, 32, 78)
+    mark_range(ax[1], 48, 52, 100)
+    mark_range(ax[1], 60, 63, 85)
+    mark_range(ax[1], 80, 83, 105)
+    dcpy.plots.liney([85, 105], ax=ax[1],
+                     color=colors['NRL'], linestyle='-')
+    dcpy.plots.liney([15, 30, 45], ax=ax[0],
+                     color=colors['RAMA'], linestyle='-')
+
+    ax[0].set_ylim([120, 0])
+    ax[1].set_ylim([120, 0])

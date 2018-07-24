@@ -6,67 +6,7 @@
 #+BEGIN_SRC ipython :session :results none
 import bay
 
-pods = {
-    'RAMA12':
-        {'lon': 90, 'lat': 12, 'label': 'RAMA',
-         'ha': 'right', 'va': 'center',
-         'depths': {
-             '15 m': '2014-15',
-             '30 m': '2014-15',
-             '45 m': '2015'}},
-    'RAMA15':
-        {'lon': 90, 'lat': 15, 'label': 'RAMA',
-         'ha': 'right', 'va': 'center',
-         'depths': {
-             '15 m': '2015',
-             '30 m': '2015'}},
-    'WHOI':
-        {'lon': 90, 'lat': 18, 'label': 'OMM/WHOI',
-         'ha': 'left', 'va': 'top',
-         'depths': {
-             '22 m': '2014-15',
-             '30 m': '2014-15',
-             '46 m': '2014-15',
-             '55 m': '2014-15',
-             '65 m': '2014-15'}},
-    'NRL1':
-        {'lon': 85.5, 'lat': 5, 'label': 'NRL',
-         'ha': 'center', 'va': 'top',
-         'depths': {
-             '60 m (55-100)': '2015',
-             '80 m (75-115)': '2015'}},
-    'NRL3':
-        {'lon': 85.5, 'lat': 8, 'label': 'NRL',
-         'ha': 'right', 'va': 'top',
-         'depths': {
-             '32 m (28-78)': '2015',
-             '52 m (48-100)': '2015'}},
-    'NRL4':
-        {'lon': 87, 'lat': 8, 'label': 'NRL',
-         'ha': 'center', 'va': 'bottom',
-         'depths': {
-             '63 m (60-85)': '2015',
-             '83 m (80-105)': '2015'}},
-    'NRL5':
-        {'lon': 88.5, 'lat': 8, 'label': 'NRL',
-         'ha': 'left', 'va': 'top',
-         'depths': {
-             '  85 m': '2015',
-             '105 m': '2015'}},
-}
-
-ax, colors = bay.make_map(pods, DX=0.6, DY=0.55,
-                          add_year=True, highlight=['RAMA', 'NRL'])
-
-ax.text(87, 6.8, 'NRL\n(2014)',
-        fontsize=14, color=colors['NRL'], ha='center', va='center')
-ax.text(90-0.35, 18, 'OMM/WHOI',
-        fontsize=14, color=colors['OMM/WHOI'], ha='right', va='center')
-ax.text(90, 13.5, 'RAMA',
-        fontsize=14, color=colors['RAMA'], ha='left', va='center')
-ax.set_xticks([80, 82, 84, 85.5, 87, 88.5, 90, 92, 94, 96])
-ax.set_yticks([2, 4, 5, 8, 12, 15, 18, 20, 22, 24])
-
+bay.make_labeled_map()
 plt.gcf().set_size_inches((6, 8))
 plt.savefig('../images/map.svg')
 plt.savefig('../images/map.png', bbox_inches='tight')
@@ -2429,62 +2369,12 @@ hanno = ax['v'].annotate("",
 
 ** χpod depths on ARGO climatology
 #+BEGIN_SRC ipython :session :ipyfile images/argo-clim-χpod-depths.png
-argoT = xr.open_dataset('~/datasets/argoclim/RG_ArgoClim_Temperature_2016.nc',
-                        autoclose=True, decode_times=False)
-argoS = xr.open_dataset('~/datasets/argoclim/RG_ArgoClim_Salinity_2016.nc',
-                        autoclose=True, decode_times=False)
-
-def mark_range(ax, top, middle, bottom, color=colors['NRL']):
-   xlim = ax.get_xlim()
-   ax.fill_between([xlim[0], xlim[1]], bottom, top,
-                   facecolor=color, alpha=0.1, zorder=-5)
-   dcpy.plots.liney(middle, ax=ax,
-                 color=colors['NRL'], linestyle='-')
-
-def plot_profiles(ax, lon, lat, color):
-
-   region = {'LATITUDE': lat, 'LONGITUDE': lon, 'method': 'nearest'}
-
-   ax.plot(argoT.ARGO_TEMPERATURE_MEAN.sel(**region).squeeze(),
-           argoT.PRESSURE, color=color, lw=2)
-   ax2 = ax.twiny()
-   ax2.plot(argoS.ARGO_SALINITY_MEAN.sel(**region).squeeze(),
-            argoS.PRESSURE, '--', color=color, lw=2)
-
-   ax2.spines['top'].set_visible(True)
-   ax.set_xlim([23, 30])
-   ax.set_ylabel('Pressure')
-   ax.text(29, 10, 'T', color=color)
-   ax.text(23.75, 10, 'S', color=color)
-   ax.text(25.5, 114, 'Argo clim.', color='black',
-           ha='center', fontsize=12)
-
-   return ax2
-
-
 with plt.rc_context({'font.size': 15,
                      'axes.facecolor': 'white',
                      'savefig.transparent': False}):
 
-   f, ax = plt.subplots(1, 2)
-   ax20 = plot_profiles(ax[0], 90, 12, color=colors['RAMA'])
-   ax21 = plot_profiles(ax[1], 85.5, 5, color=colors['NRL'])
-   mark_range(ax[1], 55, 60, 100)
-   mark_range(ax[1], 75, 80, 115)
-   mark_range(ax[1], 28, 32, 78)
-   mark_range(ax[1], 48, 52, 100)
-   mark_range(ax[1], 60, 63, 85)
-   mark_range(ax[1], 80, 83, 105)
-   dcpy.plots.liney([85, 105], ax=ax[1],
-                    color=colors['NRL'], linestyle='-')
-   dcpy.plots.liney([15, 30, 45], ax=ax[0],
-                    color=colors['RAMA'], linestyle='-')
-
-   ax[0].set_ylim([120, 0])
-   ax[1].set_ylim([120, 0])
-
-   f.set_size_inches(8, 6)
-   plt.tight_layout()
+   bay.mark_χpod_depths_on_clim()
+   plt.gcf().set_size_inches(8, 6)
    plt.savefig('images/argo-clim-χpod-depths.svg')
 
 #+END_SRC
@@ -2668,3 +2558,334 @@ Tested with RAMA14-810
 [[file:images/810-compare-hist2-chi-eps.png]]
 
 bibliography:~/Papers/bibtexLibrary.bib
+* Paper figures
+** summary paper
+*** Figure 1: map + depths on argo climatology
+#+BEGIN_SRC ipython :session :ipyfile images/temp/imgeMzvg3.png
+import cartopy.crs as ccrs
+
+with plt.rc_context({'font.size': 11,
+                     'axes.facecolor': 'white',
+                     'savefig.transparent': False}):
+
+    f = plt.figure(constrained_layout=True)
+
+    n=3
+    n0=2
+    # gs = mpl.gridspec.GridSpec(2, n, figure=f)
+    # ax1 = f.add_subplot(gs[:, :n0], projection=ccrs.PlateCarree())
+    # ax2 = f.add_subplot(gs[0, n0:])
+    # ax3 = f.add_subplot(gs[1, n0:])
+
+    gs = mpl.gridspec.GridSpec(n, 2, figure=f)
+    ax1 = f.add_subplot(gs[:n0, :], projection=ccrs.PlateCarree())
+    ax2 = f.add_subplot(gs[n0:, 0])
+    ax3 = f.add_subplot(gs[n0:, 1])
+
+    f.set_size_inches((4.75, 8))
+
+    bay.make_labeled_map(ax=ax1)
+    bay.mark_χpod_depths_on_clim(ax=[ax2, ax3])
+
+    for label, ax in zip(['a', 'b', 'c'], [ax1, ax2, ax3]):
+        ax.text(0.025, 0.05, label+')', transform=ax.transAxes,
+                fontsize='medium')
+
+    [tt.set_rotation(30) for tt in ax1.get_xticklabels()]
+    ax3.set_ylabel('')
+    ax3.set_yticklabels([])
+
+    plt.savefig('images/paper1/map.pdf', bbox_inches='tight')
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+# Out[140]:
+:END:
+*** RAMA vs NRL
+#+BEGIN_SRC ipython :session :ipyfile images/temp/imgcqnSXp.png
+def full_extent(ax, pad=0.0):
+    """Get the full extent of an axes, including axes labels, tick labels, and
+    titles."""
+
+    from matplotlib.transforms import Bbox
+    # For text objects, we need to draw the figure first, otherwise the extents
+    # are undefined.
+    ax.figure.canvas.draw()
+    items = [ax, ax.title, ax.xaxis.label, ax.yaxis.label]
+    items += (ax.get_xticklabels() + ax.get_yticklabels())
+    bbox = Bbox.union([item.get_window_extent() for item in items])
+
+    return bbox.expanded(1.0 + pad, 1.0 + pad)
+
+def mark_location(ax, KT, label, color):
+    kt = (KT.sel(time='2014')
+          .resample(time='D').mean(dim='time'))
+
+    hdl_point = ax.plot(kt.time[-1], kt[-1],
+                        'o', ms=4, color=color, clip_on=False)
+    hdl_text = ax.text('2014-12-31', kt[-1], '  '+label, ha='left',
+                       clip_on=False, color=color)
+
+    return hdl_point, hdl_text
+
+
+f, axx = plt.subplots(3, 1, sharex=True, constrained_layout=True)
+
+ax, hkr = ra12.met_turb_summary(region={'time': '2014', 'depth': 15},
+                                ax=axx[:2])
+axn, hkn = nrl5.met_turb_summary(region={'time': '2014', 'depth': 104.0},
+                                 ax=[axx[2], axx[1]])
+
+hdl_pointr, hdl_textr = mark_location(axx[1], ra12.KT.isel(depth=0),
+                                      label='12N 15m',
+                                      color=hkr[0].get_color())
+
+hdl_pointn, hdl_textb = mark_location(axx[1], nrl5.KT.isel(depth=1),
+                                      label='8N 104m',
+                                      color=hkn[0].get_color())
+
+htxt = []
+htxt.append(
+    ax['met'].text('2014-02-01', 0.35, 'NE', va='bottom', zorder=-1)
+)
+htxt.append(
+    ax['met'].text('2014-04-15', 0.35, 'NESW', va='bottom', zorder=-1)
+)
+htxt.append(
+    ax['met'].text('2014-07-16', 0.35, 'SW', va='bottom', zorder=-1)
+)
+htxt.append(
+    ax['met'].text('2014-10-20', 0.35, 'SWNE', va='bottom', zorder=-1)
+)
+
+ax['met'].set_xlim(('2014-01', '2015-01'))
+ax['met'].set_ylim([0, 0.35])
+ax['Kt'].xaxis.set_major_formatter(mpl.dates.DateFormatter('%b-%d'))
+ax['Kt'].set_xlabel('2014')
+ax['Kt'].set_ylabel('Daily avg. \n $K_T$ [m²/s]')
+ax['Kt'].grid(False, axis='x')
+ax['Kt'].grid(True, which='both', axis='y')
+[aa.set_xlabel('') for aa in axx]
+axx[2].xaxis.set_tick_params(rotation=0)
+f.set_size_inches((7, 4.25))
+
+plt.savefig('images/paper1/rama-vs-nrl.pdf', bbox_inches='tight')
+
+# arrowprops = dict(arrowstyle="<->", connectionstyle="arc3")
+# ha1 = ax['Kt'].annotate("",
+#                         xy=('2014-04-15', 5e-5), xycoords='data',
+#                         xytext=('2014-04-15', 1), textcoords='data',
+#                         arrowprops=arrowprops)
+# ha2 = ax['Kt'].annotate("",
+#                         xy=('2014-07-15', 5e-3), xycoords='data',
+#                         xytext=('2014-07-15', 1), textcoords='data',
+#                         arrowprops=arrowprops)
+# ha3 = ax['Kt'].annotate("",
+#                         xy=('2014-10-9', 5e-2), xycoords='data',
+#                         xytext=('2014-10-9', 10), textcoords='data',
+#                         arrowprops=arrowprops)
+
+
+# for ha in [ha1, ha2, ha3]:
+#     ha.set_visible(False)
+
+# ha = []
+# arrowprops = dict(arrowstyle="->", connectionstyle="arc3")
+# ha.append(ax['Kt'].annotate("near-molecular!",
+#                        xytext=('2014-04-01', 7e-6), xycoords='data',
+#                        xy=('2014-04-15', 2e-7), textcoords='data',
+#                             arrowprops=arrowprops, ha='right'))
+
+# plt.gcf().set_size_inches((6, 3.25))
+# plt.savefig('images/rama-vs-nrl-1.png', bbox_inches='tight')
+
+# extent = full_extent(ax['Kt']).transformed(f.transFigure.inverted())
+# # We can now make the rectangle in figure coords using the "transform" kwarg.
+# rect = mpl.patches.Rectangle([extent.xmin, extent.ymin],
+#                              extent.width, extent.height,
+#                              facecolor='yellow', edgecolor='none', zorder=-1,
+#                              transform=fig.transFigure)
+# f.patches.append(rect)
+
+# ax['Jq0'].set_visible(False)
+# ax['met'].set_visible(False)
+
+
+
+#+END_SRC
+*** Vertical profile
+*** Seasonal spatial variations
+#+BEGIN_SRC ipython :session :ipyfile images/temp/imgGiGXBs.png
+
+bay = importlib.reload(bay)
+
+import cartopy.crs as ccrs
+
+if 'ssha' not in locals():
+    ssha = (xr.open_dataset('../datasets/ssh/'
+                            + 'dataset-duacs-rep-global-merged-allsat-phy-l4-v3_1522711420825.nc',
+                            autoclose=True)
+            .sel(time='2014')
+            .load())
+    ssha['EKE'] = 0.5 * (ssha.ugosa**2 + ssha.vgosa**2)
+    eke = (ssha.EKE.groupby(ssha.EKE.time.monsoon.labels)
+           .mean(dim='time'))
+
+if 'tropflux' not in locals():
+    tropflux = (xr.open_mfdataset('../datasets/tropflux/tau*_tropflux_1d_*.nc',
+                                  autoclose=True)
+                .drop('tau')
+                .sel(time='2014',
+                     latitude=slice(2, 25),
+                     longitude=slice(78, 96))
+                .load())
+    tropflux = (tropflux.groupby(tropflux.time.monsoon.labels)
+                .mean(dim='time'))
+
+if 'trmm' not in locals():
+    trmm = (dcpy.oceans.read_trmm()
+            .sel(time='2014',
+                 lat=slice(2, 25),
+                 lon=slice(78, 96)))
+    trmm = (trmm.groupby(trmm.time.monsoon.labels)
+            .sum(dim='time'))
+
+def make_insets(ax):
+    insets = dict()
+
+    kwargs = dict(transform=ax.transData, zorder=6)
+
+    with plt.rc_context({'axes.facecolor': 'w'}):
+        insets['ra12'] = ax.inset_axes([96, 10.5, 5, 3],
+                                       ,**kwargs)
+        insets['ra15'] = ax.inset_axes([96, 14, 5, 3],
+                                       ,**kwargs)
+        insets['nrl5'] = ax.inset_axes([96, 6.5, 5, 3],
+                                       ,**kwargs)
+
+        insets['nrl1'] = ax.inset_axes([75, 3, 5, 3],
+                                       ,**kwargs)
+
+        insets['nrl3'] = ax.inset_axes([75, 8.5, 5, 3],
+                                       ,**kwargs)
+
+        insets['nrl4'] = ax.inset_axes([75, 13, 5, 3],
+                                       ,**kwargs)
+
+
+        ax.indicate_inset([nrl4.lon-0.25, nrl4.lat-0.25, 0.5, 0.5],
+                          inset_ax=insets['nrl4'],
+                          transform=ax.transData)
+
+        ax.indicate_inset([nrl3.lon-0.25, nrl3.lat-0.25, 0.5, 0.5],
+                          inset_ax=insets['nrl3'],
+                          transform=ax.transData)
+
+
+    return insets
+
+
+def clean_inset_axes(ax):
+    ax.set_ylabel('')
+    ax.set_xlabel('')
+    ax.set_xlim([-7, -1])
+    ax.set_title('')
+    ax.set_yticks([])
+    ax.set_yticklabels([])
+    ax.spines['left'].set_visible(False)
+
+N = 200
+cmap = mpl.cm.GnBu(np.arange(N))
+cmap[:, -1] = np.linspace(0.25, 0.5, N)
+ppt_cmap = mpl.colors.ListedColormap(cmap[60:])
+
+f, ax = plt.subplots(4, 1, constrained_layout=True,
+                     subplot_kw={'projection':ccrs.PlateCarree()})
+f.set_size_inches((4, 10))
+
+axes = dict()
+# axes['NE'] = ax[0, 0]
+# axes['NESW'] = ax[0, 1]
+# axes['SW'] = ax[1, 0]
+# axes['SWNE'] = ax[1, 1]
+
+axes['NE'] = ax[0]
+axes['NESW'] = ax[1]
+axes['SW'] = ax[2]
+axes['SWNE'] = ax[3]
+
+insets = dict()
+
+for season in axes:
+    hdl = (eke.sel(monsoon=season)
+           .plot.contourf(ax=axes[season], x='longitude', y='latitude',
+                          cmap=mpl.cm.OrRd,
+                          levels=np.linspace(8e-3, 0.25, 40),
+                          add_colorbar=False))
+
+    hq = axes[season].quiver(tropflux.longitude, tropflux.latitude,
+                             tropflux.taux.sel(monsoon=season),
+                             tropflux.tauy.sel(monsoon=season),
+                             scale=1,
+                             zorder=5)
+
+    ppt = trmmm.sel(monsoon=season).precipitation
+    (ppt.where(ppt > 300)
+     .plot.contourf(ax=axes[season], x='lon', y='lat',
+                    levels=np.arange(300, 2000, 300),
+                    cmap=ppt_cmap, zorder=4, add_colorbar=False))
+
+    axes[season].set_title('')
+
+    axes[season].text(0.1, 0.9, season,
+                      transform=axes[season].transAxes,
+                      color='k', zorder=10)
+
+
+    bay.plot_coastline(ax=axes[season])
+    axes[season].set_extent([78, 96, 2, 20])
+    bay.mark_moors(ax=axes[season], color='k')
+    insets[season] = make_insets(axes[season])
+
+axes[season].quiverkey(hq, 0.1, 0.01, 0.1, label='0.1 N/m²',
+                       coordinates='figure')
+
+for mname, moor in zip(['ra12', 'ra15', 'nrl5'],
+                       [ra12, ra15, nrl5]):
+    grouped = moor.KT.groupby(moor.KT.time.monsoon.labels)
+
+    for season, subset in grouped:
+        for zz in subset.depth:
+            hdl = (np.log10(subset.sel(depth=zz))
+                   .resample(time='H').mean(dim='time')
+                   .plot.hist(ax=insets[season][mname],
+                              density=True,
+                              bins=60,
+                              histtype='step'))
+
+        clean_inset_axes(insets[season][mname])
+
+for season in ['NE', 'NESW', 'SW', 'SWNE']:
+    insets[season]['ra15'].set_xticklabels([])
+    insets[season]['ra12'].set_xticklabels([])
+    insets[season]['nrl3'].set_xticklabels([])
+    insets[season]['nrl4'].set_xticklabels([])
+#+END_SRC
+
+#+BEGIN_SRC ipython :session :ipyfile images/temp/imgOZW81M.png
+
+
+# import pycpt
+
+# ppt_cmap = pycpt.load.gmtColormap('/home/deepak/Downloads/blues.cpt')
+
+cmap = mpl.cm.GnBu(np.arange(120))
+cmap[:, -1] = np.linspace(0.3, 0.6, 120)
+ppt_cmap = mpl.colors.ListedColormap(cmap)
+
+trmmm.sel(monsoon='SW').precipitation.plot.contourf(x='lon',
+                                                    y='lat',
+                                                    robust=True,
+                                                    cmap=ppt_cmap)
+#+END_SRC
