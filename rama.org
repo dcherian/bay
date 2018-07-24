@@ -690,6 +690,29 @@ ax.set_xlim('2015-05', '2015-09')
 #+RESULTS:
 [[file:images/temp/img6437AdL.png]]
 
+** 45m monthly signal?
+#+BEGIN_SRC ipython :session :ipyfile images/temp/imgGGG6AO.png
+f, ax = plt.subplots()
+
+for zz in ra12.ε.depth:
+    ts = np.log10(ra12.ε.sel(depth=zz, time='2015')
+                  .resample(time='6H').mean(dim='time'))
+
+
+    kwargs = dict(dt=6/24, preserve_area=False, lw=0.75, linearx=True)
+    # dcpy.ts.PlotSpectrum(ts, decimate=False)
+
+    dcpy.ts.PlotSpectrum(ts, multitaper=True, ax=ax, **kwargs)
+
+dcpy.plots.linex([1/30, 1/20, 1/10, 1/5, 1/2, 1, 1.9])
+dcpy.plots.linex(ra12.inertial, color='r')
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+# Out[293]:
+:END:
+
 ** Compare 2014 to 2015
 #+CALL: read-ra12()
 

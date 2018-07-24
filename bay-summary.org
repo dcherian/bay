@@ -1549,7 +1549,7 @@ plt.xlim([-6.5, -3])
 :END:
 
 * O_2, nutrients
-** climatological profiles
+** climatological profiles: basin-wide average
 #+NAME: read-nutrients
 #+BEGIN_SRC ipython :session :ipyfile :results none
 o2 = xr.open_dataset('../datasets/woa13/woa13_all_o00_01.nc',
@@ -1614,6 +1614,18 @@ f.suptitle('Average oxygen, nutrient distributions (WOA13) for Bay of Bengal')
 : Text(0.5,0.98,'Average oxygen, nutrient distributions (WOA13) for Bay of Bengal')
 [[file:images/bay-chem-annual-mean.png]]
 :END:
+** seasonality in nutrient fluxes?
+#+BEGIN_SRC ipython :session :ipyfile images/temp/img41q71z.png
+import bay
+
+region = dict(lon=slice(85.5, 88.5), lat=slice(5.5, 8.5))
+
+nmean = (nseas.n_an
+         .sel(**region)
+         .mean(dim='lon')
+         .mean(dim='lat'))
+(nmean.groupby('time.season').mean(dim='season'))
+#+END_SRC
 
 ** gyaan
 cite:Sarma2016
@@ -1621,67 +1633,6 @@ cite:Sarma2016
 2. Cold-core eddies uplift nutrients?
 3. Silicate is not a limiting nutrient
 4. More depletion of N, P in the north
-
-* Ewa NIW @ NRL
-#+NAME: read-ewa
-#+BEGIN_SRC ipython :session :results none
-for fname in ['NRL1', 'NRL3', 'NRL4', 'NRL5']:
-
-    nn = sp.io.loadmat('../datasets/ewa/' + fname + 'cxdm_out.mat', squeeze_me=True)
-
-    time = dcpy.util.datenum2datetime(nn['date_time'])
-    nrl = xr.Dataset()
-    nrl['amp'] = xr.DataArray(nn['CA'].T/100,
-                             dims=['depth', 'time'],
-                             coords={'time': time,
-                                     'depth': nn['depth_levels']})
-    nrl['amp'].attrs['long_name'] = 'Clockwise amplitude'
-    nrl['amp'].attrs['units'] = 'm/s'
-
-    nrl['pha'] = xr.DataArray(nn['Cp'].T,
-                             dims=['depth', 'time'],
-                             coords={'time': time,
-                                     'depth': nn['depth_levels']})
-    nrl['pha'].attrs['long_name'] = 'Clockwise phase'
-    nrl['pha'].attrs['units'] = 'rad'
-
-    nrl['KE'] = xr.DataArray(nn['CKE'].T,
-                             dims=['depth', 'time'],
-                             coords={'time': time,
-                                     'depth': nn['depth_levels']})
-    nrl['KE'].attrs['long_name'] = 'Clockwise KE'
-    nrl['KE'].attrs['units'] = 'J/m³'
-
-    nrl.attrs['name'] = fname
-
-    nrl.to_netcdf('../datasets/ewa/'+fname+'.nc')
-#+END_SRC
-
-#+NAME: plot-niw
-#+BEGIN_SRC ipython :session :ipyfile images/temp/img19kudT.png
-def plot_ewa_niw(nrl):
-    import cmocean
-
-    kwargs = dict(robust=True, yincrease=False, cmap=mpl.cm.Reds)
-
-    f, ax = plt.subplots(3, 1, sharex=True, sharey=True)
-
-    nrl.amp.plot(ax=ax[0], **kwargs)
-    nrl.pha.plot(ax=ax[1], robust=True, cmap=cmocean.cm.phase, yincrease=False, center=0)
-    nrl.KE.plot(ax=ax[2], **kwargs)
-
-    f.suptitle(nrl.name, y=0.91)
-    ax[0].set_xlabel('')
-    ax[1].set_xlabel('')
-
-
-for nn in ['NRL1', 'NRL3', 'NRL4', 'NRL5']:
-    nrl = xr.open_dataset('../datasets/ewa/' + nn + '.nc', autoclose=True).load()
-    plot_ewa_niw(nrl)
-    plt.savefig('../images/niw-' + nn + '.png', bbox_inches='tight')
-
-
-#+END_SRC
 * MISO signals?
 ** Summary
 cite:Sobel2010 show large TRMM 30-90 day variance between May and October in the Bay.
@@ -2293,8 +2244,22 @@ anim = mpl.animation.FuncAnimation(plt.gcf(), animate)
 
 anim.save('sst-iso.mp4', fps=5)
 #+END_SRC
-* vel spectra
+** scalogram?
+#+BEGIN_SRC ipython :session :ipyfile images/temp/imgu5NuXe.png
+dcpy.ts.plot_detailed_scalogram(m.tropflux.swr.dropna(dim='time'))
+#+END_SRC
 
+#+RESULTS:
+:RESULTS:
+# Out[336]:
+#+BEGIN_EXAMPLE
+  array([<matplotlib.axes._subplots.AxesSubplot object at 0x7f1822c49978>,
+  <matplotlib.axes._subplots.AxesSubplot object at 0x7f1822bf5a20>],
+  dtype=object)
+#+END_EXAMPLE
+:END:
+
+* vel spectra
 #+BEGIN_SRC ipython :session :ipyfile images/temp/img3907nzu.png
 u = rama.SelectVar('u', region=dict(lon=90, lat=12))
 v = rama.SelectVar('v', region=dict(lon=90, lat=12))

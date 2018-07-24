@@ -1,6 +1,74 @@
 #+TITLE: Testing out my spectra code
 #+SETUPFILE: ~/org/notebook.org
 
+* log-normal variables
+
+#+BEGIN_SRC ipython :session :ipyfile images/temp/imgiu42iB.png
+slope = -3
+# normal = dcpy.ts.synthetic(10000, 1, 0.01, slope,
+#                            distrib=np.random.normal)
+
+lognormal = dcpy.ts.synthetic(10000, 1, 0.01, slope,
+                              distrib=np.random.lognormal)
+lognormal = lognormal - 1.001*lognormal.min()
+
+f, ax = plt.subplots()
+kwargs = dict(multitaper=True, ax=ax)
+# dcpy.ts.PlotSpectrum(normal/normal.max(), **kwargs)
+# dcpy.ts.PlotSpectrum(np.log10(normal/normal.max()), ax=plt.gca(), **kwargs)
+dcpy.ts.PlotSpectrum(lognormal/lognormal.max(), **kwargs)
+dcpy.ts.PlotSpectrum(np.log10(lognormal), **kwargs)
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+# Out[312]:
+#+BEGIN_EXAMPLE
+  (<matplotlib.lines.Line2D at 0x7f5c55731358>,
+  <matplotlib.axes._subplots.AxesSubplot at 0x7f5c557310f0>)
+#+END_EXAMPLE
+[[file:images/temp/imgiu42iB.png]]
+:END:
+
+* area/variance preserving
+#+BEGIN_SRC ipython :session :ipyfile images/temp/img9muJnT.png
+
+white = dcpy.ts.synthetic(10000, 1, 1e-3, 0)
+red1 = dcpy.ts.synthetic(10000, 1, 1e-3, -1)
+red2 = dcpy.ts.synthetic(10000, 1, 1e-3, -2)
+red3 = dcpy.ts.synthetic(10000, 1, 1e-3, -3)
+
+white = white / np.std(white)
+red1 = red1 / np.std(red1)
+red2 = red2 / np.std(red2)
+red3 = red3 / np.std(red3)
+
+kwargs = dict(multitaper=True)
+
+f, ax = plt.subplots(1, 2)
+dcpy.ts.PlotSpectrum(white, ax=ax[0], **kwargs)
+dcpy.ts.PlotSpectrum(red1, ax=ax[0], **kwargs)
+dcpy.ts.PlotSpectrum(red2, ax=ax[0], **kwargs)
+dcpy.ts.PlotSpectrum(red3, ax=ax[0], **kwargs)
+
+kwargs['preserve_area'] = True
+dcpy.ts.PlotSpectrum(white, ax=ax[1], **kwargs)
+dcpy.ts.PlotSpectrum(red1, ax=ax[1], **kwargs)
+dcpy.ts.PlotSpectrum(red2, ax=ax[1], **kwargs)
+dcpy.ts.PlotSpectrum(red3, ax=ax[1], **kwargs)
+
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+# Out[282]:
+#+BEGIN_EXAMPLE
+  (<matplotlib.lines.Line2D at 0x7f5c54c6e6a0>,
+  <matplotlib.axes._subplots.AxesSubplot at 0x7f5c5195c9e8>)
+#+END_EXAMPLE
+[[file:images/temp/img9muJnT.png]]
+:END:
+
 * Test out python functions
 ** Try multiple subsets of a time series
 - [X] generate synthetic time series
@@ -305,6 +373,243 @@ plt.gca().set_xscale('log')
 
 #+RESULTS:
 [[file:images/temp/py29463xPN.png]]
+** complex demodulation
+*** Real signals
+Firing's code from https://currents.soest.hawaii.edu/ocn_data_analysis/_static/complex_demod.html
+
+#+BEGIN_SRC ipython :session :results none
+
+from pycurrents.system import Bunch
+def bl_filt(y, half_width):
+    """
+    Simple Blackman filter.
+
+    The end effects are handled by calculating the weighted
+    average of however many points are available, rather than
+    by zero-padding.
+    """
+    nf = half_width * 2 + 1
+    x = np.linspace(-1, 1, nf, endpoint=True)
+    x = x[1:-1]   # chop off the useless endpoints with zero weight
+    w = 0.42 + 0.5 * np.cos(x * np.pi) + 0.08 * np.cos(x * 2 * np.pi)
+    ytop = np.convolve(y, w, mode='same')
+    ybot = np.convolve(np.ones_like(y), w, mode='same')
+
+    return ytop / ybot
+
+
+def test_data(periods, noise=0, rotary=False, npts=1000, dt=1.0/24):
+    """
+    Generate a simple time series for testing complex demodulation.
+
+    ,*periods* is a sequence with the periods of one or more
+        harmonics that will be added to make the test signal.
+        They can be positive or negative.
+    ,*noise* is the amplitude of independent Gaussian noise.
+    ,*rotary* is Boolean; if True, the test signal is complex.
+    ,*npts* is the length of the series.
+    ,*dt* is the time interval (default is 1.0/24)
+
+    Returns t, x: ndarrays with the test times and test data values.
+
+    Note: the default of dt = 1/24 corresponds to hourly values in
+    units of days, so a period of 12.42/24 would give the M2 frequency.
+    """
+
+    t = np.arange(npts, dtype=float) * dt
+
+    if rotary:
+        x = noise * (np.random.randn(npts) + 1j * np.random.randn(npts))
+    else:
+        x = noise * np.random.randn(npts)
+
+    for p in periods:
+        if rotary:
+            x += np.exp(2j * np.pi * t / p)
+        else:
+            x += np.cos(2 * np.pi * t / p)
+
+    return t, x
+
+
+def plot_demod(dm):
+    fig, axs = plt.subplots(3, sharex=True)
+    resid = dm.signal - dm.reconstructed
+    if dm.signal.dtype.kind == 'c':
+        axs[0].plot(dm.t, dm.signal.real, label='signal.real')
+        axs[0].plot(dm.t, dm.signal.imag, label='signal.imag')
+        axs[0].plot(dm.t, resid.real, label='difference real')
+        axs[0].plot(dm.t, resid.imag, label='difference imag')
+    else:
+        axs[0].plot(dm.t, dm.signal, label='signal')
+        axs[0].plot(dm.t, dm.reconstructed, label='reconstructed')
+        axs[0].plot(dm.t, dm.signal - dm.reconstructed, label='difference')
+
+    axs[0].legend(loc='upper right', fontsize='small')
+
+    axs[1].plot(dm.t, np.abs(dm.demod), label='amplitude', color='C3')
+    axs[1].legend(loc='upper right', fontsize='small')
+
+    axs[2].plot(dm.t, np.angle(dm.demod, deg=True), '.', label='phase',
+                color='C4')
+    axs[2].set_ylim(-180, 180)
+    axs[2].legend(loc='upper right', fontsize='small')
+
+    for ax in axs:
+        ax.locator_params(axis='y', nbins=5)
+    return fig, axs
+
+def complex_demod(t, x, central_period, hwidth = 2):
+    """
+    Complex demodulation of a real or complex series, *x*
+    of samples at times *t*, assumed to be uniformly spaced.
+
+    ,*central_period* is the period of the central frequency
+        for the demodulation.  It should be positive for real
+        signals. For complex signals, a positive value will
+        return the CCW rotary component, and a negative value
+        will return the CW component (negative frequency).
+        Period is in the same time units as are used for *t*.
+
+    ,*hwidth* is the Blackman filter half-width in units of the
+        ,*central_period*.  For example, the default value of 2
+        makes the Blackman half-width equal to twice the
+        central period.
+
+    Returns a Bunch; look at the code to see what it contains.
+    """
+
+    rotary = x.dtype.kind == 'c'  # complex input
+
+    # Make the complex exponential for demodulation:
+    c = np.exp(-1j * 2 * np.pi * t / central_period)
+
+    product = x * c
+
+    # filter half-width number of points
+    dt = t[1] - t[0]
+    hwpts = int(round(hwidth * abs(central_period) / dt))
+
+    demod = bl_filt(product, hwpts)
+    if not rotary:
+        # The factor of 2 below comes from fact that the
+        # mean value of a squared unit sinusoid is 0.5.
+        demod *= 2
+
+    reconstructed = (demod * np.conj(c))
+    if not rotary:
+        reconstructed = reconstructed.real
+
+    if np.sign(central_period) < 0:
+        demod = np.conj(demod)
+        # This is to make the phase increase in time
+        # for both positive and negative demod frequency
+        # when the frequency of the signal exceeds the
+        # frequency of the demodulation.
+
+    return Bunch(t=t,
+                 signal=x,
+                 hwpts=hwpts,
+                 demod=demod,
+                 reconstructed=reconstructed)
+
+
+def test_demod(periods, central_period,
+               noise=0,
+               rotary=False,
+               hwidth = 1,
+               npts=1000,
+               dt=1.0/24):
+
+    t, x = test_data(periods, noise=noise, rotary=rotary,
+                     npts=npts, dt=dt)
+    dm = complex_demod(t, x, central_period, hwidth=hwidth)
+    fig, axs = plot_demod(dm)
+    return fig, axs, dm
+
+
+# u = nrl5.vel.u.sel(depth=100, method='nearest').interpolate_na(dim='time')
+# v = nrl5.vel.v.sel(depth=100, method='nearest').interpolate_na(dim='time')
+
+# dm = dcpy.ts.complex_demodulate(u + 1j*v,
+#                                 dim='time',
+#                                 central_period=-1/nrl5.inertial.values,
+#                                 cycles_per='D', hw=2)
+
+# f, ax = plt.subplots()
+# dm.amp.plot(ax=ax)
+# nrl5.niw.amp.sel(depth=100, method='nearest').plot(ax=ax)
+# ax.legend(['mine', 'ewa'])
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+# Out[4]:
+:END:
+
+My code works well when compared to Eric Firing's
+#+BEGIN_SRC ipython :session :ipyfile images/temp/imgwgABya.png
+import dcpy.ts
+
+ts = 0  #dcpy.ts.synthetic(1001, 1, 1, -2)
+# ts = np.random.randn(10001)
+# ts = ts / np.abs(ts).max()
+TM2 = 12.42
+t = np.arange(0, 1001)  # in hours
+pha0 = 0; np.pi/2.25
+M2 = 2*np.sin(2*np.pi/TM2 * t + pha0) # + 1j * 5*np.sin(2*np.pi/TM2 * t + pha0)
+ts += M2
+
+recon = dcpy.ts.complex_demodulate(ts, central_period=TM2,
+                                   t=t, hw=3, debug=True,
+                                   )
+
+dm = complex_demod(t, ts, TM2, hwidth=2)
+
+f, ax = plt.subplots(2, 1, sharex=True)
+ax[0].plot(np.abs(dm.reconstructed))
+ax[0].plot(recon.amp)
+ax[1].plot(np.angle(dm.reconstructed, deg=True))
+ax[1].plot(recon.pha)
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+# Out[43]:
+: [<matplotlib.lines.Line2D at 0x7f7cbf22a390>]
+:END:
+
+*** Complex signals
+#+BEGIN_SRC ipython :session :ipyfile images/temp/img7BfzCI.png
+ts0 = dcpy.ts.synthetic(10001, 1, 1, -0)
+# ts = np.random.randn(10001)
+ts0 = ts0 / np.abs(ts0).max()
+TM2 = -12.42
+t = np.arange(0, 10001)  # in hours
+pha0 = np.pi/3
+M2 = 2*(np.cos(2*np.pi/TM2 * t + pha0) + 1j * np.sin(2*np.pi/TM2*t + pha0))
+ts = ts0 + M2
+
+recon = dcpy.ts.complex_demodulate(ts, central_period=-TM2,
+                                   t=t, hw=4, debug=False,
+                                   filt='butter')
+
+dm = complex_demod(t, ts, TM2, hwidth=2)
+
+f, ax = plt.subplots(2, 1, constrained_layout=False)
+ax[0].plot(np.abs(dm.reconstructed))
+ax[0].plot(np.abs(recon.cw))
+ax[1].plot(np.angle(dm.reconstructed, deg=True))
+ax[1].plot(np.angle(recon.cw, deg=True))
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+# Out[8]:
+: [<matplotlib.lines.Line2D at 0x7f7cf080ea20>]
+[[file:images/temp/img7BfzCI.png]]
+:END:
+
 ** Test rotary spectra
 #+BEGIN_SRC ipython :session :file images/temp/py29463UuM.png
 t = np.arange(10001)
