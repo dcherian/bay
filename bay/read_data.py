@@ -44,6 +44,11 @@ def read_ra12():
     ra12.AddEvents('FW2', '2015-Apr-05', '2015-Apr-10')
     ra12.AddEvents('FW3', '2015-Oct-28', '2015-Nov-05')
 
+    ra12.χpod[526].mixing_seasons = dict(
+        ne2014=slice('2013-11-29', '2014-03-22'),
+        nesw2014=slice('2014-03-24', '2014-05-07'),
+        sw2014=slice('2014-05-08', '2014-09-22'),
+        swne2014=slice('2014-09-23', '2014-11-22'))
     ra12.ReadSSH()
 
     ra12 = __common(ra12)
@@ -71,6 +76,14 @@ def read_ra15():
 
     ra15.ReadSSH()
 
+    ra15.χpod[813].mixing_seasons = {
+        'NE': slice('2014-12-01', '2015-03-22'),
+        'NESW': slice('2015-03-22', '2015-05-15'),
+        'SW': slice('2015-05-15', '2015-09-30'),
+        'SWNE': slice('2015-10-01', '2015-11-30')}
+
+    # ra15.χpod[814].mixing_seasons = ra15.season[2015]
+
     ra15 = __common(ra15)
 
     return ra15
@@ -86,6 +99,7 @@ def read_nrl1():
 
     nrl1.AddEvents("SW1", '2014-01-23', '2014-02-02')
     nrl1.AddEvents("FW1", '2014-07-18', '2014-07-30')
+    nrl1.AddEvents("Shear", '2014-08-07', '2014-09-30')
     nrl1.ReadSSH()
 
     nrl1 = __common(nrl1)
@@ -147,8 +161,15 @@ def read_nrl5():
     nrl5.AddChipod(519, depth=104, best='mm1', fname='Turb.mat')
     nrl5.ReadVel('NRL5', FileType='ebob')
     nrl5.AddEvents('Storm+IW', '2014-07-17', '2014-08-07')
+    nrl5.AddEvents("nomix", '2014-03-17', '2014-05-06')
+
     nrl5.ReadSSH()
     nrl5.ReadNIW()
+
+    nrl5.χpod[519].mixing_seasons = dict(
+        lowmix=slice('2014-03-17', '2014-05-05'),
+        himix=slice('2014-05-06', '2014-11-01'),
+        himix0=slice('2014-02-11', '2014-03-16'))
 
     nrl5 = __common(nrl5)
 
