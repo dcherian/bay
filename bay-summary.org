@@ -631,6 +631,148 @@ g = syearly.plot.contourf(x='dayofyear', row='year', col='lat',
 #+CAPTION: Distribution of 5 minute averages of K_T.
 #+RESULTS:
 [[file:../images//rama12n-kt-boxplot.png]]
+** Spectrograms
+*** Things to look at
+1. NRL1 cyclonic shear bit; might be a signal in J_q. Also near-(shifted) inertial energy at this point
+2.
+*** Summary
+- M_2 *shear* has some patterns. M_2 signal in temperature occurs throughout.
+|------+-----------------------------+-----------------+--------------+------------------------------+--------------|
+| Moor | Overall                     | NE              | NESW         | SW                           | SWNE         |
+|------+-----------------------------+-----------------+--------------+------------------------------+--------------|
+| NRL1 | Not much f_0                 | max CW f_0 shear |              | some diurnal                 |              |
+|      | M_2, M_4 T throughout         |                 |              | lots of high frequency shear |              |
+|------+-----------------------------+-----------------+--------------+------------------------------+--------------|
+| NRL2 |                             |                 |              |                              |              |
+|------+-----------------------------+-----------------+--------------+------------------------------+--------------|
+| NRL3 |                             |                 |              | max f_0 shear                 |              |
+|------+-----------------------------+-----------------+--------------+------------------------------+--------------|
+| NRL4 | max f_0 shear                |                 |              |                              | max f_0 shear |
+|------+-----------------------------+-----------------+--------------+------------------------------+--------------|
+| NRL5 | IW energy only along f_0, M_2 | Max f_0 shear    | max f_0 shear |                              |              |
+|      | Lots of f_0 shear            |                 |              | Bursts of M_2 shear           |              |
+|------+-----------------------------+-----------------+--------------+------------------------------+--------------|
+
+#+BEGIN_SRC ipython :session :ipyfile images/temp/imgcwn1WZ.png
+self = nrl1
+depth = 140
+
+f, ax = plt.subplots(3, 1, sharex=True)
+
+self.vel.u.sel(depth=depth, method='nearest').plot(ax=ax[0])
+self.vel.v.sel(depth=depth, method='nearest').plot(ax=ax[0])
+ax[0].legend('u', 'v')
+ax[0].axhline(0)
+
+self.vel.uz.sel(depth_shear=depth, method='nearest').plot(ax=ax[1])
+self.vel.vz.sel(depth_shear=depth, method='nearest').plot(ax=ax[1])
+ax[1].axhline(0)
+ax[1].legend('$u_z$', '$v_z$')
+
+self.ctd['T'].sel(depth2=depth, method='nearest').plot(ax=ax[2])
+ax2 = ax[2].twinx()
+self.ctd['S'].isel(z=3).plot(ax=ax2, color='teal')
+
+[self.MarkSeasonsAndEvents(aa) for aa in ax]
+
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+# Out[53]:
+: [None, None, None]
+:END:
+
+
+#+BEGIN_SRC ipython :session :ipyfile images/temp/imgKGsAoh.png
+# test interpolation
+
+da = xr.DataArray(np.sin(0.3 * np.arange(20).reshape(5, 4)),
+                  [('x', np.arange(5)),
+                   ('y', [0.1, 0.2, 0.3, 0.4])])
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+# Out[185]:
+:END:
+
+
+nrl5 ε seems have some nice period variability during SW monsoon. can I see that in a spectrum?
+
+#+BEGIN_SRC ipython :session :ipyfile images/temp/img0A5iM0.png
+eps1 = (nrl5.ε
+       .resample(time='12H').mean(dim='time'))
+eps2 = (eps1
+        .where(eps1 > 1e-12)
+        .interpolate_na(dim='time')
+        .dropna(dim='time'))
+
+
+f, ax = plt.subplots()
+
+for zz in eps1.depth:
+    dcpy.ts.PlotSpectrum((eps2.sel(depth=zz)),
+                         multitaper=True, preserve_area=True,
+                         ax=ax)
+
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+# Out[341]:
+[[file:images/temp/img0A5iM0.png]]
+:END:
+
+#+BEGIN_SRC ipython :session :results none
+for m in [nrl3, nrl4, nrl5]:
+    m.plot_turb_spectrogram()
+
+    plt.savefig('images/specgram-' + m.name + '.png',
+                bbox_inches='tight')
+#+END_SRC
+
+[[file:images/specgram-NRL1.png]]
+[[file:images/specgram-NRL2.png]]
+[[file:images/specgram-NRL3.png]]
+[[file:images/specgram-NRL4.png]]
+[[file:images/specgram-NRL5.png]]
+*** Coarser summary
+
+#+CAPTION: RAMA13 526 15m: NE & NESW have CW energy ≈ CCW energy (not polarised!) Very heavily polarized during the SW and SWNE. Big diurnal peak during SWNE too. Why is there not more CW-polarized NIW energy during NE monsoon?
+[[file:images/mixing_seasons_ra12_526.png]]
+
+#+CAPTION: NRL5 519 105m:
+[[file:images/mixing_seasons_nrl5_519.png]]
+*** NRL5
+Let's look at IW spectrum during period  of low mixing and period of high mixing.
+
+#+BEGIN_SRC ipython :session :ipyfile images/temp/img50EzMF.png
+
+lowmix = slice('2014-03-17', '2014-05-05')
+himix = slice('2014-05-06', '2014-11-01')
+
+dTdz = -nrl5.ctd['T'].diff(dim='depth2')/nrl5.ctd.depth2.diff(dim='depth2')
+
+z = 90
+f, ax = plt.subplots(constrained_layout=True)
+kwargs = dict(ax=ax, multitaper=True, dt=600/86400)
+dcpy.ts.PlotSpectrum((nrl5.ctd['T'].sel(time=lowmix, depth2=z)
+                      / dTdz.sel(time=lowmix, depth2=z).mean(dim='time')),
+                     ,**kwargs)
+dcpy.ts.PlotSpectrum((nrl5.ctd['T'].sel(time=himix, depth2=z)
+                      / dTdz.sel(time=himix, depth2=z).mean(dim='time')),
+                     ,**kwargs)
+ax.legend(('lowmix', 'himix'))
+
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+# Out[175]:
+: <matplotlib.legend.Legend at 0x7fbaccba9f98>
+:END:
+
 ** Seasonal cycle in internal wave energy?
 
 Given a mooring calculate spectra at all depths. Average over season?
@@ -639,7 +781,8 @@ Given a mooring calculate spectra at all depths. Average over season?
 
 # T = nrl5.ctd['T_S']
 
-kwargs = dict(dim='time', window=15*86400/10/60, shift=5*86400/10/60)
+kwargs = dict(dim='time', window=20*86400/10/60, shift=2*86400/10/60,
+              multitaper=True)
 plot_kwargs = dict(cmap=svc.cm.blue_orange_div, add_colorbar=True)
 
 spec = dcpy.ts.Spectrogram(nrl5.ctd.T_S.isel(z=3), **kwargs,
@@ -647,15 +790,14 @@ spec = dcpy.ts.Spectrogram(nrl5.ctd.T_S.isel(z=3), **kwargs,
 spec.freq.attrs['units'] = 'cpd'
 spec.name = 'PSD(T)'
 
-np.log10(spec).plot(robust=True, x='time', **plot_kwargs)
+
+plt.figure(); np.log10(spec).plot(x='time', **plot_kwargs)
 
 #+END_SRC
-
 #+RESULTS:
 :RESULTS:
-# Out[62]:
-: <matplotlib.collections.QuadMesh at 0x7fde680e0278>
-[[file:images/temp/imgjHIylm.png]]
+# Out[978]:
+: <matplotlib.collections.QuadMesh at 0x7f2f604b4a90>
 :END:
 
 #+BEGIN_SRC ipython :session :ipyfile images/temp/imgnRA15P.png
@@ -1032,14 +1174,129 @@ for nn in ['NRL1', 'NRL3', 'NRL4', 'NRL5']:
 
 
 #+END_SRC
-** Seasonal cycle code
-#+BEGIN_SRC ipython :session :ipyfile images/temp/imgDcsXFa.png
+** Wavelets vs spectrograms
+Wavelets need a good understanding of wavelet choice.
 
+variance-preserving spectrogram seems a good way to go.
 
+*** spectrogram to recover wijesekara et al (2016) wavelet
 
+#+BEGIN_SRC ipython :session :ipyfile images/temp/imgx9o72o.png
+# da = nrl3.vel.u.sel(depth=120, method='nearest')
+
+# spec = dcpy.ts.Spectrogram(da, nfft=24*60, shift=1*24,
+#                            dt=1/24, multitaper=True)
+
+plt.figure(constrained_layout=True)
+hdl = (spec*spec.freq).plot.contourf(yscale='log', x='time', robust=True,
+                                     levels=30, cmap=svc.cm.red_1)
+
+ax = plt.gca()
+ax2 = ax
+ax2.yaxis.set_tick_params(which='both', left=True, right=True,
+                          labelleft=True, labelright=True)
+ax2.spines['right'].set_visible(True)
+
+# ax2.xaxis.set_tick_params(top=False, bottom=False,
+#                           labeltop=False, labelbottom=False)
 
 #+END_SRC
 
+#+RESULTS:
+:RESULTS:
+# Out[409]:
+:END:
+
+#+BEGIN_SRC ipython :session :ipyfile images/temp/imgw7sScw.png
+
+wz = (
+(nrl3.vel.uz + 1j * nrl3.vel.vz)
+      .sel(depth_shear=120, method='nearest'))
+
+spec = dcpy.ts.PlotSpectrogram(wz, nfft=60*24, shift=3*24, dt=1/24)
+#+END_SRC
+
+#+BEGIN_SRC ipython :session :ipyfile images/temp/imgz8e7q3.png
+import tfr
+
+frames = tfr.SignalFrames(da.values, sample_rate=1/24,
+                          frame_size=24*60, hop_size=1*24)
+spec = tfr.Spectrogram(frames)
+
+spec = tfr.reassigned_spectrogram(frames, magnitudes='power')
+
+
+#+END_SRC
+*** test jwavelet
+#+BEGIN_SRC ipython :session :ipyfile images/temp/imgJWY9H3.png
+time = np.arange(1000)
+a = np.sin(2*np.pi/20*time)
+
+da = xr.DataArray(a, dims=['time'], coords={'time': time})
+
+da = ra12.vel.u.squeeze().interpolate_na(dim='time').dropna(dim='time')
+wt = dcpy.ts.matlab_wavelet(da, dt=60/1440, kind='jlab', eng=eng, beta=10.0)
+
+plt.figure()
+np.log10(wt.power).plot.contourf(levels=20, x=dim, yincrease=False, yscale='log',
+                                 robust=True, cmap=svc.cm.blue_orange_div)
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+# Out[887]:
+: <matplotlib.contour.QuadContourSet at 0x7f178d87c470>
+:END:
+
+*** Seasonal cycle summary : wavelets
+
+#+BEGIN_SRC ipython :session :results none
+for m in [nrl1, nrl3, nrl4, nrl5]:
+    m.plot_turb_wavelet()
+    plt.savefig('images/wavelet-'+m.name+'.png')
+
+#+END_SRC
+
+** test complex demod
+I'm not sure this works for near-inertial frequencies. f_0 can change throughout the year and so there'll be phase differences and the near-inertial input won't look right. Probably makes more sense for M_2 and tidal lines.
+
+#+BEGIN_SRC ipython :session :ipyfile images/complex-demod-ewa-mine.png
+z = 100
+
+u = nrl5.vel.u.sel(depth=z, method='nearest').interpolate_na(dim='time')
+v = nrl5.vel.v.sel(depth=z, method='nearest').interpolate_na(dim='time')
+
+dm = dcpy.ts.complex_demodulate(u + 1j * v,
+                                dim='time',
+                                central_period=1/nrl5.inertial,
+                                cycles_per='D', bw=0.3, filt='butter',
+                                debug=True)
+
+ewa = (nrl5.niw.amp.sel(depth=z, method='nearest')
+       ,* np.exp(1j * nrl5.niw.pha.sel(depth=z, method='nearest')))
+
+f, ax = plt.subplots(2, 2)
+np.abs(dm.cw).plot(ax=ax[0, 0])
+nrl5.niw.amp.sel(depth=z, method='nearest').plot(ax=ax[0, 0])
+ax[0, 0].legend(['mine', 'ewa'])
+
+xr.DataArray((np.angle(dm.cw, deg=False)),
+             dims=dm.cw.dims, coords=dm.cw.coords,
+).plot(ax=ax[1, 0])
+nrl5.niw.pha.sel(depth=z, method='nearest').plot(ax=ax[1, 0])
+
+dm.cw.real.plot(ax=ax[0, 1])
+ewa.real.plot(ax=ax[0, 1])
+dm.cw.imag.plot(ax=ax[1, 1])
+ewa.imag.plot(ax=ax[1, 1])
+
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+# Out[214]:
+: [<matplotlib.lines.Line2D at 0x7f7c58aeb780>]
+:END:
 * Barrier layers
 When the freshwater arrives, I see large values of Jqt at 30m/45m. This is at both 12N, 15N in both 2014, 2015.
 
