@@ -2977,45 +2977,54 @@ def make_insets(ax):
     insets = dict()
 
     kwargs = dict(transform=ax.transData, zorder=6)
+    wh = [16, 5]
 
-    with plt.rc_context({'axes.facecolor': 'w'}):
-        insets['ra12'] = ax.inset_axes([96, 10.5, 5, 3],
+    with plt.style.context('seaborn'):
+        insets['ra15'] = ax.inset_axes([98, 14, *wh],
+                                     ,**kwargs)
+        insets['ra12'] = ax.inset_axes([98, 8, *wh],
                                        ,**kwargs)
-        insets['ra15'] = ax.inset_axes([96, 14, 5, 3],
-                                       ,**kwargs)
-        insets['nrl5'] = ax.inset_axes([96, 6.5, 5, 3],
-                                       ,**kwargs)
-
-        insets['nrl1'] = ax.inset_axes([75, 3, 5, 3],
+        insets['nrl5'] = ax.inset_axes([98, 2, *wh],
                                        ,**kwargs)
 
-        insets['nrl3'] = ax.inset_axes([75, 8.5, 5, 3],
+        insets['nrl1'] = ax.inset_axes([60, 2,*wh],
                                        ,**kwargs)
 
-        insets['nrl4'] = ax.inset_axes([75, 13, 5, 3],
+        insets['nrl3'] = ax.inset_axes([60, 8, *wh],
                                        ,**kwargs)
 
+        insets['nrl4'] = ax.inset_axes([60, 14, *wh],
+                                       ,**kwargs)
 
-        ax.indicate_inset([nrl4.lon-0.25, nrl4.lat-0.25, 0.5, 0.5],
-                          inset_ax=insets['nrl4'],
-                          transform=ax.transData)
+        _, conn1 = ax.indicate_inset([nrl4.lon-0.25, nrl4.lat-0.25, 0.5, 0.5],
+                                     inset_ax=insets['nrl4'],
+                                     transform=ax.transData)
 
-        ax.indicate_inset([nrl3.lon-0.25, nrl3.lat-0.25, 0.5, 0.5],
-                          inset_ax=insets['nrl3'],
-                          transform=ax.transData)
+        _, conn2 = ax.indicate_inset([nrl3.lon-0.25, nrl3.lat-0.25, 0.5, 0.5],
+                                     inset_ax=insets['nrl3'],
+                                     transform=ax.transData)
 
+        for c in [conn1, conn2]:
+            c[0].set_visible(False)
+            c[1].set_visible(False)
+            c[2].set_visible(True)
+            c[3].set_visible(True)
 
-    return insets
-
+        return insets
 
 def clean_inset_axes(ax):
     ax.set_ylabel('')
     ax.set_xlabel('')
     ax.set_xlim([-7, -1])
+    ax.set_xticks(np.arange(-7, -1, 1))
     ax.set_title('')
     ax.set_yticks([])
     ax.set_yticklabels([])
     ax.spines['left'].set_visible(False)
+    ax.grid(True, axis='x', which='both')
+    ax.grid(False, axis='y', which='major')
+    ax.set_facecolor('#fdf6e3')
+
 
 N = 200
 cmap = mpl.cm.GnBu(np.arange(N))
@@ -3024,7 +3033,7 @@ ppt_cmap = mpl.colors.ListedColormap(cmap[60:])
 
 f, ax = plt.subplots(4, 1, constrained_layout=True,
                      subplot_kw={'projection':ccrs.PlateCarree()})
-f.set_size_inches((4, 10))
+f.set_size_inches((6.5, 10))
 
 axes = dict()
 # axes['NE'] = ax[0, 0]
@@ -3040,6 +3049,11 @@ axes['SWNE'] = ax[3]
 insets = dict()
 
 for season in axes:
+    bay.plot_coastline(ax=axes[season])
+    axes[season].set_extent([78, 96, 2, 20])
+    bay.mark_moors(ax=axes[season], color='k')
+    insets[season] = make_insets(axes[season])
+
     hdl = (eke.sel(monsoon=season)
            .plot.contourf(ax=axes[season], x='longitude', y='latitude',
                           cmap=mpl.cm.OrRd,
@@ -3060,21 +3074,14 @@ for season in axes:
 
     axes[season].set_title('')
 
-    axes[season].text(0.1, 0.9, season,
+    axes[season].text(0.05, 0.875, season,
                       transform=axes[season].transAxes,
                       color='k', zorder=10)
+# axes[season].quiverkey(hq, 0.1, 0.01, 0.1, label='0.1 N/m²',
+#                        coordinates='figure')
 
-
-    bay.plot_coastline(ax=axes[season])
-    axes[season].set_extent([78, 96, 2, 20])
-    bay.mark_moors(ax=axes[season], color='k')
-    insets[season] = make_insets(axes[season])
-
-axes[season].quiverkey(hq, 0.1, 0.01, 0.1, label='0.1 N/m²',
-                       coordinates='figure')
-
-for mname, moor in zip(['ra12', 'ra15', 'nrl5'],
-                       [ra12, ra15, nrl5]):
+for mname, moor in zip(['ra12', 'ra15', 'nrl3', 'nrl5'],
+                       [ra12, ra15, nrl3, nrl5]):
     grouped = moor.KT.groupby(moor.KT.time.monsoon.labels)
 
     for season, subset in grouped:
@@ -3093,6 +3100,9 @@ for season in ['NE', 'NESW', 'SW', 'SWNE']:
     insets[season]['ra12'].set_xticklabels([])
     insets[season]['nrl3'].set_xticklabels([])
     insets[season]['nrl4'].set_xticklabels([])
+
+insets['SWNE']['nrl5'].set_xlabel('Hourly averaged $K_T$ [m²/s]')
+insets['SWNE']['nrl1'].set_xlabel('Hourly averaged $K_T$ [m²/s]')
 #+END_SRC
 
 #+BEGIN_SRC ipython :session :ipyfile images/temp/imgOZW81M.png
