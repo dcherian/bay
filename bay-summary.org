@@ -2999,7 +2999,7 @@ def clean_inset_axes(ax):
 
     ax.spines['left'].set_visible(False)
     ax.spines['bottom'].set_visible(False)
-    ax.tick_params(visible=False)
+    ax.tick_params(width=0.)
 
     ax.set_facecolor('#fdf6e3')
 
@@ -3008,16 +3008,20 @@ def clean_inset_axes(ax):
     ax.grid(False, axis='y', which='major')
     ax.set_axisbelow(True)
 
-N = 200
-cmap = mpl.cm.GnBu(np.arange(N))
-cmap[:, -1] = np.linspace(0.25, 0.5, N)
-ppt_cmap = mpl.colors.ListedColormap(cmap[60:])
+# N = 200
+# cmap = mpl.cm.GnBu(np.arange(N))
+# cmap[:, -1] = np.linspace(0.25, 0.5, N)
+# ppt_cmap = mpl.colors.ListedColormap(cmap[60:])
+
+raincolor = '#3BBBC5'
+cmap = np.asarray(sns.light_palette(raincolor, n_colors=10))
+cmap[:, -1] = 0.35
+ppt_cmap = mpl.colors.ListedColormap(cmap)
 
 seasons = ['NE', 'NESW', 'SW', 'SWNE']
 
 f = plt.figure(constrained_layout=True)
 gs = mpl.gridspec.GridSpec(12, 3, figure=f)
-f.set_size_inches((7, 10))
 
 axes = dict()
 insets = dict()
@@ -3045,12 +3049,15 @@ f.set_constrained_layout_pads(wspace=0., hspace=0.,
 for season in axes:
     bay.plot_coastline(ax=axes[season])
     axes[season].set_extent([78, 96, 2, 20])
-    bay.mark_moors(ax=axes[season], color='k')
+    bay.mark_moors(ax=axes[season],
+                   color='black', colortext='white',
+                   fontsize=8.5, markersize=9)
+    # bay.mark_moors(ax=axes[season], color='k')
 
     hdl = (eke.sel(monsoon=season)
            .plot.contourf(ax=axes[season], x='longitude', y='latitude',
                           cmap=mpl.cm.OrRd,
-                          levels=np.linspace(8e-3, 0.25, 40),
+                          levels=np.linspace(8e-3, 0.3, 40),
                           add_colorbar=False))
 
     hq = axes[season].quiver(tropflux.longitude, tropflux.latitude,
@@ -3058,12 +3065,18 @@ for season in axes:
                              tropflux.tauy.sel(monsoon=season),
                              scale=1, zorder=5)
 
+    pptlevels=[600,  1200, 1800]
     ppt = trmm.sel(monsoon=season).precipitation
-    hppt = (ppt.where(ppt > 300)
+    hppt = (ppt.where(ppt > pptlevels[0]-2)
             .plot.contourf(ax=axes[season], x='lon', y='lat',
-                           levels=np.arange(300, 2000, 300),
+                           levels=pptlevels,
                            cmap=ppt_cmap, zorder=4,
                            add_colorbar=False))
+    (ppt.where(ppt > pptlevels[0]-2)
+     .plot.contour(ax=axes[season], x='lon', y='lat',
+                   levels=pptlevels, zorder=4,
+                   colors=raincolor, linewidths=1))
+
     hsss = (sss.sel(monsoon=season)
             .plot.contour(ax=axes[season],
                           x='longitude', y='latitude',
@@ -3128,16 +3141,40 @@ for season in ['NE', 'NESW', 'SW', 'SWNE']:
 insets['SWNE']['nrl5'].set_xlabel('Hourly averaged $K_T$ [m²/s]')
 insets['SWNE']['nrl1'].set_xlabel('Hourly averaged $K_T$ [m²/s]')
 
+f.set_size_inches((6, 8.5))
 plt.savefig('images/paper1/spatial-maps.pdf',
-            transparent=False,
-            bbox_inches='tight')
+            transparent=False, pad_inches=0)
 
 # clim = (aq.sss.sel(longitude=slice(75, 98),
 #                    latitude=slice(0, 24))
 #         .groupby('time.month').mean(dim='time'))
 # clim.plot(col='month', col_wrap=3, robust=True)
-# hc = clim.plot.contour(col='month', col_wrap=3, levels=np.arange(29, 36), colors='k')
+# hc = clim.plot.contour(col='month', col_wrap=3, levels=np.arange(29, 36), Colors='k')
 # plt.clabel(hc, fmt='%2.0f')
+
+
+cmap = (sns.blend_palette(
+    [[0.988235, 0.988235, 0.992157],
+     [0.811765, 0.831373, 0.886275],
+     [0.627451, 0.678431, 0.788235],
+     [0.521569, 0.615686, 0.729412],
+     [0.584314, 0.698039, 0.749020],
+     [0.690196, 0.803922, 0.772549],
+     [0.847059, 0.905882, 0.796078],
+     [1.000000, 0.980392, 0.756863],
+     [0.996078, 0.839216, 0.447059],
+     [0.996078, 0.670588, 0.286275],
+     [0.992157, 0.501961, 0.219608],
+     [0.968627, 0.270588, 0.152941],
+     [0.835294, 0.070588, 0.125490],
+     [0.674510, 0.000000, 0.149020],
+     [0.509804, 0.000000, 0.149020]],
+    n_colors=21, as_cmap=True))
+
+# eke.sel(monsoon='SW').plot.contourf(levels=120, cmap=cmap)
+# eke.sel(monsoon='SW').plot.contour(ax=plt.gca(), levels=12,
+#                                    colors='#E0E1B8',
+#                                    linewidths=0.4)
 #+END_SRC
 
 #+BEGIN_SRC ipython :session :ipyfile images/temp/imgOZW81M.png
