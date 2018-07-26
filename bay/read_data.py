@@ -126,7 +126,7 @@ def read_nrl3():
     nrl3 = moor.moor(85.5, 8, 'NRL3', 'ebob', '../ebob/')
     nrl3.ReadCTD('NRL3', FileType='ebob')
     nrl3.AddChipod(505, 28, 'mm', 'Turb.mat')
-    nrl3.AddChipod(511, 48, 'mm1', 'Turb.mat')
+    nrl3.AddChipod(511, 48, 'mm2', 'Turb.mat')
     nrl3.ReadVel('NRL3', FileType='ebob')
     nrl3.AddEvents('SLD', '2014-06-01', '2014-09-01')
     nrl3.ReadSSH()
