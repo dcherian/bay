@@ -403,14 +403,30 @@ def vert_distrib(KTdf, bins, varname='KT', pal=None, f=None, ax=None,
     return f, ax
 
 
-def mark_moors(color='w', ax=None):
+def mark_moors(color='w', colortext='k',
+               markersize=14,
+               fontsize=10,
+               ax=None):
     lons = [85.5, 85.5, 87, 88.5, 90, 90]
     lats = [5, 8, 8, 8, 12, 15]
+    labels = ['1', '3', '4', '5', '12', '15']
 
     if ax is None:
         ax = plt.gca()
 
-    ax.plot(lons, lats, color+'o')
+    ax.plot(lons, lats, 'o', color=color, ms=markersize)
+
+    for lon, lat, lab in zip(lons, lats, labels):
+        if len(lab) == 2:
+            ds = -1.5
+        else:
+            ds = 0
+
+        ax.text(lon, lat, lab,
+                ha='center', va='center',
+                fontdict=dict(color=colortext),
+                fontsize=fontsize+ds,
+                transform=ax.transData)
 
 
 def make_vert_distrib_plot(varname,
