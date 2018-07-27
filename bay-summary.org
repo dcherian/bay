@@ -88,7 +88,6 @@ plt.savefig('../images/map-misobob.png', bbox_inches='tight')
 [[file:images/summary-RAMA-15N.png]]
 
 ** EBOB
-
 #+ATTR_HTML: :class full-width
 [[file:images/summary-NRL1.png]]
 
@@ -2940,7 +2939,6 @@ plt.savefig('images/paper1/rama-vs-nrl.pdf', bbox_inches='tight')
 *** Seasonal spatial variations
 
 #+BEGIN_SRC ipython :session :ipyfile images/temp/imgRUuf4A.png
-
 bay = importlib.reload(bay)
 
 moor_names = {
@@ -2997,16 +2995,11 @@ def clean_inset_axes(ax):
     ax.set_xlabel('')
     ax.set_title('')
 
-    ax.spines['left'].set_visible(False)
-    ax.spines['bottom'].set_visible(False)
-    ax.tick_params(width=0.)
-
-    ax.set_facecolor('#fdf6e3')
-
     ax.grid(True, axis='x', which='both',
             color='w', lw=1)
     ax.grid(False, axis='y', which='major')
     ax.set_axisbelow(True)
+
 
 # N = 200
 # cmap = mpl.cm.GnBu(np.arange(N))
@@ -3017,6 +3010,23 @@ raincolor = '#3BBBC5'
 cmap = np.asarray(sns.light_palette(raincolor, n_colors=10))
 cmap[:, -1] = 0.35
 ppt_cmap = mpl.colors.ListedColormap(cmap)
+
+def make_depth_cmap():
+
+    cmap = dict()
+    cmap['ra12'] = sns.color_palette('GnBu', 4)[1:]
+    cmap['ra15'] = sns.dark_palette('darkorange', 3)[1:]
+
+    cmap['ra15'].reverse()
+
+    paired = sns.color_palette('Paired')
+    del paired[6:8] # orange clashes
+    for idx, name in enumerate(['nrl1', 'nrl3', 'nrl4', 'nrl5']):
+        cmap[name] = paired[2*idx:2*idx+2]
+
+    return cmap
+
+depth_cmap = make_depth_cmap()
 
 seasons = ['NE', 'NESW', 'SW', 'SWNE']
 
@@ -3042,9 +3052,9 @@ for idx, seas in enumerate(seasons):
         insets[seas][m].text(0.95, 0.95, moor_names[m],
                              transform=insets[seas][m].transAxes,
                              ha='right', va='top', fontsize=9)
+        insets[seas][m].spines['left'].set_visible(False)
+        insets[seas][m].tick_params(direction='in', pad=2)
 
-f.set_constrained_layout_pads(wspace=0., hspace=0.,
-                              h_pad=0., w_pad=0.)
 
 for season in axes:
     bay.plot_coastline(ax=axes[season])
@@ -3081,7 +3091,7 @@ for season in axes:
             .plot.contour(ax=axes[season],
                           x='longitude', y='latitude',
                           levels=[29, 30, 31, 32, 33, 34],
-                          colors='k', linewidths=1.5))
+                          colors='k', linewidths=1))
     plt.clabel(hsss, fontsize='smaller', fmt='%2.0f')
 
     axes[season].set_title('')
@@ -3095,12 +3105,27 @@ for season in axes:
 
 def map_insets(func, grouped, mname):
     for season, subset in grouped:
-        for zz in subset.depth:
-            hdl = func(subset.sel(depth=zz),
-                       ax=insets[season][mname])
-            clean_inset_axes(insets[season][mname])
+        ax = insets[season][mname]
+        for iz, zz in enumerate(subset.depth):
+            if subset.lon == 90:  # RAMA
+                zval = zz
+            else:
+                zval = subset.z.sel(depth=zz).mean()
 
-def hist(subset, ax):
+            label = '{0:.0f}'.format(zval.values)
+            color = depth_cmap[mname][iz]
+
+            func(subset.sel(depth=zz), ax=ax, color=color)
+
+            ax.text(0.95, 0.75-0.23*iz, label+'m', color=color,
+                    transform=ax.transAxes, ha='right', va='top',
+                    fontsize=9)
+
+        clean_inset_axes(ax)
+
+    return hdl
+
+def hist(subset, ax, color):
     data = (np.log10(subset)
             .resample(time='H').mean(dim='time'))
 
@@ -3113,7 +3138,8 @@ def hist(subset, ax):
           .to_dataframe()
           .reset_index())
 
-    sns.kdeplot(df.KT.dropna(), ax=ax, legend=False)
+    sns.kdeplot(df.KT.dropna(), ax=ax,
+                legend=False, color=color)
 
     ax.set_xlim([-7, -1])
     ax.set_xticks(np.arange(-7, -1, 1))
@@ -3141,7 +3167,17 @@ for season in ['NE', 'NESW', 'SW', 'SWNE']:
 insets['SWNE']['nrl5'].set_xlabel('Hourly averaged $K_T$ [m²/s]')
 insets['SWNE']['nrl1'].set_xlabel('Hourly averaged $K_T$ [m²/s]')
 
-f.set_size_inches((6, 8.5))
+insets['NE']['nrl5'].set_ylim([0, 4])
+insets['NESW']['nrl5'].set_ylim([0, 4])
+for hh in [insets['NE']['nrl5'].get_children()[1],
+           insets['NESW']['nrl5'].get_children()[1]]:
+    hh.set_in_layout(False)
+    hh.set_clip_on(False)
+
+f.set_constrained_layout_pads(wspace=0., hspace=0.,
+                              h_pad=0.0, w_pad=-0.1)
+f.set_size_inches((6.0, 8.5))
+
 plt.savefig('images/paper1/spatial-maps.pdf',
             transparent=False, pad_inches=0)
 
