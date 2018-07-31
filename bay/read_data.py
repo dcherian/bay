@@ -60,9 +60,9 @@ def read_ra15():
 
     ra15 = moor.moor(90, 15, 'RAMA 15N', 'rama', '../rama/RAMA14/')
     ra15.AddChipod(813, 15, 'pmw', 'Turb.mat')
-    ra15.AddChipod(814, 30, 'mm1w', 'Turb.mat')
+    # ra15.AddChipod(814, 30, 'mm1w', 'Turb.mat')
     ra15.χpod[813].load_pitot()
-    ra15.χpod[814].load_pitot()
+    # ra15.χpod[814].load_pitot()
     ra15.ReadMet('../rama/data/met15n90e_10m.cdf', WindType='pmel')
     ra15.ReadMet(FluxType='pmel')
     ra15.ReadCTD('../rama/RamaPrelimProcessed/RAMA14-15N.mat', 'ramaprelim')
@@ -81,8 +81,11 @@ def read_ra15():
         'NESW': slice('2015-03-22', '2015-05-15'),
         'SW': slice('2015-05-15', '2015-09-30'),
         'SWNE': slice('2015-10-01', '2015-11-30')}
-
-    # ra15.χpod[814].mixing_seasons = ra15.season[2015]
+a
+    # ra15.χpod[814].mixing_seasons = {
+    #     'NE': slice('2014-12-01', '2015-03-15'),
+    #     'NESW': slice('2015-03-15', '2015-05-15'),
+    #     'SW': slice('2015-05-15', '2015-09-30')}
 
     ra15 = __common(ra15)
 
