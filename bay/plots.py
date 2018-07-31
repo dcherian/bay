@@ -141,15 +141,16 @@ def bin_ktdf(KTdf, bins):
         mask_ml_plus))
 
     KTdf['bin'] = ''
-    KTdf.bin[mask_ml] = 'ML'
-    KTdf.bin[mask_bl] = 'BL'
+    KTdf.loc[mask_ml, 'bin'] = 'ML'
+    KTdf.loc[mask_bl, 'bin'] = 'BL'
     # KTdf.bin[mask_ml_plus] = 'ML+'
     # bins = get_kmeans_bins(7, KTdf['ρ'][mask_deep])
     # KTdf.bin = pd.qcut(KTdf.ρ, 10, precision=1)
-    KTdf.bin[mask_deep] = pd.cut(KTdf.ρ[mask_deep],
-                                 bins,
-                                 precision=1)
+    KTdf.loc[mask_deep, 'bin'] = pd.cut(KTdf.ρ.loc[mask_deep],
+                                        bins,
+                                        precision=1)
     KTdf['bin'] = KTdf['bin'].astype('category')
+
     assert(np.sum(KTdf.bin == '') == 0)
 
     return KTdf
@@ -222,7 +223,7 @@ def plot_distrib(ax, plotkind, var, zloc, zstd, width=12, percentile=False):
 
     if plotkind is 'violin':
         if percentile:
-            var[var > prc] = np.nan
+            var = var.where(var < prc)
 
         hdl = ax.violinplot(var[~np.isnan(var)], positions=[zloc],
                             widths=[width],
@@ -351,8 +352,8 @@ def vert_distrib(KTdf, bins, varname='KT', pal=None, f=None, ax=None,
             var -= 1000
 
         for mm in df['moor'].unique():
-            if len(df['moor'].ix[df['moor'] == mm])/len(df) <= 0.10:
-                df = df[df['moor'] != mm]
+            if len(df['moor'].where(df.moor == mm).dropna())/len(df) <= 0.10:
+                df = df.loc[df['moor'] != mm]
 
         hdl, median, mean = plot_distrib(ax[season], plotkind, var,
                                          zloc, df.z.std(), width, percentile)
