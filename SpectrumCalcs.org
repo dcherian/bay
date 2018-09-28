@@ -623,12 +623,14 @@ plt.loglog(freq, cw, freq, ccw)
 cw, ccw, freq, _, _ = dcpy.ts.RotaryPSD(w, multitaper=False)
 plt.loglog(freq, cw, freq, ccw)
 
-plt.legend(['cw', 'ccw'])
+plt.legend(['cw multitaper', 'ccw multitaper', 'cw', 'ccw'])
 dcpy.plots.linex([1/10, 1/100])
 #+END_SRC
 
 #+RESULTS:
+:RESULTS:
 [[file:images/temp/py29463UuM.png]]
+:END:
 ** Test ~apply_along_axis~
 #+BEGIN_SRC ipython :session :file images/temp/img3907Ewz.png
 import dcpy.ts

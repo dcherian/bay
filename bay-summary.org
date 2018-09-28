@@ -105,7 +105,7 @@ plt.savefig('../images/map-misobob.png', bbox_inches='tight')
 
 * vertical distribution of $K_T$
 ** Make plot
-*** Mangle together and change to dataframe :noexport:
+*** Merge together
 #+CALL: read-all-moorings()
 #+NAME: make-merged-KT
 #+BEGIN_SRC ipython :session :results none
@@ -128,8 +128,9 @@ bay = importlib.reload(bay)
 
 moors = ['RAMA12', 'RAMA15', 'NRL1', 'NRL2', 'NRL3', 'NRL4', 'NRL5']
 
-bay.make_vert_distrib_plot('KT')
+bay.make_vert_distrib_plot('KT', label_moorings=True)
 plt.savefig('images/vert-profile.svg', bbox_inches='tight')
+plt.savefig('images/bay-KT-vert-profile.pdf', bbox_inches='tight')
 plt.savefig('images/bay-KT-vert-profile.png', bbox_inches='tight')
 #+END_SRC
 #+ATTR_HTML: :class full-width
@@ -144,6 +145,10 @@ Some sensitivities:
    3. Something happens in NRL5, around SW monsoon start to see temperature inversions semi-regularly (rare, but regular)
 
 3. High values near surface are usually base of mixed layer/barrier layer χpods (527, 814)
+
+4. 814 is crap: some changes moving distributions lower.
+
+5. Changing 511 to mm2: quite a bit. Reduced the double peak stuff
 
 
 #+NAME: save-distrib-for-each-mooring
@@ -347,6 +352,148 @@ seaborn_vert_distrib(KTdf, 'mean_depth', 'kde')
 #+END_SRC
 #+RESULTS:
 [[file:images/bay-KT-vert-hist-depths.png]]
+** nutrient fluxes
+#+BEGIN_SRC ipython :session :ipyfile images/temp/imgDBOejX.png
+df = bay.convert_nc_to_binned_df()
+
+# needed to preserve order
+coords = {'season': df.season.cat.categories,
+          'bin': df.bin.cat.categories}
+
+means = xr.DataArray(np.zeros((len(df.season.unique()), len(df.bin.unique()))),
+                     dims=['season', 'bin'],
+                     coords=coords, name='means')
+
+medians = xr.DataArray(np.zeros((len(df.season.unique()),
+                                 len(df.bin.unique()))),
+                       dims=['season', 'bin'],
+                       coords=coords, name='medians')
+
+z = xr.DataArray(np.zeros((len(df.season.unique()), len(df.bin.unique()))),
+                 dims=['season', 'bin'],
+                 coords=coords, name='z')
+
+stats = xr.merge([means, medians, z])
+
+for label, group in df.groupby(['season', 'bin']):
+    season = label[0]
+    interval = label[1]
+
+    stats['means'].loc[season, interval] = (10**group.KT).mean()
+    stats['medians'].loc[season, interval] = (10**group.KT).median()
+    stats['z'].loc[season, interval] = group.z.mean()
+
+stats.means.attrs['description'] = 'Seasonal and density-binned means of hourly-mean temperature diffusivity K_T'
+
+stats.medians.attrs['description'] = 'Seasonal and density-binned medians of hourly-mean temperature diffusivity K_T'
+
+stats.to_netcdf('means_medians.nc')
+#+END_SRC
+
+TODO:
+1. Subset K_T to appropriate locations
+2. why are the bins unsorted?
+
+#+BEGIN_SRC ipython :session :ipyfile images/temp/imge5GfnK.png
+
+o2 = (xr.open_mfdataset('../datasets/woa13/woa13-season/woa13_all_o*_01.nc',
+                        autoclose=True, decode_times=False)
+      .sel(**bay.region)
+      .load())
+
+t = (xr.open_mfdataset('../datasets/woa13/woa13-season/woa13_decav_t*_01v2.nc',
+                       autoclose=True, decode_times=False)
+     .sel(**bay.region)
+     .load())
+
+s = (xr.open_mfdataset('../datasets/woa13/woa13-season/woa13_decav_s*_01v2.nc',
+                       autoclose=True, decode_times=False)
+     .sel(**bay.region)
+     .load())
+
+time_new = np.datetime64(pd.datetime(2001, 1, 15)) + t.time.astype('timedelta64[M]')
+time_new['time'] = time_new.data
+
+smon = (s.s_an.sel(**bay.ebob_region)
+        .groupby(time_new.monsoon.labels)
+        .mean(dim='time').mean(dim='lat').mean(dim='lon'))
+
+(nioa.SALT.sel(**bay.ebob_region)
+ .mean(dim=['lon', 'lat'])
+ .groupby(time_new.monsoon.labels.rename({'time': 'TIME'}))
+ .mean(dim='TIME')
+ .plot.line(y='DEPTH', hue='monsoon', yincrease=False))
+
+# TODO: subset to use EBoB region K_T also
+rho = (xr.DataArray(sw.pden(s.s_an, t.t_an, xr.broadcast(s.s_an, s.depth)[1]),
+                    dims=t.t_an.dims, coords=t.t_an.coords)
+       .sel(**bay.ebob_region)
+       .mean(dim='lat').mean(dim='lon')
+       .groupby(time_new.monsoon.labels)
+       .mean(dim='time')
+       .rename({'monsoon': 'season'}))
+
+oxy = (o2.o_an
+       .sel(lon=slice(85.5, 88.5), lat=slice(5, 8))
+       .mean(dim='lat').mean(dim='lon')
+       .groupby(time_new.monsoon.labels)
+       .mean(dim='time')
+       .rename({'monsoon': 'season'}))
+
+flux = xr.zeros_like(stats.means) * np.nan
+do2_dz = xr.zeros_like(stats.means) * np.nan
+flux.name = 'o2 flux'
+flux.attrs['long_name'] = '$O_2$ flux'
+
+# interpolate WOA profile to this grid
+depth_new = np.linspace(0, 400, 400)
+
+for bb in stats.bin:
+    interval = bb.item()
+
+    if not isinstance(interval, pd.Interval):
+        continue
+
+    for seas in stats.season:
+        rho_prof = rho.sel(season=seas).interp(depth=depth_new)
+        oxy_prof = oxy.interp(depth=depth_new)
+        mask = np.logical_and((rho_prof >= interval.left).values,
+                              (rho_prof < interval.right).values)
+        if mask.sum() < 3:
+            continue
+
+        do2_dz.loc[seas, interval] = (
+            np.polyfit(-oxy_prof.sel(season=seas)[mask].depth.values,
+                       oxy_prof.sel(season=seas)[mask].values, 1)[0])
+
+flux = -stats.means * do2_dz
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+# Out[303]:
+:END:
+
+#+BEGIN_SRC ipython :session :ipyfile images/temp/imgMFPMNy.png
+import numpy as np
+import bootstrapped.bootstrap as bs
+import bootstrapped.stats_functions as bs_stats
+
+mean = 100
+stdev = 10
+
+population = np.random.normal(loc=mean, scale=stdev, size=50000)
+
+# take 1k 'samples' from the larger population
+samples = population[:1000]
+
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+# Out[4]:
+:END:
+
 *** old attempts
 **** without MLD binning : only ρ binning
 #+CAPTION: After extending unit 814 with pitot
@@ -574,20 +721,37 @@ plt.tight_layout()
 * Seasonal patterns
 ** depth of salinity surfaces
 
+#+BEGIN_SRC ipython :session :ipyfile images/temp/imgzHFIIB.png
+(clim.SALT.isel(TIME=3).sel(DEPTH=50, method='nearest')
+ .plot.contourf(cmap=mpl.cm.Reds, levels=20, robust=True))
+hdl = (clim.SALT.isel(TIME=3).sel(DEPTH=50, method='nearest')
+ .plot.contour(colors='k', levels=[32, 33, 34, 35], robust=True))
+plt.gca().set_aspect('equal')
+plt.gca().clabel(hdl, hdl.levels)
+
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+# Out[14]:
+: <a list of 2 text.Text objects>
+:END:
+
 #+BEGIN_SRC ipython :session :ipyfile images/temp/imgzT2m1u.png :results drawer
 clim = xr.open_dataset('~/work/datasets/nio-atlas/nioa_climatology_seasonal_temp_salt_monsoon_season.nc', decode_times=False)
 
 _, zmat = xr.broadcast(clim.SALT, clim.DEPTH)
 
-S0 = 35
-isodepth = zmat.where(np.logical_and(clim.SALT > 34.9, clim.SALT < 35.1)).mean(dim='DEPTH')
+S0 = 33
+isodepth = zmat.where(np.logical_and(clim.SALT > S0-0.1, clim.SALT < S0+0.1)).mean(dim='DEPTH')
 
 isodepth.plot(x='LONGITUDE', col='TIME', col_wrap=2, levels=np.arange(10, 500, 30))
 #+END_SRC
 
 #+RESULTS:
 :RESULTS:
-: <xarray.plot.facetgrid.FacetGrid at 0x7f44b39be6d8>
+# Out[138]:
+: <xarray.plot.facetgrid.FacetGrid at 0x7f23fd4b7630>
 [[file:images/temp/imgzT2m1u.png]]
 :END:
 ** "pycnocline uplift"
@@ -1068,10 +1232,87 @@ plt.gca().set_yscale('log')
 ** Seasonal cycle in NIW?
 *** NIW input u⋅τ
 #+BEGIN_SRC ipython :session :ipyfile images/temp/imgCv7Gly.png
-self = nrl5
+taux = xr.open_mfdataset('../datasets/tropflux/taux_tropflux_1d_*.nc')
+tauy = xr.open_mfdataset('../datasets/tropflux/tauy_tropflux_1d*.nc')
+tau = (xr.merge([taux, tauy])
+       .rename({'latitude': 'lat', 'longitude': 'lon'})
+       .sel(**bay.region).sel(time='2014')).load()
 
-ut = (self.vel.u.isel(depth=0) * self.tropflux.taux
-)
+oscar = (xr.open_mfdataset('/home/deepak/work/datasets/oscar/oscar_vel*.nc',
+                          autoclose=True, drop_variables=['year'])
+         .squeeze()
+         .rename({'latitude': 'lat', 'longitude': 'lon'})
+         .sel(lon=slice(80, 94), lat=slice(24, 4)).sel(time='2014')).load()
+
+oscar_1deg = (oscar
+              .rolling(lat=3, center=True).mean(dim='lat')
+              .sel(lat=slice(None, None, 3))
+              .rolling(lon=3, center=True).mean(dim='lon')
+              .sel(lon=slice(None, None, 3)))
+
+oscari = oscar_1deg.interp_like(tau)
+windinput = oscari.u * tau.taux + oscari.v * tau.tauy
+
+windinput.attrs['long_name'] = 'near-inertial wind input'
+
+monthly_windinput = windinput.resample(time='M').mean(dim='time').compute()
+monthly_windinput.attrs = windinput.attrs
+
+g = monthly_windinput.plot(col='time', col_wrap=4, robust=True,
+                           add_colorbar=False)
+g.map(bay.mark_moors)
+g.add_colorbar()
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+# Out[660]:
+: <xarray.plot.facetgrid.FacetGrid at 0x7f9d1b4cc860>
+:END:
+*** Seasonal cycle of Ri at EBOB?
+#+BEGIN_SRC ipython :session :ipyfile images/nrl5-Ri.png
+N2 = nrl5.N2.isel(depth=1)
+
+z = (nrl5.zχpod.isel(num=1)
+     .interp(time=nrl5.vel.time)
+     .dropna(dim='time')
+     .drop('num'))
+
+S2 = (nrl5.vel.shear.interp(time=z.time, depth_shear=z)**2)
+
+f, ax = plt.subplots(3, 1, sharex=True, constrained_layout=True)
+(S2/4).plot(ax=ax[0], label='$S^2/4$')
+N2.plot(ax=ax[0], yscale='log', label='$N^2$')
+plt.gca().set_ylabel('')
+ax[0].legend()
+
+((N2/S2).resample(time='D').mean()
+ .plot(yscale='log', ax=ax[1], ylim=[1, 100]))
+ax[1].set_ylabel('Ri')
+ax[1].grid(True)
+
+(nrl5.KT.resample(time='D').mean(dim='time')
+ .plot.line(x='time', yscale='log', ax=ax[2]))
+ax[2].grid(True)
+
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+# Out[6]:
+: <matplotlib.legend.Legend at 0x7fcf64041dd8>
+[[file:images/nrl5-Ri.png]]
+:END:
+
+Argo N2 agrees with NRL5, so I'm not doing something insane
+#+BEGIN_SRC ipython :session :ipyfile images/temp/img9hBMIK.png
+argo = dcpy.oceans.read_argo_clim()
+argo_nrl5 = argo.sel(lat=nrl5.lat, lon=nrl5.lon, method='nearest').load()
+argo_nrl5['rho'] = argo_nrl5.S.copy(data=sw.pden(argo_nrl5.S,
+                                                 argo_nrl5['T'],
+                                                 argo_nrl5.pres))
+argo_nrl5['N2'] = 10/1025 * argo_nrl5.rho.differentiate('pres')
+argo_nrl5_clim = argo_nrl5.groupby('time.month').mean(dim='time')
 #+END_SRC
 *** NIW energy at moorings
 
@@ -1296,6 +1537,50 @@ ewa.imag.plot(ax=ax[1, 1])
 # Out[214]:
 : [<matplotlib.lines.Line2D at 0x7f7c58aeb780>]
 :END:
+* checking inter-mooring variability
+#+BEGIN_SRC ipython :session :ipyfile images/temp/imgBRHfA4.png
+
+turb = xr.open_dataset('bay_merged_hourly.nc', autoclose=True)
+
+ra = (turb.KT.sel(lon=90)
+      .dropna(dim='lat', how='all')
+      .dropna(dim='depth', how='all')
+      .resample(time='D').mean(dim='time'))
+
+ra.plot.line(x='time', hue='depth', row='lat', yscale='log')
+#+END_SRC
+
+
+
+#+BEGIN_SRC ipython :session :ipyfile images/ra12-ra15-compare-15m.png
+d15 = ra.sel(depth=15)
+
+plt.figure()
+for da in [d15.sel(lat=12, time='2014'),
+           d15.sel(lat=12, time='2015'),
+           d15.sel(lat=15)]:
+    plt.plot(da.time.dt.dayofyear, da.values)
+
+plt.gca().set_yscale('log')
+plt.legend(['12N, 2014', '12N, 2015', '15N, 2015'])
+plt.title('15m χpod')
+plt.gcf().set_size_inches((8, 5))
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+# Out[124]:
+[[file:images/ra12-ra15-compare-15m.png]]
+:END:
+
+15N, 2015 and 12N, 2014 are quite similar. 12N, 2015 is different mostly because of stratification.
+- in 2014, there are a lot of temperature inversions during SW monsoon at 15m; χpod is frequently in barrier layer.
+- in 2015, χpod sees basically single-signed gradient nearly all the time.
+
+#+BEGIN_SRC ipython :session :ipyfile images/temp/imgFx1nQF.png
+
+#+END_SRC
+
 * Barrier layers
 When the freshwater arrives, I see large values of Jqt at 30m/45m. This is at both 12N, 15N in both 2014, 2015.
 
@@ -1626,12 +1911,33 @@ nmean = (nseas.n_an
 (nmean.groupby('time.season').mean(dim='season'))
 #+END_SRC
 
+** map the OMZ
+#+BEGIN_SRC ipython :session :ipyfile images/temp/imgCN0V8s.png
+(o2seas.o_an.sel(**bay.region)
+.sel(lon=87.5)
+.plot.contour(col='time', col_wrap=3, robust=True, aspect=2,
+              yincrease=False, ylim=[400, 0],
+              cmap=mpl.cm.Blues, labels=True,
+              cbar_kwargs={'label': '$$O_2$$'}))
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+# Out[9]:
+: <xarray.plot.facetgrid.FacetGrid at 0x7fda7d5f27f0>
+:END:
 ** gyaan
 cite:Sarma2016
 1. Primary production is comparable to AS for NE and transitions but /lower/ for SW.
 2. Cold-core eddies uplift nutrients?
 3. Silicate is not a limiting nutrient
 4. More depletion of N, P in the north
+
+cite:Vinayachandran2005:
+#+BEGIN_QUOTE
+Biological productivity in the Bay of Bengal is believed to be considerably less than in the Arabian Sea, particularly during the summer monsoon [Kumar et al., 2002; Madhupratap et al., 2003]. A possible reason for this difference is that the Bay receives large quantities of freshwater from rainfall and rivers. The fresh water caps the upper layer of the northern Bay and neighboring coastal regions, leading to the formation of a barrier layer [Vinayachandran et al., 2002] that can affect thermodynamic processes in the mixed layer. Specifically, the strong stratification due to the barrier layer impedes the transfer of nutrients into the euphotic zone from below [Gomes et al., 2000].
+#+END_QUOTE
+
 * MISO signals?
 ** Summary
 cite:Sobel2010 show large TRMM 30-90 day variance between May and October in the Bay.
@@ -2779,6 +3085,9 @@ Tested with RAMA14-810
 [[file:images/810-compare-hist2-chi-eps.png]]
 
 bibliography:~/Papers/bibtexLibrary.bib
+* Masking stuff
+N², IC fits get rid of questionable fits.
+Question: How much does an IC fit contaminate χ?
 * Paper figures
 ** summary paper
 *** Figure 1: map + depths on argo climatology
@@ -2891,7 +3200,7 @@ ax['Kt'].grid(True, which='both', axis='y')
 axx[2].xaxis.set_tick_params(rotation=0)
 f.set_size_inches((7, 4.25))
 
-plt.savefig('images/paper1/rama-vs-nrl.pdf', bbox_inches='tight')
+# plt.savefig('images/paper1/rama-vs-nrl.pdf', bbox_inches='tight')
 
 # arrowprops = dict(arrowstyle="<->", connectionstyle="arc3")
 # ha1 = ax['Kt'].annotate("",
@@ -3229,3 +3538,108 @@ trmmm.sel(monsoon='SW').precipitation.plot.contourf(x='lon',
                                                     robust=True,
                                                     cmap=ppt_cmap)
 #+END_SRC
+
+Divide up depths per season
+#+BEGIN_SRC ipython :session :ipyfile images/temp/imgXx7AIu.png
+
+plt.figure();
+nrl4.KT.z.resample(time='D').mean(dim='time').plot.line(x='time')
+nrl4.MarkSeasonsAndEvents()
+#+END_SRC
+
+#+BEGIN_SRC ipython :session :ipyfile images/temp/imgWlSWCu.png
+
+_, ax = plt.subplots(1,1,subplot_kw=dict(projection=ccrs.PlateCarree()))
+
+bay.plot_coastline(ax)
+bay.mark_moors(ax=ax, color='#eeeeee', colortext='#000aaa')
+
+#+END_SRC
+
+#+BEGIN_SRC ipython :session :ipyfile images/temp/imgWyIJdP.png
+f, ax = plt.subplots(2, 1)
+
+h0 = ax[0].plot([1,2], [3,5])
+h1 = ax[1].plot([1,2], [3,8])
+
+
+ax[0].set_ylim([3, 3.5])
+# ax[0].set_clip_on(False)
+
+ax[1].set_ylim([3, 5])
+# ax[1].set_clip_on(False)
+h1[0].set_clip_on(False)
+
+#+END_SRC
+*** tidal shear at NRL5
+#+BEGIN_SRC ipython :session :ipyfile images/temp/imgfJCfCZ.png
+tidal_shear = dcpy.ts.xfilter(nrl5.vel.shear.interpolate_na('time'),
+                              kind='bandpass',
+                              flen=np.array([0.8, 1.2]) * 12.42 * 3600)
+
+tidal_temp = dcpy.ts.xfilter(nrl5.ctd['T'],
+                             kind='bandpass',
+                             flen=np.array([0.9, 1.1]) * 12.42 * 3600)
+
+f, ax = plt.subplots(2, 1, sharex=True)
+(tidal_shear.sel(depth=120, method='nearest')
+ .resample(time='H').mean(dim='time')
+ .plot(x='time', yincrease=False, ax=ax[0]))
+(nrl5.KT.resample(time='H').mean(dim='time')
+ .plot.line(ax=ax[1], yscale='log', x='time'))
+
+f, ax = plt.subplots(2, 1, sharex=True, constrained_layout=True,
+                     gridspec_kw={'height_ratios': [2, 1]})
+(tidal_shear.sel(time='2014')
+ .resample(time='H').mean(dim='time')
+ .plot(x='time', yincrease=False, robust=True, ax=ax[0]))
+(nrl5.zχpod.plot.line(x='time', color='k', ax=ax[0]))
+(nrl5.KT.sel(time='2014')
+ .resample(time='D').mean(dim='time')
+ .plot.line(ax=ax[1], yscale='log', x='time'))
+
+f, ax = plt.subplots()
+(tidal_temp.sel(time='2014')
+ .resample(time='H').mean(dim='time')
+ .plot.contour(x='time', yincrease=False, levels=20))
+(nrl5.zχpod.resample(time='D').mean(dim='time')
+ .plot.line(x='time', color='k'))
+
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+# Out[123]:
+:END:
+
+*** NRL5 shear time series
+#+BEGIN_SRC ipython :session :ipyfile images/temp/img68tfyk.png
+
+uz, vz = ((nrl5.vel[shear].sel(depth=slice(90, 140))
+           .mean('depth')
+           .interpolate_na(dim='time'))
+          for shear in ['uz', 'vz'])
+
+inertial_uz, inertial_vz = (uz.copy(data=dcpy.ts.BandPassButter(
+    shear.values,
+    freqs=nrl5.inertial.values*np.array([0.95, 1.05]),
+    dt=1/24)).sel(time='2014')
+                            for shear in [uz, vz])
+
+inertial_shear = inertial_uz.copy(data=np.hypot(inertial_uz, inertial_vz))
+
+shear = nrl5.vel.shear.sel(depth=slice(90, 140)).mean('depth')
+N2 = nrl5.N2.isel(depth=1).interp(time=inertial_shear.time)
+
+f, ax = plt.subplots(2, 1, constrained_layout=True, sharex=True)
+(shear**2 - 4*N2).plot(ax=ax[0], ylim=(0, None))
+(nrl5.KT.resample(time='D').mean(dim='time')
+ .plot.line(x='time', yscale='log', ax=ax[1]))
+ax[0].set_xlabel('')
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+# Out[343]:
+: Text(0.5, 0, '')
+:END:

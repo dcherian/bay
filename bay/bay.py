@@ -1,8 +1,10 @@
 import numpy as np
-import xarray as xr
 import tqdm
 
+import xarray as xr
+
 region = dict(lon=slice(80, 94), lat=slice(4, 24))
+ebob_region = dict(lon=slice(85.5, 88.5), lat=slice(5, 8))
 
 
 def make_merged_nc(moorings):

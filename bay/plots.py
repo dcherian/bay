@@ -262,6 +262,10 @@ def vert_distrib(KTdf, bins, varname='KT', pal=None, f=None, ax=None,
                  label_moorings=True, label_bins=True, adjust_fig=True,
                  width=12, percentile=False, add_offset=True, **kwargs):
 
+    '''
+        Function to make vertical distribution plot when provided with
+        appropriately formatted DataFrame.
+    '''
     import cycler
 
     plotkind = 'violin'
@@ -372,7 +376,7 @@ def vert_distrib(KTdf, bins, varname='KT', pal=None, f=None, ax=None,
                                 color=color, ha='left', va='center',
                                 fontsize=7)
             if label_moorings:
-                ax[season].text(2, ytxt,
+                ax[season].text(-0.75, ytxt,
                                 format_moor_names(df['moor'].unique()),
                                 color=color, ha='left',
                                 va='center', fontsize=6)
@@ -404,36 +408,41 @@ def vert_distrib(KTdf, bins, varname='KT', pal=None, f=None, ax=None,
     return f, ax
 
 
-def mark_moors(color='w', colortext='k',
+def mark_moors(color='w',
+               labels=True,
+               colortext='k',
                markersize=14,
                fontsize=10,
                ax=None):
     lons = [85.5, 85.5, 87, 88.5, 90, 90]
     lats = [5, 8, 8, 8, 12, 15]
-    labels = ['1', '3', '4', '5', '12', '15']
+    names = ['1', '3', '4', '5', '12', '15']
 
     if ax is None:
         ax = plt.gca()
 
     ax.plot(lons, lats, 'o', color=color, ms=markersize)
 
-    for lon, lat, lab in zip(lons, lats, labels):
-        if len(lab) == 2:
-            ds = -1.5
-        else:
-            ds = 0
+    if labels:
+        for lon, lat, name in zip(lons, lats, names):
+            if len(name) == 2:
+                ds = -1.5
+            else:
+                ds = 0
 
-        ax.text(lon, lat, lab,
-                ha='center', va='center',
-                fontdict=dict(color=colortext),
-                fontsize=fontsize+ds,
-                transform=ax.transData)
+            ax.text(lon, lat, name,
+                    ha='center', va='center',
+                    fontdict=dict(color=colortext),
+                    fontsize=fontsize+ds,
+                    transform=ax.transData)
 
 
-def make_vert_distrib_plot(varname,
-                           bins=[1018, 1021, 1022, 1022.5, 1023,
-                                 1023.5, 1024.25, 1029],
-                           moor=None):
+def convert_nc_to_binned_df(varname='KT',
+                            bins=[1018, 1021, 1022, 1022.5, 1023,
+                                  1023.5, 1024.25, 1029],
+                            moor=None):
+    ''' reads KT from merged .nc file and returns DataFrame version
+        suitable for processing.'''
 
     turb = xr.open_dataset('bay_merged_hourly.nc', autoclose=True).load()
 
@@ -461,15 +470,30 @@ def make_vert_distrib_plot(varname,
 
     df['moor'] = (df['latlon']
                   .map(dict(zip(moornames.values(),
-                              moornames.keys())))
+                                moornames.keys())))
                   .astype('category'))
 
     if moor is not None:
-        df = df[df.moor == moor]
+        df = df.loc[df.moor == moor]
 
     df = bin_ktdf(df, bins)
 
-    f, ax = vert_distrib(df, df.bin, label_moorings=False, percentile=True)
+    return df
+
+
+def make_vert_distrib_plot(varname,
+                           bins=[1018, 1021, 1022, 1022.5, 1023,
+                                 1023.5, 1024.25, 1029],
+                           moor=None,
+                           label_moorings=False):
+
+    ''' user-friendly wrapper function to make vertical distribution plot. '''
+
+    df = convert_nc_to_binned_df(varname, bins, moor)
+
+    f, ax = vert_distrib(df, df.bin,
+                         label_moorings=label_moorings,
+                         percentile=True)
 
     plt.subplots_adjust(wspace=-0.06)
 
