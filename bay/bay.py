@@ -65,7 +65,7 @@ def make_merged_nc(moorings):
             mean_depth = xr.zeros_like(subset[var])
             for ss in ['NE', 'NESW', 'SW', 'SWNE']:
                 mask = seas.values == ss
-                if np.all(mask == False):
+                if np.all(~mask):
                     continue
 
                 _, zz = xr.broadcast(seas == ss, depth_season.sel(season=ss))
@@ -93,14 +93,18 @@ def make_merged_nc(moorings):
 
     Turb = xr.merge(vards)
     Turb = Turb.rename({'ε': 'epsilon',
-                        'χ': 'chi-t'})
+                        'χ': 'chi_t'})
 
-    Turb.epsilon.attrs['long_name'] = 'Ocean turbulence kinetic energy dissipation rate'
-    Turb.epsilon.attrs['standard_name'] = 'Ocean_turbulence_kinetic_energy_dissipation_rate'
+    Turb.epsilon.attrs['long_name'] = (
+        'Ocean turbulence kinetic energy dissipation rate')
+    Turb.epsilon.attrs['standard_name'] = (
+        'Ocean_turbulence_kinetic_energy_dissipation_rate')
     Turb.epsilon.attrs['units'] = 'W kg^-1'
 
-    Turb['chi-t'].attrs['long_name'] = 'Ocean dissipation rate of thermal variance from microtemperature'
-    Turb['chi-t'].attrs['standard_name'] = 'Ocean_dissipation_rate_of_thermal_variance_from_microtemperature'
+    Turb['chi-t'].attrs['long_name'] = (
+        'Ocean dissipation rate of thermal variance from microtemperature')
+    Turb['chi-t'].attrs['standard_name'] = (
+        'Ocean_dissipation_rate_of_thermal_variance_from_microtemperature')
     Turb['chi-t'].attrs['units'] = 'C^2 s^-1'
 
     Turb.lat.attrs['long_name'] = 'latitude'
@@ -114,15 +118,18 @@ def make_merged_nc(moorings):
 
     # Turb.attrs['Conventions'] = 'CF-1.6'
     Turb.attrs['netcdf_version'] = '4'
-    Turb.attrs['title'] = 'Merged and processed χpod data from the Bay of Bengal'
+    Turb.attrs['title'] = (
+        'Merged and processed χpod data from the Bay of Bengal')
     Turb.attrs['institution'] = 'OSU'
     Turb.attrs['data_originator'] = 'Shroyer and Moum'
     Turb.attrs['chief_scientist'] = 'Emily L. Shroyer'
 
     print('Writing to file.')
-    # Turb.to_netcdf('merged_KT_test.nc', format='netCDF4')
-    Turb.resample(time='1H').mean(dim='time').to_netcdf('bay_merged_hourly.nc')
-    Turb.resample(time='6H').mean(dim='time').to_netcdf('bay_merged_6hourly.nc')
+    Turb.to_netcdf('merged_KT_test.nc')
+    (Turb.resample(time='1H').mean(dim='time')
+     .to_netcdf('bay_merged_hourly.nc'))
+    (Turb.resample(time='6H').mean(dim='time')
+     .to_netcdf('bay_merged_6hourly.nc'))
 
 
 def bin_and_to_dataframe(KTm, ρbins=None, Sbins=None):
