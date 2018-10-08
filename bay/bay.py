@@ -27,38 +27,11 @@ def make_merged_nc(moorings):
             subset = (m.__dict__[var].copy()
                       .reset_coords(['ρ', 'S', 'T', 'z', 'mld', 'ild']))
 
-            # ktsubset['depth'].values = np.round(ktsubset.z.mean(dim='time'),
-            #                                     decimals=1)
-
             subset = subset.expand_dims(['lat', 'lon'])
             subset['season'] = subset.time.monsoon.labels
 
             depth_season = np.round(subset.z.groupby(subset['season'])
                                     .median(dim='time')).astype('int64')
-
-            # depth_week = np.round(subset.z.groupby(subset.time.dt.weekofyear)
-            #                       .mean(dim='time')).astype('int64')
-
-            # depth_bin = depth_week
-
-            # bin depths
-            # depth_season.values[np.logical_and(
-            #     depth_season.values > 55,
-            #     depth_season.values < 63)] = 60
-
-            # depth_season.values[np.logical_and(
-            #     depth_season.values >= 64,
-            #     depth_season.values < 68)] = 65
-
-            # depth_season.values[np.logical_and(
-            #     depth_season.values > 68,
-            #     depth_season.values < 82)] = 75
-
-            # depth_season.values[np.logical_and(
-            #     depth_season.values > 84.5,
-            #     depth_season.values < 87.2)] = 85
-
-            # depth_season.values[depth_season.values > 87.2] = 100
 
             _, seas = xr.broadcast(subset[var], subset['season'])
 
@@ -76,7 +49,10 @@ def make_merged_nc(moorings):
 
             varlist.append(subset.reset_coords())
 
-        print('\t\t merging ' + var)
+        del subset
+        del mask
+
+        print('\t\t merging ...')
         vards.append(xr.merge(varlist))
 
         # make sure the merging worked
@@ -90,7 +66,9 @@ def make_merged_nc(moorings):
                     .reset_coords()[var]
                     .dropna(dim='time', how='all'))
             xr.testing.assert_equal(merged, orig)
+            del orig
 
+    print('Calling xarray.merge.')
     Turb = xr.merge(vards)
     Turb = Turb.rename({'ε': 'epsilon',
                         'χ': 'chi_t'})
@@ -120,7 +98,7 @@ def make_merged_nc(moorings):
     Turb.attrs['netcdf_version'] = '4'
     Turb.attrs['title'] = (
         'Merged and processed χpod data from the Bay of Bengal')
-    Turb.attrs['institution'] = 'OSU'
+    Turb.attrs['institution'] = 'Oregon State University'
     Turb.attrs['data_originator'] = 'Shroyer and Moum'
     Turb.attrs['chief_scientist'] = 'Emily L. Shroyer'
 
@@ -160,8 +138,9 @@ def bin_and_to_dataframe(KTm, ρbins=None, Sbins=None):
                  'NRL3': '8.0N, 85.5E',
                  'NRL4': '8.0N, 87.0E',
                  'NRL5': '8.0N, 88.5E'}
-    KTdf['moor'] = KTdf['latlon'].map(dict(zip(moornames.values(),
-                                               moornames.keys()))).astype('category')
+    KTdf['moor'] = (KTdf['latlon'].map(
+        dict(zip(moornames.values(), moornames.keys())))
+                    .astype('category'))
     return KTdf
 
 
