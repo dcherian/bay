@@ -4106,8 +4106,6 @@ with open('all-ctd.pickle', 'wb') as f:
 #+END_SRC
 
 #+BEGIN_SRC ipython :session :ipyfile images/temp/imgRzvj3C.png
-from dcpy.oceans import TSplot
-
 if 'turb' not in locals():
     turb = xr.open_dataset('./bay_merged_hourly.nc', autoclose=True)
 

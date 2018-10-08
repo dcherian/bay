@@ -14,6 +14,7 @@ from cartopy import feature
 # colors = {'RAMA': '#1696A3', 'NRL': '#F89B1F', 'OMM/WHOI': '#EA4D5B'}
 # colors = {'RAMA': '#1696A3', 'NRL': '#F89B1F', 'OMM/WHOI': '#EA4D5B'}
 colors = {'RAMA': '#1696A3', 'NRL': '#F89B1F', 'OMM/WHOI': 'gray'}
+default_density_bins = [1018, 1021, 1022, 1022.5, 1023, 1023.5, 1024.25, 1029]
 
 
 def plot_coastline(ax, facecolor="#FEF9E4"):
@@ -439,8 +440,7 @@ def mark_moors(color='w',
 
 
 def convert_nc_to_binned_df(varname='KT',
-                            bins=[1018, 1021, 1022, 1022.5, 1023,
-                                  1023.5, 1024.25, 1029],
+                            bins=default_density_bins,
                             moor=None):
     ''' reads KT from merged .nc file and returns DataFrame version
         suitable for processing.'''
@@ -483,8 +483,7 @@ def convert_nc_to_binned_df(varname='KT',
 
 
 def make_vert_distrib_plot(varname,
-                           bins=[1018, 1021, 1022, 1022.5, 1023,
-                                 1023.5, 1024.25, 1029],
+                           bins=default_density_bins,
                            moor=None,
                            label_moorings=False):
 
@@ -618,7 +617,7 @@ def mark_χpod_depths_on_clim(ax=[]):
     ax[1].set_ylim([120, 0])
 
 
-def KT_TS(turb, ctd, which_moorings='all'):
+def KT_TS(turb, ctd, which_moorings='all', varname='KT'):
 
     from dcpy.oceans import TSplot
 
@@ -649,12 +648,19 @@ def KT_TS(turb, ctd, which_moorings='all'):
     axes['NE'].set_xlim(extent[:2])
     axes['NE'].set_ylim(extent[2:])
 
-    levels = [1e-5, 1e-4, 1e-3]
+    if varname == 'KT':
+        levels = [1e-5, 1e-4, 1e-3]
+        cmap = sns.light_palette('purple', n_colors=len(levels)+2,
+                                 as_cmap=True)
+        label = '$K_T$ [m²/s]'
+
+    elif varname == 'Jq':
+        levels = [-100, -50, -10, 0, 10, 50, 100]
+        cmap = sns.diverging_palette(240, 10, n=levels, as_cmap=True)
+        label = '$J_q^t$ [W/m²]'
+
     cmap_params = xr.plot.utils._determine_cmap_params(
-        turb.KT.values.ravel(),
-        levels=levels,
-        center=1e-5,
-        cmap=sns.light_palette('purple', n_colors=len(levels)+2, as_cmap=True))
+        turb[varname].values.ravel(), levels=levels, cmap=cmap)
 
     if extra_filter is not None:
         turb = turb.where(extra_filter)
@@ -667,17 +673,19 @@ def KT_TS(turb, ctd, which_moorings='all'):
                 ctd[mooring].time.monsoon.labels == season)
             TSplot(ctdsubset.S,
                    ctdsubset['T_S'] if 'T_S' in ctdsubset else ctdsubset['T'],
-                   ax=axes[season], hexbin=False, plot_distrib=False, size=1,
-                   color='lightgray', plot_kwargs={'alpha': 0.1})
+                   rho_levels=None, hexbin=False, plot_distrib=False,
+                   ax=axes[season], size=1, color='lightgray',
+                   plot_kwargs={'alpha': 0.1})
 
-        handles, _ = TSplot(subset.S, subset['T'],  color=subset.KT,
+        handles, _ = TSplot(subset.S, subset['T'],  color=subset[varname],
                             ax=axes[season], hexbin=True,
-                            plot_distrib=False, labels=False,
+                            plot_distrib=False, labels=True,
+                            rho_levels=default_density_bins,
                             plot_kwargs=dict(cmap=cmap_params['cmap'],
                                              mincnt=10,
                                              norm=cmap_params['norm'],
                                              gridsize=50,
-                                             edgecolors='gray',
+                                             edgecolors='#333333',
                                              linewidths=0.25,
                                              extent=extent))
 
@@ -688,10 +696,7 @@ def KT_TS(turb, ctd, which_moorings='all'):
     [aa.set_xlabel('') for aa in ax[0, :]]
 
     f.colorbar(handles['ts'], ax=ax, extend=cmap_params['extend'],
-               orientation='horizontal',
-               format=mpl.ticker.LogFormatter(),
-               shrink=0.8, pad=0.0,
-               label='$K_T$ [m²/s]')
+               orientation='horizontal', shrink=0.8, pad=0.0, label=label)
 
     if extra_filter is not None:
         axes['NE'].text(0.05, 0.1, 'only ' + which_moorings,
