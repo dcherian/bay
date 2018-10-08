@@ -4116,65 +4116,32 @@ if 'ctd' not in locals():
     with open('all-ctd.pickle', 'rb') as f:
         ctd = pickle.load(f)
 
-seasons = turb.time.monsoon.labels
+bay.plots.KT_TS(turb, ctd, 'all')
+plt.savefig('images/KT-TS.png')
 
-f, ax = plt.subplots(2, 2, sharex=True, sharey=True, constrained_layout=True)
-f.set_constrained_layout_pads(wpad=1/72, hpad=1/72, wspace=0.0, hspace=0.0)
-axes = dict(zip(np.unique(seasons), ax.ravel()))
-axes['NE'].set_ylim([16, 32])
-axes['NE'].set_xlim([31, 36])
+bay.plots.KT_TS(turb, ctd, 'rama')
+plt.savefig('images/KT-TS-rama.png')
 
-levels = [1e-5, 1e-4, 1e-3]
-cmap_params = xr.plot.utils._determine_cmap_params(
-    turb.KT.values.ravel(),
-    levels=levels,
-    center=1e-5,
-    cmap=sns.light_palette('purple', n_colors=len(levels)+2, as_cmap=True))
-
-for season in np.unique(seasons):
-    subset = turb.where(seasons == season)
-
-    for mooring in ['ra12', 'ra15', 'nrl1', 'nrl2', 'nrl3', 'nrl4', 'nrl5']:
-        ctdsubset = ctd[mooring].where(
-            ctd[mooring].time.monsoon.labels == season)
-        TSplot(ctdsubset.S,
-               ctdsubset['T_S'] if 'T_S' in ctdsubset else ctdsubset['T'],
-               ax=axes[season], hexbin=False, plot_distrib=False, size=1,
-               color='lightgray', plot_kwargs={'alpha': 0.1})
-
-    handles, _ = TSplot(subset.S, subset['T'],  color=subset.KT,
-                        ax=axes[season], hexbin=True,
-                        plot_distrib=False, labels=False,
-                        plot_kwargs=dict(cmap=cmap_params['cmap'],
-                                         mincnt=10,
-                                         norm=cmap_params['norm'],
-                                         gridsize=50,
-                                         edgecolors='gray',
-                                         linewidths=0.25))
-
-    axes[season].text(0.05, 0.9, season, color='k',
-                      transform=axes[season].transAxes)
-
-[aa.set_ylabel('') for aa in ax[:, 1]]
-[aa.set_xlabel('') for aa in ax[0, :]]
-
-hcbar = f.colorbar(handles['ts'], ax=ax, extend=cmap_params['extend'],
-                   orientation='horizontal',
-                   format=mpl.ticker.LogFormatter(),
-                   shrink=0.8, pad=0.0,
-                   label='$K_T$ [m²/s]')
-
-f.set_size_inches(6, 6.5)
-
+bay.plots.KT_TS(turb, ctd, 'ebob')
+plt.savefig('images/KT-TS-ebob.png')
 
 #+END_SRC
 
+#+RESULTS:
+:RESULTS:
+# Out[192]:
+:END:
+
 #+BEGIN_SRC ipython :session :results none
-S = ctd['nrl3']['S'].sel(time='2014-01')
+S = (ctd['nrl3']['S'].sel(time='2014-01')
+     .dropna('z', how='all')
+     .interpolate_na('time'))
 t = xr.broadcast(S.time, S)[0]
 
-plt.hexbin(t.values.ravel(),
+plt.hexbin(mpl.dates.date2num(t.values.ravel()),
            S.depth.values.ravel(),
            C=S.values.ravel())
+plt.gca().xaxis_date()
+plt.colorbar()
 
 #+END_SRC
