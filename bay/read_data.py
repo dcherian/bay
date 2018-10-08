@@ -21,7 +21,7 @@ def read_all_moorings():
 
 def read_ra12():
 
-    ra12 = moor.moor(90, 12, 'RAMA 12N', 'rama', '../rama/RAMA13/')
+    ra12 = moor.moor(90, 12, 'RAMA 12N', 'ra12', 'rama', '../rama/RAMA13/')
     ra12.AddChipod(526, 15, 'mm1w', 'Turb.mat')
     ra12.AddChipod(527, 30, 'mm1w', 'Turb.mat')
     ra12.AddChipod(810, 15, 'mmw', 'Turb.mat', dir='../rama/RAMA14/')
@@ -58,7 +58,7 @@ def read_ra12():
 
 def read_ra15():
 
-    ra15 = moor.moor(90, 15, 'RAMA 15N', 'rama', '../rama/RAMA14/')
+    ra15 = moor.moor(90, 15, 'RAMA 15N', 'ra15', 'rama', '../rama/RAMA14/')
     ra15.AddChipod(813, 15, 'pmw', 'Turb.mat')
     # ra15.AddChipod(814, 30, 'mm1w', 'Turb.mat')
     ra15.χpod[813].load_pitot()
@@ -93,7 +93,7 @@ def read_ra15():
 
 
 def read_nrl1():
-    nrl1 = moor.moor(85.5, 5.0, 'NRL1', 'ebob', '../ebob/')
+    nrl1 = moor.moor(85.5, 5.0, 'NRL1', 'nrl1', 'ebob', '../ebob/')
     nrl1.ReadCTD('NRL1', FileType='ebob')
     nrl1.AddChipod(500, depth=56, best='mm', fname='Turb.mat')
     nrl1.AddChipod(501, depth=76, best='mm1', fname='Turb.mat')
@@ -112,7 +112,7 @@ def read_nrl1():
 
 def read_nrl2():
 
-    nrl2 = moor.moor(85.5, 6.5, 'NRL2', 'ebob', '../ebob/')
+    nrl2 = moor.moor(85.5, 6.5, 'NRL2', 'nrl2', 'ebob', '../ebob/')
     nrl2.ReadCTD('NRL2', FileType='ebob')
     nrl2.AddChipod(504, 69, 'mm', 'Turb.mat')
     nrl2.ReadVel('NRL2', FileType='ebob')
@@ -126,7 +126,7 @@ def read_nrl2():
 
 def read_nrl3():
 
-    nrl3 = moor.moor(85.5, 8, 'NRL3', 'ebob', '../ebob/')
+    nrl3 = moor.moor(85.5, 8, 'NRL3', 'nrl3', 'ebob', '../ebob/')
     nrl3.ReadCTD('NRL3', FileType='ebob')
     nrl3.AddChipod(505, 28, 'mm', 'Turb.mat')
     nrl3.AddChipod(511, 48, 'mm2', 'Turb.mat')
@@ -142,7 +142,7 @@ def read_nrl3():
 
 def read_nrl4():
 
-    nrl4 = moor.moor(87, 8, 'NRL4', 'ebob', '../ebob/')
+    nrl4 = moor.moor(87, 8, 'NRL4', 'nrl4', 'ebob', '../ebob/')
     nrl4.ReadCTD('NRL4', FileType='ebob')
     nrl4.AddChipod(514, 55, 'mm1', 'Turb.mat')
     nrl4.AddChipod(516, 75, 'mm2', 'Turb.mat')
@@ -158,7 +158,7 @@ def read_nrl4():
 
 def read_nrl5():
 
-    nrl5 = moor.moor(88.5, 8, 'NRL5', 'ebob', '../ebob/')
+    nrl5 = moor.moor(88.5, 8, 'NRL5', 'nrl5', 'ebob', '../ebob/')
     nrl5.ReadCTD('NRL5', FileType='ebob')
     nrl5.AddChipod(518, depth=84, best='mm2', fname='Turb.mat')
     nrl5.AddChipod(519, depth=104, best='mm1', fname='Turb.mat')

@@ -1,3 +1,4 @@
+import matplotlib as mpl
 import matplotlib.pyplot as plt
 import numpy as np
 import scipy as sp
@@ -615,3 +616,85 @@ def mark_χpod_depths_on_clim(ax=[]):
 
     ax[0].set_ylim([120, 0])
     ax[1].set_ylim([120, 0])
+
+
+def KT_TS(turb, ctd, which_moorings='all'):
+
+    from dcpy.oceans import TSplot
+
+    rama = ['ra12', 'ra15']
+    ebob = ['nrl1', 'nrl2', 'nrl3', 'nrl4', 'nrl5']
+
+    extra_filter = None
+
+    if which_moorings == 'rama':
+        moorings = rama
+        extra_filter = turb.lat > 10
+    elif which_moorings == 'ebob':
+        moorings = ebob
+        extra_filter = turb.lat < 10
+    elif which_moorings == 'all':
+        moorings = rama + ebob
+    else:
+        raise ValueError('moorings must be one of rama, ebob, all.')
+
+    seasons = turb.time.monsoon.labels
+
+    f, ax = plt.subplots(2, 2, sharex=True, sharey=True,
+                         constrained_layout=True)
+    f.set_constrained_layout_pads(wpad=1/72, hpad=1/72, wspace=0.0, hspace=0.0)
+    axes = dict(zip(np.unique(seasons), ax.ravel()))
+
+    extent = [31, 36, 16, 32]
+    axes['NE'].set_xlim(extent[:2])
+    axes['NE'].set_ylim(extent[2:])
+
+    levels = [1e-5, 1e-4, 1e-3]
+    cmap_params = xr.plot.utils._determine_cmap_params(
+        turb.KT.values.ravel(),
+        levels=levels,
+        center=1e-5,
+        cmap=sns.light_palette('purple', n_colors=len(levels)+2, as_cmap=True))
+
+    if extra_filter is not None:
+        turb = turb.where(extra_filter)
+
+    for season in np.unique(seasons):
+        subset = turb.where(seasons == season)
+
+        for mooring in moorings:
+            ctdsubset = ctd[mooring].where(
+                ctd[mooring].time.monsoon.labels == season)
+            TSplot(ctdsubset.S,
+                   ctdsubset['T_S'] if 'T_S' in ctdsubset else ctdsubset['T'],
+                   ax=axes[season], hexbin=False, plot_distrib=False, size=1,
+                   color='lightgray', plot_kwargs={'alpha': 0.1})
+
+        handles, _ = TSplot(subset.S, subset['T'],  color=subset.KT,
+                            ax=axes[season], hexbin=True,
+                            plot_distrib=False, labels=False,
+                            plot_kwargs=dict(cmap=cmap_params['cmap'],
+                                             mincnt=10,
+                                             norm=cmap_params['norm'],
+                                             gridsize=50,
+                                             edgecolors='gray',
+                                             linewidths=0.25,
+                                             extent=extent))
+
+        axes[season].text(0.05, 0.9, season, color='k',
+                          transform=axes[season].transAxes)
+
+    [aa.set_ylabel('') for aa in ax[:, 1]]
+    [aa.set_xlabel('') for aa in ax[0, :]]
+
+    f.colorbar(handles['ts'], ax=ax, extend=cmap_params['extend'],
+               orientation='horizontal',
+               format=mpl.ticker.LogFormatter(),
+               shrink=0.8, pad=0.0,
+               label='$K_T$ [m²/s]')
+
+    if extra_filter is not None:
+        axes['NE'].text(0.05, 0.1, 'only ' + which_moorings,
+                        transform=axes['NE'].transAxes)
+
+    f.set_size_inches(6, 6.5)

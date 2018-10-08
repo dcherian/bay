@@ -888,8 +888,9 @@ for zz in eps1.depth:
 :END:
 
 #+BEGIN_SRC ipython :session :results none
-for m in [nrl3, nrl4, nrl5]:
+for m in [nrl1, nrl3, nrl4, nrl5]:
     m.plot_turb_spectrogram()
+    plt.gca().set_xlim(['2014-01-01', '2014-12-31'])
 
     plt.savefig('images/specgram-' + m.name + '.png',
                 bbox_inches='tight')
@@ -1230,7 +1231,174 @@ plt.gca().set_yscale('log')
 
 #+RESULTS:
 ** Seasonal cycle in NIW?
-*** NIW input u⋅τ
+*** NIW input u⋅τ using Alford (2003) spectral solution
+**** double check with in-situ data : looks OK
+Doing for RAMA12 and topmost bin from NRL5.
+
+#+BEGIN_SRC ipython :session :results none
+def compare_fluxes(mooring):
+
+    # 1/1.25, 1.25 taken from Alford (2003)
+    freqs = np.array([1/1.25, 1.25]) * mooring.inertial.values
+
+    def filt(comp, freqs=freqs):
+        dt = (comp.time.diff('time').mean()
+             .values.astype('timedelta64[m]').astype('float32'))
+        ufilt = dcpy.ts.BandPassButter(np.real(comp),
+                                       dim='time',
+                                       freqs=freqs,
+                                       dt=dt/24/60)
+        vfilt = dcpy.ts.BandPassButter(np.imag(comp),
+                                       dim='time',
+                                       freqs=freqs,
+                                       dt=dt/24/60)
+
+        return (ufilt + 1j*vfilt)
+
+    # pick topmost bin
+    ZI = (filt((mooring.vel.u.isel(depth=0).squeeze().interpolate_na('time')
+               + 1j * mooring.vel.v.isel(depth=0).squeeze().interpolate_na('time')))
+          .sel(time='2014'))
+
+    if 'taux' in mooring.met:
+        T = (mooring.met.taux + 1j * mooring.met.tauy)
+    else:
+        T = (mooring.tropflux.taux + 1j * mooring.tropflux.tauy)
+
+    T = 1/1025 * (T.interp_like(ZI).interpolate_na('time')
+                  .sel(time='2014')
+                  .rolling(time=12).mean().dropna('time'))
+    flux = np.real(1025 * ZI * np.conj(T))
+
+    if np.isnan(mooring.mld).all():
+        mld = (mimoc.DEPTH_MIXED_LAYER
+               .interp(lon=mooring.lon, lat=mooring.lat).load()
+               .interp(time=T.time))
+    else:
+        mld = mooring.mld.interp(time=T.time).rolling(time=300).mean()
+
+    model_input, ZImodel = dcpy.oceans.calc_wind_power_input(
+        (T * 1025),
+        mld=mld,
+        f0=dcpy.oceans.coriolis(mooring.lat))
+    ZIfilt = filt(ZImodel.dropna('time'))
+    filt_input = np.real(1025 * ZIfilt * np.conj(T))
+
+    f, ax = plt.subplots(2, 2, sharex='col', constrained_layout=True,
+                         gridspec_kw={'width_ratios': [2, 1]})
+    ZImodel.plot(ax=ax[0, 0], lw=0.5)
+    ZI.plot(ax=ax[0, 0])
+    ZIfilt.plot(ax=ax[0, 0], color='k')
+    ax[0, 0].legend(['unfiltered model', 'true', 'filtered model'])
+
+    model_input.plot(ax=ax[1, 0])
+    flux.plot(ax=ax[1, 0])
+    filt_input.plot(ax=ax[1, 0], color='k')
+    ax[1, 0].legend(['unfiltered flux', 'true flux', 'filtered flux'])
+
+    dcpy.ts.PlotSpectrum(ZI.dropna('time'), twoside=False, ax=ax[0, 1])
+    dcpy.ts.PlotSpectrum(ZImodel.dropna('time'), twoside=False, ax=ax[0, 1])
+    ax[0, 1].legend(['true cw', 'true ccw', 'filt model cw', 'filt model ccw'])
+
+    dcpy.ts.PlotSpectrum(model_input.dropna('time'), ax=ax[1, 1])
+    dcpy.ts.PlotSpectrum(flux.dropna('time'), ax=ax[1, 1])
+    dcpy.ts.PlotSpectrum(filt_input.dropna('time'), ax=ax[1, 1], color='k')
+    ax[1, 1].legend(['unfiltered flux', 'true flux', 'filtered flux'])
+    dcpy.plots.linex(freqs, ax=ax[:, 1])
+    dcpy.plots.linex(mooring.inertial, ax=ax[:, 1])
+
+    ax[1, 1].set_ylim([1e-7, 5e-3])
+    ax[1, 0].set_ylim([-0.05, 0.05])
+    ax[0, 0].set_ylim([-0.3, 0.3])
+    ax[1, 0].set_xlim(('2014-01-01', '2015-01-01'))
+    ax[0, 1].set_title('Spectra of currents')
+    ax[1, 1].set_title('Spectra of flux')
+    f.suptitle(mooring.name + ' | wind power input comparison | data vs model.')
+
+compare_fluxes(ra12)
+plt.savefig('images/niw-input-ra12-check.png')
+
+nrl5.vel['time'] = nrl5.vel.time.dt.round('H')
+nrl5.tropflux['time'] = nrl5.tropflux.time.dt.round('D')
+compare_fluxes(nrl5)
+plt.savefig('images/niw-input-nrl5-check.png')
+
+#+END_SRC
+
+#+CAPTION: RAMA12: Agreement between flux calculated using filtered currents (0.5f - 1.5f) and predicted is good. No tuning required! The black should agree with orange. Black is (0.5f - 1.5f) filtered version of blue. There's a lot of high frequency information in the solution that makes the blue look worse but it really isn't.
+[[file:images/niw-input-ra12-check.png]]
+
+#+CAPTION: Same as above for NRL5. Agreement isn't as good. One funny thing is that there's a lot more clockwise energy in the near-inertial band here. Not sure if that's the discrepancy though cite:Plueddemann2006 seem to think it could make a file.
+[[difference:images/niw-input-nrl5-check.png]]
+
+**** Basin-wide estimate
+#+BEGIN_SRC ipython :session :results none
+
+taux = xr.open_dataset('~/datasets/tropflux/taux_tropflux_1d_2014.nc')
+tauy = xr.open_dataset('~/datasets/tropflux/tauy_tropflux_1d_2014.nc')
+
+tropflux = xr.Dataset()
+tropflux['taux'] = taux.taux
+tropflux['tauy'] = tauy.tauy
+
+tropflux = (tropflux.rename({'latitude': 'lat', 'longitude': 'lon'})
+            .sel(**bay.region))
+
+# argo = dcpy.oceans.argo_mld_clim()
+# argomld = (argo.mld_da_mean
+#            .rename({'month': 'time'})
+#            .sel(**bay.region)
+#            .interpolate_na('lat'))
+# argomld['time'] = pd.date_range('2014-01-01', '2014-12-31', freq='SM')[::2]
+
+mimoc = xr.open_mfdataset('/home/deepak/datasets/mimoc/MIMOC_ML_*.nc',
+                          concat_dim='month')
+mimoc['LATITUDE'] = mimoc.LATITUDE.isel(month=1)
+mimoc['LONGITUDE'] = mimoc.LONGITUDE.isel(month=1)
+mimoc = (mimoc.swap_dims({'LAT': 'LATITUDE', 'LONG': 'LONGITUDE'})
+         .rename({'LATITUDE': 'lat',
+                  'LONGITUDE': 'lon',
+         }))
+mimoc['month'] = pd.date_range('2014-01-01', '2014-12-31', freq='SM')[::2]
+mimoc = mimoc.rename({'month': 'time'})
+
+mld = (mimoc.DEPTH_MIXED_LAYER
+       .sel(**bay.region).load())
+
+wind_input, _ = dcpy.oceans.calc_wind_power_input(
+    (tropflux.taux.interpolate_na('time')
+     + 1j * tropflux.tauy.interpolate_na('time')),
+    mld=mld.interp_like(tropflux.taux),
+    f0=dcpy.oceans.coriolis(tropflux.lat))
+
+monthly = wind_input.groupby('time.month').mean('time')
+g = (monthly*1000).plot(col='month', col_wrap=4, robust=True,
+                        add_colorbar=False)
+g.add_colorbar(label='Monthly average near-inertial power input [mW/m²]')
+g.fig.savefig('images/niw-input-monthly.png', bbox_inches='tight')
+
+f, ax = plt.subplots(2, 1, constrained_layout=True)
+((wind_input*1000).mean('lon').dropna('lat', how='all')
+ .plot(x='time', robust=True, ax=ax[0]))
+ax[0].set_title('Longitudinally-averaged wind-input [mW/m²]')
+ax[0].set_xlabel('')
+[tt.set_rotation(0) for tt in ax[0].xaxis.get_ticklabels()]
+[tt.set_ha('center') for tt in ax[0].xaxis.get_ticklabels()]
+
+((monthly*1000).mean('lon').dropna('lat')
+ .plot(x='month', robust=True, ax=ax[1]))
+ax[1].set_title('Longitudinally-averaged monthly-mean wind-input [mW/m²]')
+
+plt.savefig('images/niw-input-lon-mean.png')
+#+END_SRC
+#+CAPTION: Monthly mean near-inertial wave input. These values seem low currently. :( I've used MIMOC MLD (Argo MLD has some gaps) and Tropflux winds. For about half the year, there's very little wind input north of 10N!
+[[file:images/niw-input-monthly.png]]
+
+
+#+CAPTION: Average the above in lon. This is cool, because near-inertial waves only propagate equatorward. That means if the wind input is limited to < 10N, as it is, most of the Bay should see little inertial energy. i.e. our 8N χpods should be seeing high mixing relative to the rest of the Bay.
+[[file:images/niw-input-lon-mean.png]]
+
+**** old crap: need near-inertial current!                      :noexport:
 #+BEGIN_SRC ipython :session :ipyfile images/temp/imgCv7Gly.png
 taux = xr.open_mfdataset('../datasets/tropflux/taux_tropflux_1d_*.nc')
 tauy = xr.open_mfdataset('../datasets/tropflux/tauy_tropflux_1d*.nc')
@@ -1580,6 +1748,223 @@ plt.gcf().set_size_inches((8, 5))
 #+BEGIN_SRC ipython :session :ipyfile images/temp/imgFx1nQF.png
 
 #+END_SRC
+
+* NRL5 details
+** M_2 soliton mixing?
+#+BEGIN_SRC ipython :session :results none
+trange = slice('2014-08-10', '2014-08-14')
+t518 = nrl5.χpod[518].convert_to_xarray('mmw')
+t519 = nrl5.χpod[519].convert_to_xarray('mmw')
+
+f, ax = plt.subplots(3, 1, sharex=True, constrained_layout=True,
+                     gridspec_kw={'height_ratios': [1, 1, 2]})
+hdl1 = t518['T'].sel(time=trange).plot(x='time', ax=ax[0])
+hdl2 = t519['T'].sel(time=trange).plot(x='time', ax=ax[0])
+hdl3 = nrl5.ctd['T'].sel(time=trange, depth2=106).plot(x='time', ax=ax[0])
+f.legend(handles=[hdl1[0], hdl2[0], hdl3[0]],
+         labels=['χpod @ 84', 'χpod @ 104', 'T logger @ 104'])
+
+(nrl5.ε.sel(time=trange)
+ .plot.line(x='time', ax=ax[1], yscale='log', ylim=[1e-10, 1e-6],
+            add_legend=False))
+
+(nrl5.vel.shear.sel(time=trange, depth=slice(100, None))
+ .plot(yincrease=False, cmap=mpl.cm.Reds, vmax=0.015))
+(nrl5.ctd['T'].sel(time=trange)
+ .plot.contour(levels=20, colors='k', yincrease=False, linewidths=1))
+
+# hdl = (nrl5.ctd['T'].sel(time=trange)
+#        .plot.contourf(levels=20, x='time', yincrease=False,
+#                       cmap=mpl.cm.RdYlBu_r, ax=ax[2], robust=True))
+# (nrl5.ctd['T'].sel(time=trange)
+#  .plot.contour(levels=hdl.levels, x='time', yincrease=False,
+#                colors='k', ax=ax[2], linewidths=0.75))
+nrl5.zχpod.sel(time=trange).plot.line(x='time', ax=ax[2], color='b',
+                                      add_legend=False)
+
+ax[1].set_title('')
+[aa.set_xlabel('') for aa in ax]
+
+ax[2].set_ylim([250, 75])
+f.set_size_inches((16, 9))
+
+f.savefig('images/m2-soliton-nrl5.png')
+#+END_SRC
+
+#+ATTR_HTML: :class full-width
+#+CAPTION: M_2 solitons? And a mixing signal? High ε lines up with high shear *but this is shear calculated from the first bin!*
+[[file:images/m2-soliton-nrl5.png]]
+
+
+#+BEGIN_SRC ipython :session :ipyfile images/temp/imgdpXv0t.png
+plt.figure(constrained_layout=True);
+(nrl5.vel.shear.sel(time=trange, depth=slice(100, None))
+.plot(yincrease=False, cmap=mpl.cm.Greens, vmin=4e-3, vmax=0.014))
+(nrl5.ctd['T'].sel(time=trange)
+ .plot.contour(levels=20, colors='k', yincrease=False, linewidths=1))
+plt.gca().set_ylim([250, 100])
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+# Out[244]:
+: (250, 100)
+:END:
+
+** NIW mixing
+#+BEGIN_SRC ipython :session :ipyfile images/temp/imgwBTzp9.png
+trange = slice('2014-07-21', '2014-08-07')
+f, ax = plt.subplots(3, 1, sharex=True, constrained_layout=True,
+                     gridspec_kw={'height_ratios': [1, 1, 2]})
+hdl1 = t518['T'].sel(time=trange).plot(x='time', ax=ax[0])
+hdl2 = t519['T'].sel(time=trange).plot(x='time', ax=ax[0])
+hdl3 = nrl5.ctd['T'].sel(time=trange, depth2=106).plot(x='time', ax=ax[0])
+f.legend(handles=[hdl1[0], hdl2[0], hdl3[0]],
+         labels=['χpod @ 84', 'χpod @ 104', 'T logger @ 104'])
+
+(nrl5.ε.sel(time=trange)
+ .plot.line(x='time', ax=ax[1], yscale='log', ylim=[1e-10, 1e-6],
+            add_legend=False))
+
+(nrl5.vel.shear.sel(time=trange, depth=slice(100, None))
+ .plot(yincrease=False, cmap=mpl.cm.Reds, vmax=0.015))
+(nrl5.ctd['T'].sel(time=trange)
+ .plot.contour(levels=7, colors='k', yincrease=False, linewidths=1))
+
+# hdl = (nrl5.ctd['T'].sel(time=trange)
+#        .plot.contourf(levels=20, x='time', yincrease=False,
+#                       cmap=mpl.cm.RdYlBu_r, ax=ax[2], robust=True))
+# (nrl5.ctd['T'].sel(time=trange)
+#  .plot.contour(levels=hdl.levels, x='time', yincrease=False,
+#                colors='k', ax=ax[2], linewidths=0.75))
+nrl5.zχpod.sel(time=trange).plot.line(x='time', ax=ax[2], color='b',
+                                      add_legend=False)
+v = nrl5.vel.v.sel(time=trange).resample(time='2H').mean(dim='time')
+v.plot.contour(ax=ax[2], yincrease=False, levels=20, colors='w')
+
+ax[1].set_title('')
+[aa.set_xlabel('') for aa in ax]
+
+ax[2].set_ylim([250, 75])
+f.set_size_inches((16, 9))
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+# Out[332]:
+:END:
+
+#+BEGIN_SRC ipython :session :ipyfile images/temp/imggajQY2.png
+plt.figure();
+
+v = nrl5.vel.v.sel(time=trange).resample(time='2H').mean(dim='time')
+v.plot.contour(yincrease=False, levels=20, colors='k')
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+# Out[329]:
+: <matplotlib.contour.QuadContourSet at 0x7f5cd2945b38>
+:END:
+
+** vel, shear spectra
+
+#+BEGIN_SRC ipython :session :ipyfile images/temp/imgzmw1zO.png
+
+u = interpolate_shear(nrl5.vel.u, zpod).interpolate_na(dim='time')
+v = interpolate_shear(nrl5.vel.v, zpod).interpolate_na(dim='time')
+uz = interpolate_shear(nrl5.vel.uz, zpod).interpolate_na(dim='time')
+vz = interpolate_shear(nrl5.vel.vz, zpod).interpolate_na(dim='time')
+
+z0 = 200
+u = nrl5.vel.u.sel(depth=z0).interpolate_na(dim='time')
+v = nrl5.vel.v.sel(depth=z0).interpolate_na(dim='time')
+uz = nrl5.vel.uz.sel(depth=z0).interpolate_na(dim='time')
+vz = nrl5.vel.vz.sel(depth=z0).interpolate_na(dim='time')
+
+fM2 = 24/12.42
+f0 = nrl5.inertial
+
+f, ax = plt.subplots(2, 1, sharex=True, constrained_layout=True)
+
+dcpy.ts.PlotSpectrum((u+1j*v), multitaper=True, twoside=False, ax=ax[0])
+dcpy.ts.PlotSpectrum((uz+1j*vz), multitaper=True, twoside=False, ax=ax[1])
+dcpy.plots.linex([f0, fM2 - f0, fM2 + f0, 2*f0,
+                  fM2, 2*fM2, 3*fM2, 4*fM2], ax=ax)
+
+ax[0].set_title('PSD(u + iv)')
+ax[0].set_xlabel('')
+ax[1].set_title('PSD(u_z + iv_z)')
+
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+# Out[174]:
+: Text(0.5, 1.0, 'PSD(u_z + iv_z)')
+:END:
+
+** pollard millard model
+#+BEGIN_SRC ipython :session :results none
+def read_ncep():
+    uwnd = (xr.open_dataset('~/datasets/ncep/uwnd.10m.gauss.2014.nc')
+            .uwnd.interp(lat=nrl5.lat, lon=nrl5.lon))
+    vwnd = (xr.open_dataset('~/datasets/ncep/vwnd.10m.gauss.2014.nc')
+            .vwnd.interp(lat=nrl5.lat, lon=nrl5.lon))
+
+    taux = uwnd.copy(data=airsea.windstress.stress(uwnd) * np.sign(uwnd))
+    tauy = vwnd.copy(data=airsea.windstress.stress(vwnd) * np.sign(vwnd))
+    taux.attrs['long_name'] = '$τ_x$'
+    taux.name = 'taux'
+    tauy.attrs['long_name'] = '$τ_y$'
+    tauy.name = 'tauy'
+
+    return xr.merge([taux, tauy])
+
+if 'ncep' not in locals():
+    ncep = read_ncep()
+
+f0 = dcpy.oceans.coriolis(nrl5.lat)/2/np.pi  # needed in cps
+mld = 30
+Ttrop = ((nrl5.tropflux.taux + 1j*nrl5.tropflux.tauy)
+         .sel(time='2014').interpolate_na('time'))
+Tncep = (ncep.taux + 1j*ncep.tauy)
+
+Ttrop.attrs['long_name'] = 'Wind stress'
+Ttrop.attrs['units'] = 'N/m²'
+Tncep.attrs['long_name'] = 'Wind stress'
+Tncep.attrs['units'] = 'N/m²'
+
+tropinput = dcpy.oceans.calc_wind_power_input(Ttrop, mld, f0)
+ncepinput = dcpy.oceans.calc_wind_power_input(Tncep, mld, f0)
+
+f, ax = plt.subplots(4, 1, constrained_layout=True, sharex=True)
+
+for T, windinput in zip([Ttrop, Tncep], [tropinput, ncepinput]):
+    h = T.copy(data=np.abs(T)).plot(ax=ax[0])
+    h[0].set_clip_on(False)
+    h[0].set_in_layout(False)
+    h = windinput.plot(ax=ax[1])
+    h[0].set_clip_on(False)
+    h[0].set_in_layout(False)
+
+(nrl5.ε.where(nrl5.ε > 0)
+ .resample(time='D').mean('time').sel(time='2014')
+ .plot.line(x='time', ax=ax[2], yscale='log'))
+
+(nrl5.KT
+ .resample(time='D').mean('time').sel(time='2014')
+ .plot.line(x='time', ax=ax[3], yscale='log'))
+
+ax[0].legend(['tropflux', 'ncep'])
+[aa.set_xlabel('') for aa in ax]
+[aa.set_title('') for aa in ax]
+ax[0].set_title('Compare wind input for Tropflux/NCEP at NRL5')
+
+plt.savefig('images/nrl5-wind-input-tropflux-vs-ncep.png')
+#+END_SRC
+#+CAPTION: Near-inertial input is *not* directly correlated to wind-stress. Looks like NCEP understimates the peak stress events.
+[[file:images/nrl5-wind-input-tropflux-vs-ncep.png]]
 
 * Barrier layers
 When the freshwater arrives, I see large values of Jqt at 30m/45m. This is at both 12N, 15N in both 2014, 2015.
@@ -3134,116 +3519,118 @@ with plt.rc_context({'font.size': 11,
 :END:
 *** RAMA vs NRL
 #+BEGIN_SRC ipython :session :ipyfile images/temp/imgcqnSXp.png
-def full_extent(ax, pad=0.0):
-    """Get the full extent of an axes, including axes labels, tick labels, and
-    titles."""
+# def full_extent(ax, pad=0.0):
+#     """Get the full extent of an axes, including axes labels, tick labels, and
+#     titles."""
 
-    from matplotlib.transforms import Bbox
-    # For text objects, we need to draw the figure first, otherwise the extents
-    # are undefined.
-    ax.figure.canvas.draw()
-    items = [ax, ax.title, ax.xaxis.label, ax.yaxis.label]
-    items += (ax.get_xticklabels() + ax.get_yticklabels())
-    bbox = Bbox.union([item.get_window_extent() for item in items])
+#     from matplotlib.transforms import Bbox
+#     # For text objects, we need to draw the figure first, otherwise the extents
+#     # are undefined.
+#     ax.figure.canvas.draw()
+#     items = [ax, ax.title, ax.xaxis.label, ax.yaxis.label]
+#     items += (ax.get_xticklabels() + ax.get_yticklabels())
+#     bbox = Bbox.union([item.get_window_extent() for item in items])
 
-    return bbox.expanded(1.0 + pad, 1.0 + pad)
+#     return bbox.expanded(1.0 + pad, 1.0 + pad)
 
-def mark_location(ax, KT, label, color):
-    kt = (KT.sel(time='2014')
-          .resample(time='D').mean(dim='time'))
+from dcpy.plots import annotate_end
 
-    hdl_point = ax.plot(kt.time[-1], kt[-1],
-                        'o', ms=4, color=color, clip_on=False)
-    hdl_text = ax.text('2014-12-31', kt[-1], '  '+label, ha='left',
-                       clip_on=False, color=color)
+def int_spec(spec, lofreq, hifreq):
+    ''' Integrate spectrogram between lofreq, hifreq.
+        Returns time series.'''
 
-    return hdl_point, hdl_text
+    subset = (spec.where(np.logical_and(spec.freq > lofreq,
+                                        spec.freq < hifreq))
+              .dropna(dim='freq', how='all'))
+
+    timeseries = xr.DataArray(np.trapz(subset, subset.freq),
+                              dims='time', coords={'time': subset.time})
+
+    return timeseries
 
 
-f, axx = plt.subplots(3, 1, sharex=True, constrained_layout=True)
+f, axx = plt.subplots(5, 1, sharex=True, constrained_layout=True)
+f.set_constrained_layout_pads(hspace=0.001)
+axes = dict(met12=axx[0], met8=axx[2],
+            KT=axx[1], Tz=axx[3], shear=axx[4])
 
 ax, hkr = ra12.met_turb_summary(region={'time': '2014', 'depth': 15},
                                 ax=axx[:2])
 axn, hkn = nrl5.met_turb_summary(region={'time': '2014', 'depth': 104.0},
                                  ax=[axx[2], axx[1]])
 
-hdl_pointr, hdl_textr = mark_location(axx[1], ra12.KT.isel(depth=0),
-                                      label='12N 15m',
-                                      color=hkr[0].get_color())
+hdl_pointr, hdl_textr = annotate_end(hkr[0], label='12N 15m')
 
-hdl_pointn, hdl_textb = mark_location(axx[1], nrl5.KT.isel(depth=1),
-                                      label='8N 104m',
-                                      color=hkn[0].get_color())
+hdl_pointn, hdl_textb = annotate_end(hkn[0], label='8N 104m')
 
-htxt = []
-htxt.append(
-    ax['met'].text('2014-02-01', 0.35, 'NE', va='bottom', zorder=-1)
-)
-htxt.append(
-    ax['met'].text('2014-04-15', 0.35, 'NESW', va='bottom', zorder=-1)
-)
-htxt.append(
-    ax['met'].text('2014-07-16', 0.35, 'SW', va='bottom', zorder=-1)
-)
-htxt.append(
-    ax['met'].text('2014-10-20', 0.35, 'SWNE', va='bottom', zorder=-1)
-)
+htxt = [axes['met12'].text(time, 0.35, season, va='bottom', zorder=-1)
+        for time, season
+        in zip(['2014-02-01', '2014-04-15', '2014-07-16', '2014-10-20'],
+               ['NE', 'NESW', 'SW', 'SWNE'])]
 
-ax['met'].set_xlim(('2014-01', '2015-01'))
-ax['met'].set_ylim([0, 0.35])
-ax['Kt'].xaxis.set_major_formatter(mpl.dates.DateFormatter('%b-%d'))
-ax['Kt'].set_xlabel('2014')
-ax['Kt'].set_ylabel('Daily avg. \n $K_T$ [m²/s]')
-ax['Kt'].grid(False, axis='x')
-ax['Kt'].grid(True, which='both', axis='y')
+axes['met12'].set_xlim(('2014-01', '2015-01'))
+axes['met12'].set_ylim([0, 0.35])
+axes['KT'].grid(False, axis='x')
+axes['KT'].grid(True, which='both', axis='y')
+
+plt.sca(axes['shear'])
+plt.cla()
+shear_pod = interp_shear(nrl5.vel.uz) + 1j*interp_shear(nrl5.vel.vz)
+shearspec = (dcpy.ts.Spectrogram(np.abs(shear_pod), dim='time',
+                                nfft=30*24, shift=2*24,
+                                multitaper=True, decimate=False, dt=1/24)
+             .sel(time='2014'))
+
+hm2 = (int_spec(shearspec, 0.9*(fM2-f0), 1.1*(fM2+f0))
+       .plot(ax=axes['shear'], label='$M_2$'))
+hm4 = (int_spec(shearspec, 0.9*(fM2*2-f0), 1.1*(fM2*2-f0))
+       .plot(ax=axes['shear'], label='$M_4$'))
+hf0 = (int_spec(shearspec, 0.6*f0, 1.5*f0)
+       .plot(ax=axes['shear'], label='$f_0$', color='k'))
+_, htm2 = annotate_end(hm2[0], '$M_2$')
+_, htm4 = annotate_end(hm4[0], '$M_4$')
+_, htf0 = annotate_end(hf0[0], '$f_0$')
+htm4.set_va('top')
+
+(ra12.Tz.isel(depth=0)
+ .resample(time='D').mean(dim='time')
+ .plot(ax=axes['Tz'], _labels=False))
+(nrl5.Tz.isel(depth=1)
+ .resample(time='D').mean(dim='time')
+ .plot(ax=axes['Tz'], _labels=False))
+
 [aa.set_xlabel('') for aa in axx]
-axx[2].xaxis.set_tick_params(rotation=0)
-f.set_size_inches((7, 4.25))
+[aa.set_title('') for aa in axx]
+axes['shear'].xaxis.set_tick_params(rotation=0)
+axes['shear'].xaxis.set_major_formatter(mpl.dates.DateFormatter('%b-%d'))
+axes['shear'].set_xlabel('2014')
 
-# plt.savefig('images/paper1/rama-vs-nrl.pdf', bbox_inches='tight')
+fmt = axes['shear'].yaxis.get_major_formatter()
+fmt.set_scientific(True)
+axes['shear'].yaxis.set_major_formatter(fmt)
 
-# arrowprops = dict(arrowstyle="<->", connectionstyle="arc3")
-# ha1 = ax['Kt'].annotate("",
-#                         xy=('2014-04-15', 5e-5), xycoords='data',
-#                         xytext=('2014-04-15', 1), textcoords='data',
-#                         arrowprops=arrowprops)
-# ha2 = ax['Kt'].annotate("",
-#                         xy=('2014-07-15', 5e-3), xycoords='data',
-#                         xytext=('2014-07-15', 1), textcoords='data',
-#                         arrowprops=arrowprops)
-# ha3 = ax['Kt'].annotate("",
-#                         xy=('2014-10-9', 5e-2), xycoords='data',
-#                         xytext=('2014-10-9', 10), textcoords='data',
-#                         arrowprops=arrowprops)
+x0 = 0.025
+y0 = 0.8
+axes['shear'].text(x0, y0, 'Shear variance at 8N', transform=axes['shear'].transAxes)
+axes['Tz'].text(x0, y0, '$T_z$ [C/m]', transform=axes['Tz'].transAxes)
+axes['met12'].text(x0, y0, 'Forcing at 12N', transform=axes['met12'].transAxes)
+axes['KT'].text(x0, y0, 'Daily avg. $K_T$ [m$^2$/s]', transform=axes['KT'].transAxes)
+axes['met8'].text(x0, y0, 'Forcing at 8N', transform=axes['met8'].transAxes)
 
+dcpy.plots.liney(0, ax=axes['Tz'])
+axes['Tz'].set_ylim([-0.1, 0.3])
+axes['KT'].set_ylabel('')
+f.set_size_inches((7, 6))
 
-# for ha in [ha1, ha2, ha3]:
-#     ha.set_visible(False)
-
-# ha = []
-# arrowprops = dict(arrowstyle="->", connectionstyle="arc3")
-# ha.append(ax['Kt'].annotate("near-molecular!",
-#                        xytext=('2014-04-01', 7e-6), xycoords='data',
-#                        xy=('2014-04-15', 2e-7), textcoords='data',
-#                             arrowprops=arrowprops, ha='right'))
-
-# plt.gcf().set_size_inches((6, 3.25))
-# plt.savefig('images/rama-vs-nrl-1.png', bbox_inches='tight')
-
-# extent = full_extent(ax['Kt']).transformed(f.transFigure.inverted())
-# # We can now make the rectangle in figure coords using the "transform" kwarg.
-# rect = mpl.patches.Rectangle([extent.xmin, extent.ymin],
-#                              extent.width, extent.height,
-#                              facecolor='yellow', edgecolor='none', zorder=-1,
-#                              transform=fig.transFigure)
-# f.patches.append(rect)
-
-# ax['Jq0'].set_visible(False)
-# ax['met'].set_visible(False)
-
-
-
+f.savefig('images/paper1/rama-vs-nrl.pdf')
 #+END_SRC
+
+#+RESULTS:
+:RESULTS:
+# Out[757]:
+[[file:images/temp/imgcqnSXp.png]]
+:END:
+
 *** Vertical profile
 *** Seasonal spatial variations
 
@@ -3643,3 +4030,151 @@ ax[0].set_xlabel('')
 # Out[343]:
 : Text(0.5, 0, '')
 :END:
+
+
+#+BEGIN_SRC ipython :session :ipyfile images/temp/imgcXpGjd.png
+fM2 = 24/12.42
+
+def plot_spec(spec, ax=None, levels=20):
+    if ax is None:
+        _, _ax = plt.subplots()
+
+    var = (spec*spec.freq)
+    # var = np.log10(spec)
+    hdl = var.plot.contourf(levels=levels, yscale='log',
+                            x='time', robust=True, ax=ax,
+                            cmap=mpl.cm.RdPu, add_colorbar=True)
+
+    var.plot.contour(
+        levels=np.linspace(hdl.levels[-1], var.max(), 6)[1:],
+        yscale='log', x='time', ax=ax, colors='w',
+        linewidths=0.5)
+
+
+goodt = slice(nrl5.KT.time[0], nrl5.KT.time[-1])
+zpod = nrl5.zχpod.sel(num=2).interp(time=nrl5.vel.time.sel(time=goodt))
+
+def interp_shear(shear):
+    z = nrl5.zχpod.isel(num=1).median().values + 10
+    return (shear.sel(depth=z, method='nearest')
+            .interpolate_na(dim='time')
+            .dropna('time'))
+
+
+
+f0 = nrl5.inertial
+fM2 = 24/12.42
+plot_spec(shear.sel(time='2014'))
+dcpy.plots.liney([0.9*(fM2-f0), 1.1*(fM2+f0),
+                  0.9*(fM2*2-f0), 1.1*(fM2*2+f0),
+                  0.9*(fM2*3-f0), 1.1*(fM2*3+f0),
+                  0.6*f0, 1.5*f0], zorder=10)
+
+f, ax = plt.subplots(3, 1, sharex=True, constrained_layout=True)
+int_spec(shear, 0.9*(fM2-f0), 1.1*(fM2+f0)).plot(ax=ax[0], label='$M_2$')
+int_spec(shear, 0.9*(fM2*2-f0), 1.1*(fM2*2-f0)).plot(ax=ax[0], label='$2M_2$')
+# int_spec(shear, 0.9*(fM2*3-f0), 1.1*(fM2*3-f0)).plot(ax=ax[0], label='$3M_2$')
+(int_spec(shear, 0.6*f0, 1.5*f0)
+ .plot(ax=ax[0], label='$f_0$'))
+ax[0].legend()
+
+(nrl5.ε.where(nrl5.ε > 0).sel(time='2014')
+ .resample(time='D').mean('time')
+ .plot.line(x='time', ax=ax[1], yscale='log'))
+ax[0].set_xlabel('')
+t518 = nrl5.χpod[518].convert_to_xarray('mmw')
+t519 = nrl5.χpod[519].convert_to_xarray('mmw')
+t518['T'].plot(x='time', ax=ax[2])
+t519['T'].plot(x='time', ax=ax[2])
+
+plt.gca().set_xlim(['2014-01-01', '2014-12-31'])
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+# Out[18]:
+: (735234.0, 735598.0)
+:END:
+*** TS plots
+#+BEGIN_SRC ipython :session :results none
+import pickle
+
+ctd = dict([[m.short_name, m.ctd]
+            for m in [ra12, ra15, nrl1, nrl2, nrl3, nrl4, nrl5]])
+with open('all-ctd.pickle', 'wb') as f:
+    pickle.dump(ctd, f, pickle.HIGHEST_PROTOCOL)
+#+END_SRC
+
+#+BEGIN_SRC ipython :session :ipyfile images/temp/imgRzvj3C.png
+from dcpy.oceans import TSplot
+
+if 'turb' not in locals():
+    turb = xr.open_dataset('./bay_merged_hourly.nc', autoclose=True)
+
+if 'ctd' not in locals():
+    import pickle
+    with open('all-ctd.pickle', 'rb') as f:
+        ctd = pickle.load(f)
+
+seasons = turb.time.monsoon.labels
+
+f, ax = plt.subplots(2, 2, sharex=True, sharey=True, constrained_layout=True)
+f.set_constrained_layout_pads(wpad=1/72, hpad=1/72, wspace=0.0, hspace=0.0)
+axes = dict(zip(np.unique(seasons), ax.ravel()))
+axes['NE'].set_ylim([16, 32])
+axes['NE'].set_xlim([31, 36])
+
+levels = [1e-5, 1e-4, 1e-3]
+cmap_params = xr.plot.utils._determine_cmap_params(
+    turb.KT.values.ravel(),
+    levels=levels,
+    center=1e-5,
+    cmap=sns.light_palette('purple', n_colors=len(levels)+2, as_cmap=True))
+
+for season in np.unique(seasons):
+    subset = turb.where(seasons == season)
+
+    for mooring in ['ra12', 'ra15', 'nrl1', 'nrl2', 'nrl3', 'nrl4', 'nrl5']:
+        ctdsubset = ctd[mooring].where(
+            ctd[mooring].time.monsoon.labels == season)
+        TSplot(ctdsubset.S,
+               ctdsubset['T_S'] if 'T_S' in ctdsubset else ctdsubset['T'],
+               ax=axes[season], hexbin=False, plot_distrib=False, size=1,
+               color='lightgray', plot_kwargs={'alpha': 0.1})
+
+    handles, _ = TSplot(subset.S, subset['T'],  color=subset.KT,
+                        ax=axes[season], hexbin=True,
+                        plot_distrib=False, labels=False,
+                        plot_kwargs=dict(cmap=cmap_params['cmap'],
+                                         mincnt=10,
+                                         norm=cmap_params['norm'],
+                                         gridsize=50,
+                                         edgecolors='gray',
+                                         linewidths=0.25))
+
+    axes[season].text(0.05, 0.9, season, color='k',
+                      transform=axes[season].transAxes)
+
+[aa.set_ylabel('') for aa in ax[:, 1]]
+[aa.set_xlabel('') for aa in ax[0, :]]
+
+hcbar = f.colorbar(handles['ts'], ax=ax, extend=cmap_params['extend'],
+                   orientation='horizontal',
+                   format=mpl.ticker.LogFormatter(),
+                   shrink=0.8, pad=0.0,
+                   label='$K_T$ [m²/s]')
+
+f.set_size_inches(6, 6.5)
+
+
+#+END_SRC
+
+#+BEGIN_SRC ipython :session :results none
+S = ctd['nrl3']['S'].sel(time='2014-01')
+t = xr.broadcast(S.time, S)[0]
+
+plt.hexbin(t.values.ravel(),
+           S.depth.values.ravel(),
+           C=S.values.ravel())
+
+#+END_SRC

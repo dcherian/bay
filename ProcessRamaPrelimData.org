@@ -727,6 +727,10 @@ The adjusted data looks good at the χpod depths.
 #+CAPTION:The corrections are all over the place!
 [[file:../images/RAMA14-15N-corrections.png]]
 
+** process
+#+BEGIN_SRC ipython :session :ipyfile images/temp/imginXBvN.png
+
+#+END_SRC
 * RAMA13 & RAMA14
 ** Property plots
 
