@@ -19,76 +19,70 @@ def make_merged_nc(moorings):
     None
     '''
 
-    vards = []
-    for var in tqdm.tqdm(['KT', 'Jq', 'χ', 'ε']):
-        varlist = []
-        print('Processing ' + var)
-        for m in moorings:
-            subset = (m.__dict__[var].copy()
-                      .reset_coords(['ρ', 'S', 'T', 'z', 'mld', 'ild']))
+    Turb = xr.Dataset()
 
-            subset = subset.expand_dims(['lat', 'lon'])
-            subset['season'] = subset.time.monsoon.labels
+    for m in tqdm.tqdm(moorings):
+        subset = (m.turb.reset_coords(['ρ', 'S', 'T', 'z', 'mld', 'ild'])
+                  .expand_dims(['lat', 'lon'])
+                  .drop(['χ', 'ε', 'N2', 'Tz', 'Sz']))
+        subset['season'] = subset.time.monsoon.labels
 
-            depth_season = np.round(subset.z.groupby(subset['season'])
-                                    .median(dim='time')).astype('int64')
+        depth_season = np.round(subset.z.groupby(subset['season'])
+                                .median(dim='time')).astype('int64')
 
-            _, seas = xr.broadcast(subset[var], subset['season'])
+        seas = xr.broadcast(subset['KT'], subset['season'])[1]
 
-            mean_depth = xr.zeros_like(subset[var])
-            for ss in ['NE', 'NESW', 'SW', 'SWNE']:
-                mask = seas.values == ss
-                if np.all(~mask):
-                    continue
+        mean_depth = xr.zeros_like(subset['KT'])
+        for ss in ['NE', 'NESW', 'SW', 'SWNE']:
+            mask = seas.values == ss
+            if np.all(~mask):
+                continue
 
-                _, zz = xr.broadcast(seas == ss, depth_season.sel(season=ss))
-                mean_depth.values[mask] = zz.values[mask]
+            zz = xr.broadcast(seas == ss, depth_season.sel(season=ss))[1]
+            mean_depth.values[mask] = zz.values[mask]
 
-            # get a reasonable depth for the subset
-            subset['mean_depth'] = mean_depth
+        # get a reasonable depth for the subset
+        subset['mean_depth'] = mean_depth
 
-            varlist.append(subset.reset_coords())
+        Turb = xr.merge([Turb, subset.reset_coords()])
 
-        del subset
-        del mask
+    del subset
+    del mask
 
-        print('\t\t merging ...')
-        vards.append(xr.merge(varlist))
+    # print('\t\t merging ...')
+    # vards.append(xr.merge(varlist))
 
-        # make sure the merging worked
-        for m in moorings:
-            merged = (vards[-1]
-                      .sel(lon=m.lon, lat=m.lat)
-                      .reset_coords()[var]
-                      .dropna(dim='depth', how='all')
-                      .dropna(dim='time', how='all'))
-            orig = (m.__dict__[var]
-                    .reset_coords()[var]
-                    .dropna(dim='time', how='all'))
-            xr.testing.assert_equal(merged, orig)
-            del orig
+    # make sure the merging worked
+    # for m in moorings:
+    #     for var in Turb.data_vars:
+    #         merged = (Turb.reset_coords()[var]
+    #                   .sel(lon=m.lon, lat=m.lat)
+    #                   .dropna(dim='depth', how='all')
+    #                   .dropna(dim='time', how='all'))
+    #         orig = (m.turb.reset_coords()[var]
+    #                 .dropna(dim='time', how='all'))
+    #         xr.testing.assert_equal(merged, orig)
+    #         del orig
 
-    print('Calling xarray.merge.')
-    Turb = xr.merge(vards)
-    Turb = Turb.rename({'ε': 'epsilon',
-                        'χ': 'chi_t'})
+    # Turb = Turb.rename({'ε': 'epsilon',
+    #                     'χ': 'chi_t'})
 
-    Turb.epsilon.attrs['long_name'] = (
-        'Ocean turbulence kinetic energy dissipation rate')
-    Turb.epsilon.attrs['standard_name'] = (
-        'Ocean_turbulence_kinetic_energy_dissipation_rate')
-    Turb.epsilon.attrs['units'] = 'W kg^-1'
+    # Turb.epsilon.attrs['long_name'] = (
+    #     'Ocean turbulence kinetic energy dissipation rate')
+    # Turb.epsilon.attrs['standard_name'] = (
+    #     'Ocean_turbulence_kinetic_energy_dissipation_rate')
+    # Turb.epsilon.attrs['units'] = 'W kg^-1'
 
-    Turb['chi-t'].attrs['long_name'] = (
-        'Ocean dissipation rate of thermal variance from microtemperature')
-    Turb['chi-t'].attrs['standard_name'] = (
-        'Ocean_dissipation_rate_of_thermal_variance_from_microtemperature')
-    Turb['chi-t'].attrs['units'] = 'C^2 s^-1'
+    # Turb['chi-t'].attrs['long_name'] = (
+    #     'Ocean dissipation rate of thermal variance from microtemperature')
+    # Turb['chi-t'].attrs['standard_name'] = (
+    #     'Ocean_dissipation_rate_of_thermal_variance_from_microtemperature')
+    # Turb['chi-t'].attrs['units'] = 'C^2 s^-1'
 
     Turb.lat.attrs['long_name'] = 'latitude'
-    Turb.lat.attrs['units'] = 'degrees North'
+    Turb.lat.attrs['units'] = 'degrees_north'
     Turb.lon.attrs['long_name'] = 'longitude'
-    Turb.lon.attrs['units'] = 'degrees East'
+    Turb.lon.attrs['units'] = 'degrees_east'
 
     Turb['T'].attrs['standard_name'] = 'sea_water_potential_temperature'
     Turb['ρ'].attrs['standard_name'] = 'sea_water_potential_density'
@@ -103,7 +97,7 @@ def make_merged_nc(moorings):
     Turb.attrs['chief_scientist'] = 'Emily L. Shroyer'
 
     print('Writing to file.')
-    Turb.to_netcdf('merged_KT_test.nc')
+    Turb.to_netcdf('bay_merged_10min.nc')
     (Turb.resample(time='1H').mean(dim='time')
      .to_netcdf('bay_merged_hourly.nc'))
     (Turb.resample(time='6H').mean(dim='time')
