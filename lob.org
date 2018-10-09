@@ -10,7 +10,7 @@ if 'mur' in locals():
     mur.close()
     del mur
 
-mur = xr.open_mfdataset('./datasets/mur/*.nc', autoclose=True)
+mur = xr.open_mfdataset('./datasets/mur/*.nc')
 mur.rename({'analysed_sst': 'sst'}, inplace=True)
 # sst = mur.sst.chunk({'time':365})
 #+END_SRC
@@ -24,7 +24,7 @@ if 'mur' in locals():
     mur.close()
     del mur
 
-cmc = xr.open_mfdataset('./datasets/cmc/*.nc', autoclose=True)
+cmc = xr.open_mfdataset('./datasets/cmc/*.nc')
 cmc.rename({'analysed_sst': 'sst'}, inplace=True)
 sst = cmc['sst'].where(cmc.mask == 1).load()
 sst.name = 'CMC SST'
@@ -47,13 +47,13 @@ rama = moorarr.moorarr('RAMA',
 #+BEGIN_SRC ipython :session :results none
 import xarray as xr
 
-swr = xr.open_mfdataset('../datasets/tropflux/swr*.nc', autoclose=True)
-lwr = xr.open_mfdataset('../datasets/tropflux/lwr*.nc', autoclose=True)
-tau = xr.open_mfdataset('../datasets/tropflux/tau_*.nc', autoclose=True)
-taux = xr.open_mfdataset('../datasets/tropflux/tauy_*.nc', autoclose=True)
-tauy = xr.open_mfdataset('../datasets/tropflux/taux_*.nc', autoclose=True)
-net = xr.open_mfdataset('../datasets/tropflux/netflux_*.nc', autoclose=True)
-sst = xr.open_mfdataset('../datasets/tropflux/sst_*.nc', autoclose=True)
+swr = xr.open_mfdataset('../datasets/tropflux/swr*.nc')
+lwr = xr.open_mfdataset('../datasets/tropflux/lwr*.nc')
+tau = xr.open_mfdataset('../datasets/tropflux/tau_*.nc')
+taux = xr.open_mfdataset('../datasets/tropflux/tauy_*.nc')
+tauy = xr.open_mfdataset('../datasets/tropflux/taux_*.nc')
+net = xr.open_mfdataset('../datasets/tropflux/netflux_*.nc')
+sst = xr.open_mfdataset('../datasets/tropflux/sst_*.nc')
 
 tropflux = xr.merge([swr, lwr, tau , taux, tauy, net, sst])
 #+END_SRC

@@ -114,7 +114,7 @@ import bay
 moorings = [ra12, ra15, nrl1, nrl3, nrl4, nrl5]
 bay.make_merged_nc(moorings)
 
-#KTm = xr.open_dataset('merged_KT.nc', autoclose=True)
+#KTm = xr.open_dataset('merged_KT.nc')
 #ρbins = histedges_equalN(np.ravel(KTm.ρ), 11)
 #Sbins = histedges_equalN(np.ravel(KTm.S), 11)
 
@@ -557,9 +557,9 @@ name = ['RA12', 'RA15', 'NRL1', 'NRL3', 'NRL4', 'NRL5']
 _, ax = plt.subplots(1, 3, sharey=True)
 if 'argoS' not in locals():
     argoS = xr.open_dataset('~/datasets/argoclim/RG_ArgoClim_Salinity_2016.nc',
-                            decode_times=False, autoclose=True)
+                            decode_times=False)
     argoT = xr.open_dataset('~/datasets/argoclim/RG_ArgoClim_Temperature_2016.nc',
-                            decode_times=False, autoclose=True)
+                            decode_times=False)
 
 for (lon, lat, moorname) in zip(longitude, latitude, name):
     S = argoS.ARGO_SALINITY_MEAN.sel(LONGITUDE=lon, LATITUDE=lat, method='nearest')
@@ -1576,7 +1576,7 @@ def plot_ewa_niw(nrl):
 
 
 for nn in ['NRL1', 'NRL3', 'NRL4', 'NRL5']:
-    nrl = xr.open_dataset('../datasets/ewa/' + nn + '.nc', autoclose=True).load()
+    nrl = xr.open_dataset('../datasets/ewa/' + nn + '.nc').load()
     plot_ewa_niw(nrl)
     plt.savefig('../images/niw-' + nn + '.png', bbox_inches='tight')
 
@@ -1708,7 +1708,7 @@ ewa.imag.plot(ax=ax[1, 1])
 * checking inter-mooring variability
 #+BEGIN_SRC ipython :session :ipyfile images/temp/imgBRHfA4.png
 
-turb = xr.open_dataset('bay_merged_hourly.nc', autoclose=True)
+turb = xr.open_dataset('bay_merged_hourly.nc')
 
 ra = (turb.KT.sel(lon=90)
       .dropna(dim='lat', how='all')
@@ -2806,7 +2806,7 @@ from dcpy.ts import BandPassButter
 freqs = [1/10.0, 1/80.0]
 
 if 'swr' not in locals():
-    swr = xr.open_mfdataset('../datasets/tropflux/swr*.nc', autoclose=True)
+    swr = xr.open_mfdataset('../datasets/tropflux/swr*.nc')
 
 swr['swr'].load()
 
@@ -3338,8 +3338,8 @@ dcpy.plots.linex(1/periods)
 import xarray as xr
 import pandas as pd
 
-rama10 = xr.open_mfdataset('rama/data/t*90e_10m.cdf', autoclose=True)
-salhr = xr.open_mfdataset('rama/data/s[0-9]*90e_hr.cdf', autoclose=True)
+rama10 = xr.open_mfdataset('rama/data/t*90e_10m.cdf')
+salhr = xr.open_mfdataset('rama/data/s[0-9]*90e_hr.cdf')
 
 newtrange = pd.date_range(start=rama10.time.values.min(),
                           end=rama10.time.values.max(), freq='10min')
@@ -3348,7 +3348,7 @@ newtrange = pd.date_range(start=rama10.time.values.min(),
 #+call: read-rama-10m()
 
 #+BEGIN_SRC ipython :session :ipyfile images/temp/img10427kYC.png
-# ra12 = xr.open_dataset('rama/data/t12n90e_10m.cdf', autoclose=True)
+# ra12 = xr.open_dataset('rama/data/t12n90e_10m.cdf')
 T = rama10.T_20.sel(depth=[10, 20, 40, 60])
 T = T.reindex({'time': newtrange})
 T = T.where(T < 40).squeeze()
@@ -4107,7 +4107,7 @@ with open('all-ctd.pickle', 'wb') as f:
 
 #+BEGIN_SRC ipython :session :ipyfile images/temp/imgRzvj3C.png
 if 'turb' not in locals():
-    turb = xr.open_dataset('./bay_merged_hourly.nc', autoclose=True)
+    turb = xr.open_dataset('./bay_merged_10min.nc')
 
 if 'ctd' not in locals():
     import pickle
