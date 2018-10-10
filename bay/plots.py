@@ -617,7 +617,8 @@ def mark_χpod_depths_on_clim(ax=[]):
     ax[1].set_ylim([120, 0])
 
 
-def KT_TS(turb, ctd, which_moorings='all', varname='KT'):
+def KT_TS(turb, ctd, which_moorings='all', varname='KT', axes=None,
+          cbar_kwargs={}):
 
     from dcpy.oceans import TSplot
 
@@ -639,10 +640,17 @@ def KT_TS(turb, ctd, which_moorings='all', varname='KT'):
 
     seasons = turb.time.monsoon.labels
 
-    f, ax = plt.subplots(2, 2, sharex=True, sharey=True,
-                         constrained_layout=True)
-    f.set_constrained_layout_pads(wpad=1/72, hpad=1/72, wspace=0.0, hspace=0.0)
-    axes = dict(zip(np.unique(seasons), ax.ravel()))
+    if axes is None:
+        f, ax = plt.subplots(2, 2, sharex=True, sharey=True,
+                             constrained_layout=True)
+        f.set_constrained_layout_pads(wpad=1/72, hpad=1/72,
+                                      wspace=0.0, hspace=0.0)
+        axes = dict(zip(np.unique(seasons), ax.ravel()))
+        f.set_size_inches(6, 6.5)
+
+    else:
+        assert all((season in axes) for season in ['NE', 'NESW', 'SW', 'SWNE'])
+        f = axes['NE'].get_figure()
 
     extent = [31, 36, 16, 32]
     axes['NE'].set_xlim(extent[:2])
@@ -655,9 +663,15 @@ def KT_TS(turb, ctd, which_moorings='all', varname='KT'):
         label = '$K_T$ [m²/s]'
 
     elif varname == 'Jq':
-        levels = [-100, -50, -10, 0, 10, 50, 100]
+        levels = [-50, -25, -10, 0, 10, 25, 50]
         cmap = sns.diverging_palette(240, 10, n=levels, as_cmap=True)
         label = '$J_q^t$ [W/m²]'
+
+    elif varname == 'Js':
+        levels = [1e-4, 1e-3, 0.01]
+        cmap = sns.light_palette('seagreen', n_colors=len(levels)+2,
+                                 as_cmap=True)
+        label = '$J_s^t$ [g/m²/s]'
 
     cmap_params = xr.plot.utils._determine_cmap_params(
         turb[varname].values.ravel(), levels=levels, cmap=cmap)
@@ -692,14 +706,17 @@ def KT_TS(turb, ctd, which_moorings='all', varname='KT'):
         axes[season].text(0.05, 0.9, season, color='k',
                           transform=axes[season].transAxes)
 
-    [aa.set_ylabel('') for aa in ax[:, 1]]
-    [aa.set_xlabel('') for aa in ax[0, :]]
+    [aa.set_ylabel('') for aa in [axes['NESW'], axes['SWNE']]]
+    [aa.set_xlabel('') for aa in [axes['NE'], axes['SWNE']]]
 
-    f.colorbar(handles['ts'], ax=ax, extend=cmap_params['extend'],
-               orientation='horizontal', shrink=0.8, pad=0.0, label=label)
+    cbar_defaults = dict(orientation='horizontal',
+                         shrink=0.8, pad=0.0,
+                         label=label)
+    cbar_defaults.update(cbar_kwargs)
+
+    f.colorbar(handles['ts'], ax=list(axes.values()),
+               extend=cmap_params['extend'], **cbar_defaults)
 
     if extra_filter is not None:
         axes['NE'].text(0.05, 0.1, 'only ' + which_moorings,
                         transform=axes['NE'].transAxes)
-
-    f.set_size_inches(6, 6.5)
