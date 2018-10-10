@@ -3601,21 +3601,31 @@ f.savefig('images/paper1/rama-vs-nrl.pdf')
 #+BEGIN_SRC ipython :session :results none
 import cartopy.crs as ccrs
 
+if 'oscar' not in locals():
+    oscar = (xr.open_mfdataset('/home/deepak/work/datasets/oscar/oscar_vel*.nc',
+                              concat_dim='time')
+             .sel(latitude=slice(bay.region['lat'].stop, bay.region['lat'].start),
+                  longitude=bay.region['lon'],
+                  time=slice('2013-12-01', '2014-11-30')))
+    oscar = (oscar
+             .groupby(oscar.time.monsoon.labels).mean('time')
+             .load().squeeze()
+             .sortby('latitude'))
+
 if 'ssha' not in locals():
     ssha = (xr.open_dataset('../datasets/ssh/'
                             + 'dataset-duacs-rep-global-merged-allsat-phy-l4-v3_1522711420825.nc',
                             autoclose=True)
-            .sel(time='2014')
+            .sel(time=slice('2013-12-01', '2014-11-30'))
             .load())
     ssha['EKE'] = 0.5 * (ssha.ugosa**2 + ssha.vgosa**2)
     eke = (ssha.EKE.groupby(ssha.EKE.time.monsoon.labels)
            .mean(dim='time'))
 
 if 'tropflux' not in locals():
-    tropflux = (xr.open_mfdataset('../datasets/tropflux/tau*_tropflux_1d_*.nc',
-                                  autoclose=True)
+    tropflux = (xr.open_mfdataset('../datasets/tropflux/tau*_tropflux_1d_*.nc')
                 .drop('tau')
-                .sel(time='2014',
+                .sel(time=slice('2013-12-01', '2014-11-30'),
                      latitude=slice(2, 25),
                      longitude=slice(78, 96))
                 .load())
@@ -3658,7 +3668,8 @@ g = xr.plot.FacetGrid(eke, col='monsoon',
 
 axes = dict(zip(seasons, g.axes.flat))
 
-g.map_dataarray(xr.plot.contourf, 'longitude', 'latitude',
+g.map_dataarray(xr.plot.contourf,
+                'longitude', 'latitude',
                 cmap=mpl.cm.OrRd,
                 levels=np.linspace(8e-3, 0.3, 40),
                 add_colorbar=False)
@@ -3667,24 +3678,39 @@ g.map_dataarray(xr.plot.contour,
                 data=sss,
                 x='longitude', y='latitude',
                 levels=[29, 30, 31, 32, 33, 34],
-                colors='k', linewidths=1,
+                colors='k', linewidths=1.5,
                 add_colorbar=False)
+
 for idx, aa in enumerate(ax.flat):
-    aa.clabel(g._mappables[4+idx], fmt='%2.f', fontsize='smaller')
+    hlabs = aa.clabel(g._mappables[4+idx], fmt='%2.f', fontsize='smaller')
 
 g.map(bay.plot_coastline)
 
 g.set_xlabels('Longitude')
 g.set_ylabels('Latitude')
 g.set_titles('')
-[aa.set_xticks(range(78, 96, 4)) for aa in g.axes.flat]
-[aa.set_yticks(range(2, 24, 4)) for aa in g.axes.flat]
+[aa.set_xticks(range(80, 96, 4)) for aa in g.axes.flat]
+[aa.set_yticks(range(4, 24, 4)) for aa in g.axes.flat]
+
+tflux = tropflux.sel(latitude=slice(None, None, 3),
+                     longitude=slice(None, None, 3))
+
+osc = oscar.sel(latitude=slice(None, None, 2),
+                longitude=slice(None, None, 2))
 
 for season in axes:
-    hq = axes[season].quiver(tropflux.longitude, tropflux.latitude,
-                             tropflux.taux.sel(monsoon=season),
-                             tropflux.tauy.sel(monsoon=season),
-                             scale=1, zorder=5)
+    axes[season].set_extent([80, 94, 4, 24])
+
+    # htflux = axes[season].quiver(tflux.longitude, tflux.latitude,
+    #                              tflux.taux.sel(monsoon=season),
+    #                              tflux.tauy.sel(monsoon=season),
+    #                              scale=0.7, zorder=5)
+
+    hoscar = axes[season].quiver(osc.longitude, osc.latitude,
+                                 osc.u.sel(monsoon=season),
+                                 osc.v.sel(monsoon=season),
+                                 width=0.006,
+                                 scale=4)
 
     axes[season].text(0.05, 0.875, season,
                       transform=axes[season].transAxes,
