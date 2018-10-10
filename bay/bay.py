@@ -5,6 +5,13 @@ import xarray as xr
 
 region = dict(lon=slice(80, 94), lat=slice(4, 24))
 ebob_region = dict(lon=slice(85.5, 88.5), lat=slice(5, 8))
+seasons = ['NE', 'NESW', 'SW', 'SWNE']
+moor_names = {'ra12': 'RAMA 12N',
+              'ra15': 'RAMA 15N',
+              'nrl1': 'NRL 1',
+              'nrl3': 'NRL 3',
+              'nrl4': 'NRL 4',
+              'nrl5': 'NRL 5'}
 
 
 def make_merged_nc(moorings):
