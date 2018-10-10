@@ -4223,8 +4223,115 @@ plt.savefig('images/KT-TS-ebob.png')
 
 #+RESULTS:
 :RESULTS:
-# Out[192]:
+# Out[114]:
+: [<matplotlib.lines.Line2D at 0x7f0d941785f8>]
 :END:
+
+#+BEGIN_SRC ipython :session :ipyfile images/temp/imgWOpRL6.png
+import tqdm
+
+f, ax = plt.subplots(3, 4, sharex=True, sharey=True, constrained_layout=True)
+f.set_constrained_layout_pads(wpad=1/72, hpad=1/72, wspace=0.0, hspace=0.0)
+
+seasons = ['NE', 'NESW', 'SW', 'SWNE']
+
+axes = dict()
+axes['KT'] = dict(zip(seasons, ax[0, :]))
+axes['Jq'] = dict(zip(seasons, ax[1, :]))
+axes['Js'] = dict(zip(seasons, ax[2, :]))
+
+for var in tqdm.tqdm(['KT', 'Jq', 'Js']):
+    bay.plots.KT_TS(turb, ctd, 'all', var, axes=axes[var],
+                    cbar_kwargs={'orientation': 'vertical'})
+
+[aa.set_xlabel('') for aa in ax[:-1, :].flat]
+[aa.set_ylabel('') for aa in ax[:, 1:].flat]
+[aa.set_xlabel('S') for aa in ax[-1, :].flat]
+[aa.set_ylabel('T') for aa in ax[:, 0].flat]
+plt.savefig('images/TS-all-turb.png')
+#+END_SRC
+
+#+BEGIN_SRC ipython :session :ipyfile images/temp/imgiFb2lm.png
+if 'turb' not in locals():
+    turb = xr.open_dataset('./bay_merged_10min.nc')
+
+# turb['season'] = turb.time.monsoon.labels
+# ebob = (turb.where(turb.lat == 8, drop=True)
+#         .drop(['mld', 'ild', 'mean_depth', 'season']))
+# ebob['JqT'] = ebob['Jq'] * ebob['T']
+# ebob['JsS'] = ebob['Js'] * ebob['S']
+# ebob = ebob.where(np.abs(ebob['Jq']) < 1000)
+
+# ρbins = np.array(bay.default_density_bins)
+# to_merge = []
+# to_merge2 = []
+# for season in bay.seasons:
+#     subset = ebob.where(turb.season == season, drop=True)
+#     binned = (subset.drop(['T', 'S'])
+#               .groupby_bins(subset.ρ, ρbins,
+#                             labels=(ρbins[:-1] + ρbins[1:])/2))
+# #    _, ρbins = pd.qcut(subset.ρ.values.ravel(), 7, retbins=True)
+#     density_avg = binned.mean(xr.ALL_DIMS)
+#     density_std = binned.std(xr.ALL_DIMS)
+#     density_avg['season'] = season
+#     density_std['season'] = season
+
+#     to_merge.append(density_avg.expand_dims('season'))
+#     to_merge2.append(density_std.expand_dims('season'))
+
+# averaged = xr.concat(to_merge, dim='season')
+# averaged['T'] = averaged['JqT'] / averaged['Jq']
+# averaged['S'] = averaged['JsS'] / averaged['Js']
+
+# stddev = xr.concat(to_merge2, dim='season')
+stddev['T'] = 0
+stddev['S'] = 0
+
+# argo = (dcpy.oceans.read_argo_clim().sel(**bay.ebob_region))
+
+# argo = (argo.drop(['Tmean', 'Tanom', 'BATHYMETRY_MASK',
+#                   'Smean', 'Sanom'])
+#         .groupby(argo.time.monsoon.labels).mean(dim='time')
+#         .compute())
+# argo = argo.mean(['lat', 'lon'])
+
+# df = averaged.to_dataframe().reset_index()
+
+# 1. make this a salt/heat/density flux weighted mean sal, temp, rho
+# 2. add argo climatology profiles?
+# 3.
+
+varnames = ['T', 'S', 'ρ', 'KT', 'Jq', 'Js']
+f, ax = plt.subplots(1, len(varnames), sharey=True, constrained_layout=True)
+axes = dict(zip(varnames, ax.flat))
+
+for var in varnames:
+    for ss in averaged.season:
+        avg = averaged.sel(season=ss).dropna('ρ_bins')
+        avg = avg.sortby(avg.z)
+        std = stddev.sel(season=ss).dropna('ρ_bins')
+        std = std.sortby(std.z)
+        axes[var].errorbar(avg[var].values,
+                           avg.z.values,
+                           xerr=std[var].values/10,
+                           fmt='o-')
+
+    axes[var].tick_params(which='both', labeltop=True, labelbottom=False,
+                          top=True, bottom=False)
+    axes[var].set_xlabel(var)
+    axes[var].xaxis.set_label_position('top')
+    axes[var].spines['top'].set_visible(True)
+    axes[var].spines['bottom'].set_visible(False)
+
+axes['KT'].set_xscale('log')
+axes['KT'].set_ylim([110, 0])
+
+axes['Js'].legend(averaged.season.values)
+
+axes['Js'].set_xlim([0, 0.005])
+axes['Jq'].set_xlim([-15, 5])
+
+#+END_SRC
 
 #+BEGIN_SRC ipython :session :results none
 S = (ctd['nrl3']['S'].sel(time='2014-01')
