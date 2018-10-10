@@ -3633,7 +3633,145 @@ f.savefig('images/paper1/rama-vs-nrl.pdf')
 
 *** Vertical profile
 *** Seasonal spatial variations
+#+BEGIN_SRC ipython :session :results none
+import cartopy.crs as ccrs
 
+if 'ssha' not in locals():
+    ssha = (xr.open_dataset('../datasets/ssh/'
+                            + 'dataset-duacs-rep-global-merged-allsat-phy-l4-v3_1522711420825.nc',
+                            autoclose=True)
+            .sel(time='2014')
+            .load())
+    ssha['EKE'] = 0.5 * (ssha.ugosa**2 + ssha.vgosa**2)
+    eke = (ssha.EKE.groupby(ssha.EKE.time.monsoon.labels)
+           .mean(dim='time'))
+
+if 'tropflux' not in locals():
+    tropflux = (xr.open_mfdataset('../datasets/tropflux/tau*_tropflux_1d_*.nc',
+                                  autoclose=True)
+                .drop('tau')
+                .sel(time='2014',
+                     latitude=slice(2, 25),
+                     longitude=slice(78, 96))
+                .load())
+    tropflux = (tropflux.groupby(tropflux.time.monsoon.labels)
+                .mean(dim='time'))
+
+if 'trmm' not in locals():
+    trmm = (dcpy.oceans.read_trmm()
+            .sel(time='2014',
+                 lat=slice(2, 25),
+                 lon=slice(78, 96)))
+    trmm = (trmm.groupby(trmm.time.monsoon.labels)
+            .sum(dim='time')
+            .load())
+
+if 'sss' not in locals():
+    aq = dcpy.oceans.read_aquarius()
+    sss = aq.sss.sel(latitude=slice(2, 25),
+                     longitude=slice(78, 96))
+    sss = (sss.groupby(sss.time.monsoon.labels)
+           .mean(dim='time')
+           .load())
+
+# N = 200
+# cmap = mpl.cm.GnBu(np.arange(N))
+# cmap[:, -1] = np.linspace(0.25, 0.5, N)
+# ppt_cmap = mpl.colors.ListedColormap(cmap[60:])
+
+raincolor = '#3BBBC5'
+cmap = np.asarray(sns.light_palette(raincolor, n_colors=10))
+cmap[:, -1] = 0.35
+ppt_cmap = mpl.colors.ListedColormap(cmap)
+
+seasons = ['NE', 'NESW', 'SW', 'SWNE']
+
+g = xr.plot.FacetGrid(eke, col='monsoon',
+                      figsize=(8, 5),
+                      subplot_kws=dict(projection=ccrs.PlateCarree()),
+                      constrained_layout=True)
+
+axes = dict(zip(seasons, g.axes.flat))
+
+g.map_dataarray(xr.plot.contourf, 'longitude', 'latitude',
+                cmap=mpl.cm.OrRd,
+                levels=np.linspace(8e-3, 0.3, 40),
+                add_colorbar=False)
+
+g.map_dataarray(xr.plot.contour,
+                data=sss,
+                x='longitude', y='latitude',
+                levels=[29, 30, 31, 32, 33, 34],
+                colors='k', linewidths=1,
+                add_colorbar=False)
+for idx, aa in enumerate(ax.flat):
+    aa.clabel(g._mappables[4+idx], fmt='%2.f', fontsize='smaller')
+
+g.map(bay.plot_coastline)
+
+g.set_xlabels('Longitude')
+g.set_ylabels('Latitude')
+g.set_titles('')
+[aa.set_xticks(range(78, 96, 4)) for aa in g.axes.flat]
+[aa.set_yticks(range(2, 24, 4)) for aa in g.axes.flat]
+
+for season in axes:
+    hq = axes[season].quiver(tropflux.longitude, tropflux.latitude,
+                             tropflux.taux.sel(monsoon=season),
+                             tropflux.tauy.sel(monsoon=season),
+                             scale=1, zorder=5)
+
+    axes[season].text(0.05, 0.875, season,
+                      transform=axes[season].transAxes,
+                      color='k', zorder=10)
+
+g.map(bay.mark_moors,
+      color='black', colortext='white',
+      fontsize=7.5, markersize=9)
+
+plt.savefig('images/paper1/spatial-maps.pdf', transparent=False,
+            bbox_inches='tight')
+
+# clim = (aq.sss.sel(longitude=slice(75, 98),
+#                    latitude=slice(0, 24))
+#         .groupby('time.month').mean(dim='time'))
+# clim.plot(col='month', col_wrap=3, robust=True)
+# hc = clim.plot.contour(col='month', col_wrap=3, levels=np.arange(29, 36), Colors='k')
+# plt.clabel(hc, fmt='%2.0f')
+# pptlevels=[600,  1200, 1800]
+# ppt = trmm.sel(monsoon=season).precipitation
+# hppt = (ppt.where(ppt > pptlevels[0]-2)
+#         .plot.contourf(ax=axes[season], x='lon', y='lat',
+#                        levels=pptlevels,
+#                        cmap=ppt_cmap, zorder=4,
+#                        add_colorbar=False))
+# (ppt.where(ppt > pptlevels[0]-2)
+#  .plot.contour(ax=axes[season], x='lon', y='lat',
+#                levels=pptlevels, zorder=4,
+#                colors=raincolor, linewidths=1))
+
+# cmap = (sns.blend_palette(
+#     [[0.988235, 0.988235, 0.992157],
+#      [0.811765, 0.831373, 0.886275],
+#      [0.627451, 0.678431, 0.788235],
+#      [0.521569, 0.615686, 0.729412],
+#      [0.584314, 0.698039, 0.749020],
+#      [0.690196, 0.803922, 0.772549],
+#      [0.847059, 0.905882, 0.796078],
+#      [1.000000, 0.980392, 0.756863],
+#      [0.996078, 0.839216, 0.447059],
+#      [0.996078, 0.670588, 0.286275],
+#      [0.992157, 0.501961, 0.219608],
+#      [0.968627, 0.270588, 0.152941],
+#      [0.835294, 0.070588, 0.125490],
+#      [0.674510, 0.000000, 0.149020],
+#      [0.509804, 0.000000, 0.149020]],
+#     n_colors=21, as_cmap=True))
+
+#+END_SRC
+
+
+**** old one
 #+BEGIN_SRC ipython :session :ipyfile images/temp/imgRUuf4A.png
 bay = importlib.reload(bay)
 
@@ -3909,54 +4047,12 @@ cmap = (sns.blend_palette(
 #                                    linewidths=0.4)
 #+END_SRC
 
-#+BEGIN_SRC ipython :session :ipyfile images/temp/imgOZW81M.png
-
-
-# import pycpt
-
-# ppt_cmap = pycpt.load.gmtColormap('/home/deepak/Downloads/blues.cpt')
-
-cmap = mpl.cm.GnBu(np.arange(120))
-cmap[:, -1] = np.linspace(0.3, 0.6, 120)
-ppt_cmap = mpl.colors.ListedColormap(cmap)
-
-trmmm.sel(monsoon='SW').precipitation.plot.contourf(x='lon',
-                                                    y='lat',
-                                                    robust=True,
-                                                    cmap=ppt_cmap)
-#+END_SRC
-
 Divide up depths per season
 #+BEGIN_SRC ipython :session :ipyfile images/temp/imgXx7AIu.png
 
 plt.figure();
 nrl4.KT.z.resample(time='D').mean(dim='time').plot.line(x='time')
 nrl4.MarkSeasonsAndEvents()
-#+END_SRC
-
-#+BEGIN_SRC ipython :session :ipyfile images/temp/imgWlSWCu.png
-
-_, ax = plt.subplots(1,1,subplot_kw=dict(projection=ccrs.PlateCarree()))
-
-bay.plot_coastline(ax)
-bay.mark_moors(ax=ax, color='#eeeeee', colortext='#000aaa')
-
-#+END_SRC
-
-#+BEGIN_SRC ipython :session :ipyfile images/temp/imgWyIJdP.png
-f, ax = plt.subplots(2, 1)
-
-h0 = ax[0].plot([1,2], [3,5])
-h1 = ax[1].plot([1,2], [3,8])
-
-
-ax[0].set_ylim([3, 3.5])
-# ax[0].set_clip_on(False)
-
-ax[1].set_ylim([3, 5])
-# ax[1].set_clip_on(False)
-h1[0].set_clip_on(False)
-
 #+END_SRC
 *** tidal shear at NRL5
 #+BEGIN_SRC ipython :session :ipyfile images/temp/imgfJCfCZ.png
