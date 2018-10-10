@@ -1,4 +1,3 @@
-import matplotlib as mpl
 import matplotlib.pyplot as plt
 import numpy as np
 import scipy as sp
@@ -17,7 +16,10 @@ colors = {'RAMA': '#1696A3', 'NRL': '#F89B1F', 'OMM/WHOI': 'gray'}
 default_density_bins = [1018, 1021, 1022, 1022.5, 1023, 1023.5, 1024.25, 1029]
 
 
-def plot_coastline(ax, facecolor="#FEF9E4"):
+def plot_coastline(ax=None, facecolor="#FEF9E4"):
+
+    if ax is None:
+        ax = plt.gca()
 
     # facecolor = '#b2ccba'
     coastline = feature.NaturalEarthFeature(name='coastline',
