@@ -1334,42 +1334,7 @@ plt.savefig('images/niw-input-nrl5-check.png')
 **** Basin-wide estimate
 #+BEGIN_SRC ipython :session :results none
 
-taux = xr.open_dataset('~/datasets/tropflux/taux_tropflux_1d_2014.nc')
-tauy = xr.open_dataset('~/datasets/tropflux/tauy_tropflux_1d_2014.nc')
-
-tropflux = xr.Dataset()
-tropflux['taux'] = taux.taux
-tropflux['tauy'] = tauy.tauy
-
-tropflux = (tropflux.rename({'latitude': 'lat', 'longitude': 'lon'})
-            .sel(**bay.region))
-
-# argo = dcpy.oceans.argo_mld_clim()
-# argomld = (argo.mld_da_mean
-#            .rename({'month': 'time'})
-#            .sel(**bay.region)
-#            .interpolate_na('lat'))
-# argomld['time'] = pd.date_range('2014-01-01', '2014-12-31', freq='SM')[::2]
-
-mimoc = xr.open_mfdataset('/home/deepak/datasets/mimoc/MIMOC_ML_*.nc',
-                          concat_dim='month')
-mimoc['LATITUDE'] = mimoc.LATITUDE.isel(month=1)
-mimoc['LONGITUDE'] = mimoc.LONGITUDE.isel(month=1)
-mimoc = (mimoc.swap_dims({'LAT': 'LATITUDE', 'LONG': 'LONGITUDE'})
-         .rename({'LATITUDE': 'lat',
-                  'LONGITUDE': 'lon',
-         }))
-mimoc['month'] = pd.date_range('2014-01-01', '2014-12-31', freq='SM')[::2]
-mimoc = mimoc.rename({'month': 'time'})
-
-mld = (mimoc.DEPTH_MIXED_LAYER
-       .sel(**bay.region).load())
-
-wind_input, _ = dcpy.oceans.calc_wind_power_input(
-    (tropflux.taux.interpolate_na('time')
-     + 1j * tropflux.tauy.interpolate_na('time')),
-    mld=mld.interp_like(tropflux.taux),
-    f0=dcpy.oceans.coriolis(tropflux.lat))
+wind_input = xr.open_dataset('~/bay/estimates/wind-power-input-2014.nc')
 
 monthly = wind_input.groupby('time.month').mean('time')
 g = (monthly*1000).plot(col='month', col_wrap=4, robust=True,

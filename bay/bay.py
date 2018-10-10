@@ -1,4 +1,6 @@
+import dcpy.oceans
 import numpy as np
+import pandas as pd
 import tqdm
 
 import xarray as xr
@@ -156,3 +158,40 @@ def remake_summaries(moorings=None):
     print('making all summaries')
     for m in moorings:
         m.Summarize(savefig=True)
+
+
+def calc_wind_input():
+    taux = xr.open_dataset('~/datasets/tropflux/taux_tropflux_1d_2014.nc')
+    tauy = xr.open_dataset('~/datasets/tropflux/tauy_tropflux_1d_2014.nc')
+
+    tropflux = xr.Dataset()
+    tropflux['taux'] = taux.taux
+    tropflux['tauy'] = tauy.tauy
+
+    tropflux = (tropflux.rename({'latitude': 'lat', 'longitude': 'lon'})
+                .sel(**region))
+
+    mimoc = xr.open_mfdataset('/home/deepak/datasets/mimoc/MIMOC_ML_*.nc',
+                              concat_dim='month')
+    mimoc['LATITUDE'] = mimoc.LATITUDE.isel(month=1)
+    mimoc['LONGITUDE'] = mimoc.LONGITUDE.isel(month=1)
+    mimoc = (mimoc.swap_dims({'LAT': 'LATITUDE', 'LONG': 'LONGITUDE'})
+             .rename({'LATITUDE': 'lat',
+                      'LONGITUDE': 'lon'}))
+    mimoc['month'] = pd.date_range('2014-01-01', '2014-12-31', freq='SM')[::2]
+    mimoc = mimoc.rename({'month': 'time'})
+
+    mld = (mimoc.DEPTH_MIXED_LAYER
+           .sel(**region).load())
+
+    wind_input, _ = dcpy.oceans.calc_wind_power_input(
+        (tropflux.taux.interpolate_na('time')
+         + 1j * tropflux.tauy.interpolate_na('time')),
+        mld=mld.interp_like(tropflux.taux),
+        f0=dcpy.oceans.coriolis(tropflux.lat))
+
+    wind_input.attrs['description'] = (
+        'Near-inertial power input calculated using Tropflux winds and the '
+        'MIMOC mixed layer climatology using the method of Alford (2003) to '
+        'solve the Pollard & Millard slab model.')
+    wind_input.to_netcdf('~/bay/estimates/wind-power-input-2014.nc')
