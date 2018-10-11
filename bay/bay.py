@@ -36,6 +36,13 @@ def make_merged_nc(moorings):
         subset = (m.turb.reset_coords(['ρ', 'S', 'T', 'z', 'mld', 'ild'])
                   .expand_dims(['lat', 'lon'])
                   .drop(['χ', 'ε', 'N2', 'Tz', 'Sz']))
+
+        if m.name == 'NRL1':
+            subset.depth.values = [55.0, 75.0]
+
+        if m.name == 'NRL3':
+            subset.depth.values = np.array([30, 45])
+
         subset['season'] = subset.time.monsoon.labels
 
         depth_season = np.round(subset.z.groupby(subset['season'])
