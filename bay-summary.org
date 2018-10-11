@@ -397,17 +397,17 @@ TODO:
 #+BEGIN_SRC ipython :session :ipyfile images/temp/imge5GfnK.png
 
 o2 = (xr.open_mfdataset('../datasets/woa13/woa13-season/woa13_all_o*_01.nc',
-                        autoclose=True, decode_times=False)
+                        decode_times=False)
       .sel(**bay.region)
       .load())
 
 t = (xr.open_mfdataset('../datasets/woa13/woa13-season/woa13_decav_t*_01v2.nc',
-                       autoclose=True, decode_times=False)
+                       decode_times=False)
      .sel(**bay.region)
      .load())
 
 s = (xr.open_mfdataset('../datasets/woa13/woa13-season/woa13_decav_s*_01v2.nc',
-                       autoclose=True, decode_times=False)
+                       decode_times=False)
      .sel(**bay.region)
      .load())
 
@@ -761,8 +761,8 @@ This could be the large-scale ∇S being advected back and forth across the moor
 1. At 12N, it happens in Jul-2014, Jul-2015
 
 #+BEGIN_SRC ipython :session :ipyfile images/rama-sal-mosaic.png :results drawer
-sal = xr.open_dataset('~/TaoTritonPirataRama/RAMA/s_xyzt_dy.cdf',
-                      autoclose=True)['S_41'].sel(lon=90, lat=[12,15])
+sal = (xr.open_dataset('~/TaoTritonPirataRama/RAMA/s_xyzt_dy.cdf')
+       ['S_41'].sel(lon=90, lat=[12,15]))
 sal.values[sal.values > 40] = np.nan
 sal = sal.dropna(dim='depth', how='all')
 
@@ -1322,36 +1322,39 @@ nrl5.vel['time'] = nrl5.vel.time.dt.round('H')
 nrl5.tropflux['time'] = nrl5.tropflux.time.dt.round('D')
 compare_fluxes(nrl5)
 plt.savefig('images/niw-input-nrl5-check.png')
-
 #+END_SRC
 
-#+CAPTION: RAMA12: Agreement between flux calculated using filtered currents (0.5f - 1.5f) and predicted is good. No tuning required! The black should agree with orange. Black is (0.5f - 1.5f) filtered version of blue. There's a lot of high frequency information in the solution that makes the blue look worse but it really isn't.
+#+CAPTION: RAMA12 *with local winds*: Agreement between flux calculated using filtered currents (0.5f - 1.5f) and predicted *using local winds* is good. No tuning required! The black should agree with orange. Black is (0.5f - 1.5f) filtered version of blue. There's a lot of high frequency information in the solution (local winds) that makes the blue look worse but it really isn't.
+[[file:images/niw-input-ra12-local-winds-check.png]]
+
+#+CAPTION: Same as above *with NCEP winds*
 [[file:images/niw-input-ra12-check.png]]
 
 #+CAPTION: Same as above for NRL5. Agreement isn't as good. One funny thing is that there's a lot more clockwise energy in the near-inertial band here. Not sure if that's the discrepancy though cite:Plueddemann2006 seem to think it could make a file.
-[[difference:images/niw-input-nrl5-check.png]]
+[[file:images/niw-input-nrl5-check.png]]
 
 **** Basin-wide estimate
 #+BEGIN_SRC ipython :session :results none
 
 wind_input = xr.open_dataset('~/bay/estimates/wind-power-input-2014.nc')
 
-monthly = wind_input.groupby('time.month').mean('time')
+monthly = wind_input.wind_input.groupby('time.month').mean('time')
 g = (monthly*1000).plot(col='month', col_wrap=4, robust=True,
                         add_colorbar=False)
 g.add_colorbar(label='Monthly average near-inertial power input [mW/m²]')
 g.fig.savefig('images/niw-input-monthly.png', bbox_inches='tight')
 
 f, ax = plt.subplots(2, 1, constrained_layout=True)
-((wind_input*1000).mean('lon').dropna('lat', how='all')
+((wind_input.wind_input*1000).mean('lon').dropna('lat', how='all')
  .plot(x='time', robust=True, ax=ax[0]))
 ax[0].set_title('Longitudinally-averaged wind-input [mW/m²]')
 ax[0].set_xlabel('')
+ax[0].set_xlim(['2014-01-01', '2014-12-31'])
 [tt.set_rotation(0) for tt in ax[0].xaxis.get_ticklabels()]
 [tt.set_ha('center') for tt in ax[0].xaxis.get_ticklabels()]
 
 ((monthly*1000).mean('lon').dropna('lat')
- .plot(x='month', robust=True, ax=ax[1]))
+ .plot(x='month', robust=True, vmin=0, ax=ax[1], cmap=mpl.cm.Reds))
 ax[1].set_title('Longitudinally-averaged monthly-mean wind-input [mW/m²]')
 
 plt.savefig('images/niw-input-lon-mean.png')
@@ -1372,7 +1375,7 @@ tau = (xr.merge([taux, tauy])
        .sel(**bay.region).sel(time='2014')).load()
 
 oscar = (xr.open_mfdataset('/home/deepak/work/datasets/oscar/oscar_vel*.nc',
-                          autoclose=True, drop_variables=['year'])
+                          drop_variables=['year'])
          .squeeze()
          .rename({'latitude': 'lat', 'longitude': 'lon'})
          .sel(lon=slice(80, 94), lat=slice(24, 4)).sel(time='2014')).load()
@@ -2187,21 +2190,21 @@ plt.xlim([-6.5, -3])
 #+NAME: read-nutrients
 #+BEGIN_SRC ipython :session :ipyfile :results none
 o2 = xr.open_dataset('../datasets/woa13/woa13_all_o00_01.nc',
-                     autoclose=True, decode_times=False)
+                     decode_times=False)
 o2seas = xr.open_mfdataset('../datasets/woa13/woa13-season/woa13_all_o*_01.nc',
-                           autoclose=True, decode_times=False)
+                           decode_times=False)
 
 n = xr.open_dataset('../datasets/woa13/woa13_all_n00_01.nc',
-                     autoclose=True, decode_times=False)
+                     decode_times=False)
 nseas = xr.open_mfdataset('../datasets/woa13/woa13-season/woa13_all_n*_01.nc',
-                           autoclose=True, decode_times=False)
+                           decode_times=False)
 
 p = xr.open_dataset('../datasets/woa13/woa13_all_p00_01.nc',
-                    autoclose=True, decode_times=False)
+                    decode_times=False)
 pseas = xr.open_mfdataset('../datasets/woa13/woa13-season/woa13_all_p*_01.nc',
-                          autoclose=True, decode_times=False)
+                          decode_times=False)
 i = xr.open_dataset('../datasets/woa13/woa13_all_i00_01.nc',
-                     autoclose=True, decode_times=False)
+                     decode_times=False)
 #+END_SRC
 
 #+BEGIN_SRC ipython :session :ipyfile images/bay-chem-annual-mean.png
