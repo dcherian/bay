@@ -474,25 +474,6 @@ flux = -stats.means * do2_dz
 # Out[303]:
 :END:
 
-#+BEGIN_SRC ipython :session :ipyfile images/temp/imgMFPMNy.png
-import numpy as np
-import bootstrapped.bootstrap as bs
-import bootstrapped.stats_functions as bs_stats
-
-mean = 100
-stdev = 10
-
-population = np.random.normal(loc=mean, scale=stdev, size=50000)
-
-# take 1k 'samples' from the larger population
-samples = population[:1000]
-
-#+END_SRC
-
-#+RESULTS:
-:RESULTS:
-# Out[4]:
-:END:
 
 *** old attempts
 **** without MLD binning : only ρ binning
