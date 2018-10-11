@@ -3475,8 +3475,7 @@ if 'oscar' not in locals():
 
 if 'ssha' not in locals():
     ssha = (xr.open_dataset('../datasets/ssh/'
-                            + 'dataset-duacs-rep-global-merged-allsat-phy-l4-v3_1522711420825.nc',
-                            autoclose=True)
+                            + 'dataset-duacs-rep-global-merged-allsat-phy-l4-v3_1522711420825.nc')
             .sel(time=slice('2013-12-01', '2014-11-30'))
             .load())
     ssha['EKE'] = 0.5 * (ssha.ugosa**2 + ssha.vgosa**2)
@@ -3640,8 +3639,7 @@ import cartopy.crs as ccrs
 
 if 'ssha' not in locals():
     ssha = (xr.open_dataset('../datasets/ssh/'
-                            + 'dataset-duacs-rep-global-merged-allsat-phy-l4-v3_1522711420825.nc',
-                            autoclose=True)
+                            + 'dataset-duacs-rep-global-merged-allsat-phy-l4-v3_1522711420825.nc')
             .sel(time='2014')
             .load())
     ssha['EKE'] = 0.5 * (ssha.ugosa**2 + ssha.vgosa**2)
@@ -3649,8 +3647,7 @@ if 'ssha' not in locals():
            .mean(dim='time'))
 
 if 'tropflux' not in locals():
-    tropflux = (xr.open_mfdataset('../datasets/tropflux/tau*_tropflux_1d_*.nc',
-                                  autoclose=True)
+    tropflux = (xr.open_mfdataset('../datasets/tropflux/tau*_tropflux_1d_*.nc')
                 .drop('tau')
                 .sel(time='2014',
                      latitude=slice(2, 25),
