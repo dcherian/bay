@@ -4034,38 +4034,24 @@ f.savefig('images/paper1/rama-vs-nrl.pdf')
 *** Figure 4: Vertical profile of K_T distributions
 *** Figure 5: Vertical profiles of KT, Jq, etc. for 8N
 #+BEGIN_SRC ipython :session :ipyfile images/temp/imgiFb2lm.png
-if 'turb' not in locals():
-    turb = xr.open_dataset('./bay_merged_10min.nc')
+if 'df' not in locals():
+    df = bay.nc_to_binned_df('./bay_merged_hourly.nc')
 
-turb['season'] = turb.time.monsoon.labels
-ebob = (turb.where(turb.lat == 8, drop=True)
-        .drop(['mld', 'ild', 'mean_depth', 'season']))
+ebob = df.where(df.lat == 8).dropna(how='all')
+# ebob['moor'] = ebob.moor.astype('category')
+# ebob['season'] = ebob.season.astype('category')
+# ebob['bin'] = ebob.bin.astype('category')
+
 ebob['JqT'] = ebob['Jq'] * ebob['T']
 ebob['JsS'] = ebob['Js'] * ebob['S']
 ebob = ebob.where(np.abs(ebob['Jq']) < 1000)
 
-ρbins = np.array(bay.default_density_bins)
-to_merge = []
-to_merge2 = []
-for season in bay.seasons:
-    subset = ebob.where(turb.season == season, drop=True)
-    binned = (subset.drop(['T', 'S'])
-              .groupby_bins(subset.ρ, ρbins,
-                            labels=(ρbins[:-1] + ρbins[1:])/2))
-#    _, ρbins = pd.qcut(subset.ρ.values.ravel(), 7, retbins=True)
-    density_avg = binned.mean(xr.ALL_DIMS)
-    density_std = binned.std(xr.ALL_DIMS)
-    density_avg['season'] = season
-    density_std['season'] = season
+grouped = ebob.groupby(['season', 'bin'])
+averaged = grouped.mean().to_xarray()
+stddev = grouped.std().to_xarray()
 
-    to_merge.append(density_avg.expand_dims('season'))
-    to_merge2.append(density_std.expand_dims('season'))
-
-averaged = xr.concat(to_merge, dim='season')
 averaged['T'] = averaged['JqT'] / averaged['Jq']
 averaged['S'] = averaged['JsS'] / averaged['Js']
-
-stddev = xr.concat(to_merge2, dim='season')
 stddev['T'] = 0
 stddev['S'] = 0
 
@@ -4089,13 +4075,9 @@ axes = dict(zip(varnames, ax.flat))
 
 for var in varnames:
     for ss in averaged.season:
-        avg = averaged.sel(season=ss).dropna('ρ_bins')
-        avg = avg.sortby(avg.z)
-        std = stddev.sel(season=ss).dropna('ρ_bins')
-        std = std.sortby(std.z)
-        axes[var].errorbar(avg[var].values,
-                           avg.z.values,
-                           xerr=std[var].values/10,
+        axes[var].errorbar(averaged.sel(season=ss)[var].values,
+                           averaged.sel(season=ss).z.values,
+                           xerr=stddev.sel(season=ss)[var].values/10,
                            fmt='o-')
 
     axes[var].tick_params(which='both', labeltop=True, labelbottom=False,
