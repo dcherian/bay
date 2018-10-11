@@ -1236,11 +1236,12 @@ def compare_fluxes(mooring):
 
         return (ufilt + 1j*vfilt)
 
-    # pick topmost bin
+    # choose ML velocity: pick topmost bin
     ZI = (filt((mooring.vel.u.isel(depth=0).squeeze().interpolate_na('time')
                + 1j * mooring.vel.v.isel(depth=0).squeeze().interpolate_na('time')))
           .sel(time='2014'))
 
+    # choose wind-stress
     if 'taux' in mooring.met:
         T = (mooring.met.taux + 1j * mooring.met.tauy)
     else:
@@ -1249,33 +1250,43 @@ def compare_fluxes(mooring):
     T = 1/1025 * (T.interp_like(ZI).interpolate_na('time')
                   .sel(time='2014')
                   .rolling(time=12).mean().dropna('time'))
+
+    # calculate flux
     flux = np.real(1025 * ZI * np.conj(T))
 
-    if np.isnan(mooring.mld).all():
-        mld = (mimoc.DEPTH_MIXED_LAYER
-               .interp(lon=mooring.lon, lat=mooring.lat).load()
-               .interp(time=T.time))
-    else:
-        mld = mooring.mld.interp(time=T.time).rolling(time=300).mean()
+    # if np.isnan(mooring.mld).all():
+    #     mld = (mimoc.DEPTH_MIXED_LAYER
+    #            .interp(lon=mooring.lon, lat=mooring.lat).load()
+    #            .interp(time=T.time))
+    # else:
+    #     mld = mooring.mld.interp(time=T.time).rolling(time=300).mean()
 
-    model_input, ZImodel = dcpy.oceans.calc_wind_power_input(
-        (T * 1025),
-        mld=mld,
-        f0=dcpy.oceans.coriolis(mooring.lat))
-    ZIfilt = filt(ZImodel.dropna('time'))
-    filt_input = np.real(1025 * ZIfilt * np.conj(T))
+    # model_input, ZImodel = dcpy.oceans.calc_wind_power_input(
+    #     (T * 1025),
+    #     mld=mld,
+    #     f0=dcpy.oceans.coriolis(mooring.lat))
+
+    wind_input = (xr.open_dataset(
+        '/home/deepak/bay/estimates/wind-power-input-2014.nc')
+                  .sel(lat=mooring.lat, lon=mooring.lon, method='nearest')
+                  .sel(time='2014')
+                  .load())
+    model_input = wind_input.wind_input
+    ZImodel = wind_input.ui + 1j * wind_input.vi
+    # ZIfilt = filt(ZImodel.dropna('time'))
+    # filt_input = np.real(1025 * ZIfilt * np.conj(T))
 
     f, ax = plt.subplots(2, 2, sharex='col', constrained_layout=True,
                          gridspec_kw={'width_ratios': [2, 1]})
     ZImodel.plot(ax=ax[0, 0], lw=0.5)
     ZI.plot(ax=ax[0, 0])
-    ZIfilt.plot(ax=ax[0, 0], color='k')
-    ax[0, 0].legend(['unfiltered model', 'true', 'filtered model'])
+    # ZIfilt.plot(ax=ax[0, 0], color='k')
+    ax[0, 0].legend(['slab model', 'true'])
 
     model_input.plot(ax=ax[1, 0])
     flux.plot(ax=ax[1, 0])
-    filt_input.plot(ax=ax[1, 0], color='k')
-    ax[1, 0].legend(['unfiltered flux', 'true flux', 'filtered flux'])
+    # filt_input.plot(ax=ax[1, 0], color='k')
+    ax[1, 0].legend(['slab flux', 'true flux'])
 
     dcpy.ts.PlotSpectrum(ZI.dropna('time'), twoside=False, ax=ax[0, 1])
     dcpy.ts.PlotSpectrum(ZImodel.dropna('time'), twoside=False, ax=ax[0, 1])
@@ -1283,10 +1294,24 @@ def compare_fluxes(mooring):
 
     dcpy.ts.PlotSpectrum(model_input.dropna('time'), ax=ax[1, 1])
     dcpy.ts.PlotSpectrum(flux.dropna('time'), ax=ax[1, 1])
-    dcpy.ts.PlotSpectrum(filt_input.dropna('time'), ax=ax[1, 1], color='k')
-    ax[1, 1].legend(['unfiltered flux', 'true flux', 'filtered flux'])
+    # dcpy.ts.PlotSpectrum(filt_input.dropna('time'), ax=ax[1, 1], color='k')
+    ax[1, 1].legend(['unfiltered flux', 'true flux'])
     dcpy.plots.linex(freqs, ax=ax[:, 1])
     dcpy.plots.linex(mooring.inertial, ax=ax[:, 1])
+
+    ax2 = ax[1, 0].twinx()
+    ax[1, 0].spines['right'].set_visible(True)
+    ax2.set_ylabel('cumulative input')
+    dt_true = (np.diff(flux.time)
+               .astype('timedelta64[s]').astype('float32')
+               .mean())
+    dt_mod = (np.diff(model_input.time)
+              .astype('timedelta64[s]').astype('float32')
+              .mean())
+    ax2.plot(model_input.time, np.cumsum(model_input) * dt_mod)
+    ax2.plot(flux.time, np.cumsum(flux) * dt_true)
+    ylim = ax2.get_ylim()
+    ax2.set_ylim([0, ylim[1]*2])
 
     ax[1, 1].set_ylim([1e-7, 5e-3])
     ax[1, 0].set_ylim([-0.05, 0.05])
@@ -1294,7 +1319,7 @@ def compare_fluxes(mooring):
     ax[1, 0].set_xlim(('2014-01-01', '2015-01-01'))
     ax[0, 1].set_title('Spectra of currents')
     ax[1, 1].set_title('Spectra of flux')
-    f.suptitle(mooring.name + ' | wind power input comparison | data vs model.')
+    f.suptitle(mooring.name + ' | NCEP wind power input comparison | data vs model.')
 
 compare_fluxes(ra12)
 plt.savefig('images/niw-input-ra12-check.png')
@@ -3490,76 +3515,84 @@ if 'sss' not in locals():
            .mean(dim='time')
            .load())
 
-# N = 200
-# cmap = mpl.cm.GnBu(np.arange(N))
-# cmap[:, -1] = np.linspace(0.25, 0.5, N)
-# ppt_cmap = mpl.colors.ListedColormap(cmap[60:])
+if 'wind_input' not in locals():
+    wind_input = xr.open_dataset('~/bay/estimates/wind-power-input-2014.nc')
+    niw = wind_input.groupby(wind_input.time.monsoon.labels).mean('time')
 
-raincolor = '#3BBBC5'
-cmap = np.asarray(sns.light_palette(raincolor, n_colors=10))
-cmap[:, -1] = 0.35
-ppt_cmap = mpl.colors.ListedColormap(cmap)
 
-seasons = ['NE', 'NESW', 'SW', 'SWNE']
-
-g = xr.plot.FacetGrid(eke, col='monsoon',
-                      figsize=(8, 5),
-                      subplot_kws=dict(projection=ccrs.PlateCarree()),
-                      constrained_layout=True)
-
-axes = dict(zip(seasons, g.axes.flat))
-
-g.map_dataarray(xr.plot.contourf,
-                'longitude', 'latitude',
-                cmap=mpl.cm.OrRd,
-                levels=np.linspace(8e-3, 0.3, 40),
-                add_colorbar=False)
-
-g.map_dataarray(xr.plot.contour,
-                data=sss,
-                x='longitude', y='latitude',
-                levels=[29, 30, 31, 32, 33, 34],
-                colors='k', linewidths=1.5,
-                add_colorbar=False)
-
-for idx, aa in enumerate(ax.flat):
-    hlabs = aa.clabel(g._mappables[4+idx], fmt='%2.f', fontsize='smaller')
-
-g.map(bay.plot_coastline)
-
-g.set_xlabels('Longitude')
-g.set_ylabels('Latitude')
-g.set_titles('')
-[aa.set_xticks(range(80, 96, 4)) for aa in g.axes.flat]
-[aa.set_yticks(range(4, 24, 4)) for aa in g.axes.flat]
-
-tflux = tropflux.sel(latitude=slice(None, None, 3),
-                     longitude=slice(None, None, 3))
+f, ax = plt.subplots(2, 4, sharex=True, sharey=True,
+                     subplot_kw=dict(projection=ccrs.PlateCarree()),
+                     constrained_layout=False)
+axes = dict()
+if ax.shape[0] > ax.shape[1]:
+    axes['oce'] = dict(zip(bay.seasons, ax[:, 0]))
+    axes['atm'] = dict(zip(bay.seasons, ax[:, 1]))
+else:
+    axes['oce'] = dict(zip(bay.seasons, ax[0, :]))
+    axes['atm'] = dict(zip(bay.seasons, ax[1, :]))
 
 osc = oscar.sel(latitude=slice(None, None, 2),
                 longitude=slice(None, None, 2))
 
-for season in axes:
-    axes[season].set_extent([80, 94, 4, 24])
+for season in bay.seasons:
+    heke = (eke.sel(monsoon=season)
+            .plot.contourf(ax=axes['oce'][season],
+                           x='longitude', y='latitude',
+                           cmap=mpl.cm.OrRd,
+                           levels=np.linspace(0, 0.3, 40),
+                           add_colorbar=False))
 
-    # htflux = axes[season].quiver(tflux.longitude, tflux.latitude,
-    #                              tflux.taux.sel(monsoon=season),
-    #                              tflux.tauy.sel(monsoon=season),
-    #                              scale=0.7, zorder=5)
+    hsss = (sss.sel(monsoon=season)
+            .plot.contour(ax=axes['oce'][season],
+                          x='longitude', y='latitude',
+                          levels=[29, 30, 31, 32, 33, 34],
+                          colors='k', linewidths=1))
+    plt.clabel(hsss, fontsize='smaller', fmt='%2.0f')
 
-    hoscar = axes[season].quiver(osc.longitude, osc.latitude,
-                                 osc.u.sel(monsoon=season),
-                                 osc.v.sel(monsoon=season),
-                                 width=0.006,
-                                 scale=4)
+    hoscar = axes['oce'][season].quiver(osc.longitude, osc.latitude,
+                                        osc.u.sel(monsoon=season),
+                                        osc.v.sel(monsoon=season),
+                                        width=0.006,
+                                        scale=4)
 
-    axes[season].text(0.05, 0.875, season,
-                      transform=axes[season].transAxes,
-                      color='k', zorder=10)
+    hniw = ((niw.wind_input*1000).sel(monsoon=season)
+            .plot.contourf(ax=axes['atm'][season], cmap=mpl.cm.Blues,
+                           levels=40, vmin=0, vmax=2, add_colorbar=False))
 
-g.map(bay.mark_moors,
-      color='black', colortext='white',
-      fontsize=7.5, markersize=9)
+    axes['atm'][season].quiver(niw.lon, niw.lat,
+                               niw.taux.sel(monsoon=season),
+                               niw.tauy.sel(monsoon=season))
+    [axes[row][season].text(0.05, 0.875, season,
+                            transform=axes[row][season].transAxes,
+                            color='k', zorder=10)
+     for row in axes]
+
+
+def common(ax):
+    ax.set_xticks(range(80, 96, 4))
+    ax.set_yticks(range(4, 24, 4))
+    ax.set_title('')
+    ax.set_xlabel('')
+    ax.set_ylabel('')
+    bay.plot_coastline(ax)
+    ax.set_extent([80, 94, 4, 24])
+    bay.mark_moors(ax=ax, color='black', colortext='white',
+                   fontsize=7.5, markersize=9)
+
+[common(aa) for aa in ax.flat]
+[aa.set_xlabel('Longitude') for aa in ax[1, :]]
+[aa.set_ylabel('Latitude') for aa in ax[:, 0]]
+
+hcb1 = plt.colorbar(heke, ax=ax[0, :2], orientation='horizontal',
+                    label='EKE [m²/s²]', shrink=1)
+hcb2 = plt.colorbar(hniw, ax=ax[0, 2:], orientation='horizontal',
+                    label='Near-inertial wind input [mW/m²]',
+                    shrink=1)
+hcb1.set_ticks(np.arange(0, 0.31, 0.05))
+hcb2.set_ticks(np.arange(0, 2.1, 0.5))
+
+f.set_size_inches(6, 5)
+plt.subplots_adjust(left=0.080, right=0.99, bottom=0.1, wspace=0.05, hspace=0.4, top=0.99)
 
 plt.savefig('images/paper1/spatial-maps.pdf', transparent=False,
             bbox_inches='tight')

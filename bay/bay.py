@@ -161,15 +161,18 @@ def remake_summaries(moorings=None):
 
 
 def calc_wind_input():
-    taux = xr.open_dataset('~/datasets/tropflux/taux_tropflux_1d_2014.nc')
-    tauy = xr.open_dataset('~/datasets/tropflux/tauy_tropflux_1d_2014.nc')
+    trange = dict(lat=slice(24, 2, None),
+                  lon=region['lon'],
+                  time=slice('2013-12-01', '2014-11-30'))
 
-    tropflux = xr.Dataset()
-    tropflux['taux'] = taux.taux
-    tropflux['tauy'] = tauy.tauy
-
-    tropflux = (tropflux.rename({'latitude': 'lat', 'longitude': 'lon'})
-                .sel(**region))
+    u = xr.open_mfdataset('/home/deepak/datasets/ncep/uwnd*.nc')
+    v = xr.open_mfdataset('/home/deepak/datasets/ncep/vwnd*.nc')
+    taux = u.uwnd.sel(trange).copy(
+        data=airsea.windstress.stress(u.uwnd.sel(trange)))
+    tauy = v.vwnd.sel(trange).copy(
+        data=airsea.windstress.stress(v.vwnd.sel(trange)))
+    tau = (xr.merge([taux, tauy]).sortby('lat')
+           .rename({'uwnd': 'taux', 'vwnd': 'tauy'}))
 
     mimoc = xr.open_mfdataset('/home/deepak/datasets/mimoc/MIMOC_ML_*.nc',
                               concat_dim='month')
@@ -184,14 +187,46 @@ def calc_wind_input():
     mld = (mimoc.DEPTH_MIXED_LAYER
            .sel(**region).load())
 
-    wind_input, _ = dcpy.oceans.calc_wind_power_input(
-        (tropflux.taux.interpolate_na('time')
-         + 1j * tropflux.tauy.interpolate_na('time')),
-        mld=mld.interp_like(tropflux.taux),
-        f0=dcpy.oceans.coriolis(tropflux.lat))
+    # append so that I can interpolate properly
+    append = xr.DataArray(mld.isel(time=slice(-2, None)))
+    append['time'] = pd.to_datetime(['2013-11-15', '2013-12-15'])
+    mld = xr.concat([append, mld], 'time')
+
+    wind_input, ZI = dcpy.oceans.calc_wind_power_input(
+        tau.taux + 1j * tau.tauy,
+        mld=mld.interp_like(tau.taux),
+        f0=dcpy.oceans.coriolis(tau.lat))
+    wind_input.name = 'wind_input'
+    wind_input = wind_input.to_dataset()
 
     wind_input.attrs['description'] = (
-        'Near-inertial power input calculated using Tropflux winds and the '
-        'MIMOC mixed layer climatology using the method of Alford (2003) to '
-        'solve the Pollard & Millard slab model.')
+        'Near-inertial power input calculated using NCEP 6-hourly winds and '
+        'the MIMOC mixed layer climatology using the method of Alford (2003) '
+        'to solve the Pollard & Millard slab model.')
+
+    wind_input['taux'] = tau.taux
+    wind_input['tauy'] = tau.tauy
+    wind_input['mld'] = mld
+
+    wind_input['ui'] = np.real(ZI)
+    wind_input.ui.attrs['long_name'] = '$u_i$'
+    wind_input.ui.attrs['description'] = 'Inertial zonal velocity'
+    wind_input.ui.attrs['units'] = 'm/s'
+
+    wind_input['vi'] = np.imag(ZI)
+    wind_input.vi.attrs['long_name'] = '$v_i$'
+    wind_input.vi.attrs['description'] = 'Inertial meridional velocity'
+    wind_input.vi.attrs['units'] = 'm/s'
+
+    wind_input.taux.attrs['long_name'] = '$τ_x$'
+    wind_input.taux.attrs['units'] = 'N/m²'
+    wind_input.mld.attrs['description'] = 'NCEP'
+    wind_input.tauy.attrs['long_name'] = '$τ_y$'
+    wind_input.tauy.attrs['units'] = 'N/m²'
+    wind_input.mld.attrs['description'] = 'Tropflux'
+
+    wind_input.mld.attrs['long_name'] = 'MLD'
+    wind_input.mld.attrs['units'] = 'm'
+    wind_input.mld.attrs['description'] = 'MIMOC mixed layer depth'
+
     wind_input.to_netcdf('~/bay/estimates/wind-power-input-2014.nc')
