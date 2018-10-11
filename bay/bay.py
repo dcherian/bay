@@ -122,27 +122,23 @@ def make_merged_nc(moorings):
      .to_netcdf('bay_merged_6hourly.nc'))
 
 
-def nc_to_binned_df(varname='KT',
+def nc_to_binned_df(filename='bay_merged_hourly.nc',
                     bins=default_density_bins,
-                    moor=None,
-                    filename='bay_merged_hourly.nc'):
+                    moor=None):
     ''' reads KT from merged .nc file and returns DataFrame version
         suitable for processing.'''
 
-    turb = xr.open_dataset(filename, autoclose=True).load()
-
-    turb[varname].values = np.log10(turb[varname].values)
+    turb = xr.open_dataset(filename).load()
 
     turb['season'] = turb.time.monsoon.labels
 
-    df = (turb[[varname, 'T', 'S', 'z', 'ρ', 'mld', 'ild', 'season']]
-          .to_dataframe()
-          .dropna(axis=0, subset=[varname])
+    df = (turb.to_dataframe()
+          .dropna(subset=['KT'])
           .reset_index())
 
-    df['latlon'] = (df['lat'].astype('float32').astype('str') + 'N, '
-                    + df['lon'].astype('float32').astype('str')
-                    + 'E').astype('category')
+    latlon = (df['lat'].astype('float32').astype('str') + 'N, '
+              + df['lon'].astype('float32').astype('str')
+              + 'E').astype('category')
     df['season'] = df['season'].astype('category')
 
     moornames = {'RAMA12': '12.0N, 90.0E',
@@ -153,7 +149,7 @@ def nc_to_binned_df(varname='KT',
                  'NRL4': '8.0N, 87.0E',
                  'NRL5': '8.0N, 88.5E'}
 
-    df['moor'] = (df['latlon']
+    df['moor'] = (latlon
                   .map(dict(zip(moornames.values(),
                                 moornames.keys())))
                   .astype('category'))

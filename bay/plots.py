@@ -416,7 +416,10 @@ def make_vert_distrib_plot(varname,
 
     ''' user-friendly wrapper function to make vertical distribution plot. '''
 
-    df = nc_to_binned_df(varname, bins, moor)
+    df = nc_to_binned_df(bins=bins, moor=moor)
+
+    if varname == 'KT':
+        df['KT'].values = np.log10(df['KT'].values)
 
     f, ax = vert_distrib(df, df.bin,
                          label_moorings=label_moorings,
