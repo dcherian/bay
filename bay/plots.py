@@ -8,12 +8,13 @@ import dcpy
 import cartopy.crs as ccrs
 from cartopy import feature
 
+from .bay import nc_to_binned_df, default_density_bins
+
 # markers = {'RAMA': 'o', 'NRL': '^', 'OMM/WHOI': 'o'}
 # colors = {'RAMA': '#0074D9', 'NRL': '#3D9970', 'OMM/WHOI': '#FF4136'}
 # colors = {'RAMA': '#1696A3', 'NRL': '#F89B1F', 'OMM/WHOI': '#EA4D5B'}
 # colors = {'RAMA': '#1696A3', 'NRL': '#F89B1F', 'OMM/WHOI': '#EA4D5B'}
 colors = {'RAMA': '#1696A3', 'NRL': '#F89B1F', 'OMM/WHOI': 'gray'}
-default_density_bins = [1018, 1021, 1022, 1022.5, 1023, 1023.5, 1024.25, 1029]
 
 
 def plot_coastline(ax=None, facecolor="#FEF9E4"):
@@ -127,39 +128,6 @@ def make_map(pods, DX=0.6, DY=0.55, add_year=True, highlight=[],
     return ax, colors
 
 
-def bin_ktdf(KTdf, bins):
-
-    error_depth = 5
-
-    depth_minus_mld = (KTdf.z - KTdf.mld)
-    depth_minus_ild = (KTdf.z - KTdf.ild)
-    mask_ml = depth_minus_mld <= error_depth
-    mask_bl = np.logical_and(np.logical_not(mask_ml),
-                             depth_minus_ild <= error_depth)
-    mask_ml_plus = np.logical_and(
-        np.logical_not(np.logical_or(mask_ml, mask_bl)),
-        depth_minus_mld <= 15)
-    mask_ml_plus = np.zeros_like(mask_ml).astype('bool')
-    mask_deep = np.logical_not(np.logical_or(
-        np.logical_or(mask_ml, mask_bl),
-        mask_ml_plus))
-
-    KTdf['bin'] = ''
-    KTdf.loc[mask_ml, 'bin'] = 'ML'
-    KTdf.loc[mask_bl, 'bin'] = 'BL'
-    # KTdf.bin[mask_ml_plus] = 'ML+'
-    # bins = get_kmeans_bins(7, KTdf['ρ'][mask_deep])
-    # KTdf.bin = pd.qcut(KTdf.ρ, 10, precision=1)
-    KTdf.loc[mask_deep, 'bin'] = pd.cut(KTdf.ρ.loc[mask_deep],
-                                        bins,
-                                        precision=1)
-    KTdf['bin'] = KTdf['bin'].astype('category')
-
-    assert(np.sum(KTdf.bin == '') == 0)
-
-    return KTdf
-
-
 def get_kmeans_bins(k, data):
     centroids, _ = sp.cluster.vq.kmeans(data, k)
     cent = np.sort(centroids)
@@ -262,7 +230,7 @@ def plot_distrib(ax, plotkind, var, zloc, zstd, width=12, percentile=False):
     return hdl, median, mean
 
 
-def vert_distrib(KTdf, bins, varname='KT', pal=None, f=None, ax=None,
+def vert_distrib(df, bins, varname='KT', pal=None, f=None, ax=None,
                  label_moorings=True, label_bins=True, adjust_fig=True,
                  width=12, percentile=False, add_offset=True, **kwargs):
 
@@ -334,7 +302,7 @@ def vert_distrib(KTdf, bins, varname='KT', pal=None, f=None, ax=None,
 
     # seaborn treats things as categoricals booo...
     # do things the verbose matplotlib way
-    for index, (label, df) in enumerate(KTdf.groupby([bins, 'season'])):
+    for index, (label, df) in enumerate(df.groupby([bins, 'season'])):
         interval = label[0]
         season = label[1]
         zloc = sp.stats.trim_mean(df.z, 0.1)
@@ -441,49 +409,6 @@ def mark_moors(color='w',
                     transform=ax.transData)
 
 
-def convert_nc_to_binned_df(varname='KT',
-                            bins=default_density_bins,
-                            moor=None):
-    ''' reads KT from merged .nc file and returns DataFrame version
-        suitable for processing.'''
-
-    turb = xr.open_dataset('bay_merged_hourly.nc', autoclose=True).load()
-
-    turb[varname].values = np.log10(turb[varname].values)
-
-    turb['season'] = turb.time.monsoon.labels
-
-    df = (turb[[varname, 'T', 'S', 'z', 'ρ', 'mld', 'ild', 'season']]
-          .to_dataframe()
-          .dropna(axis=0, subset=[varname])
-          .reset_index())
-
-    df['latlon'] = (df['lat'].astype('float32').astype('str') + 'N, '
-                    + df['lon'].astype('float32').astype('str')
-                    + 'E').astype('category')
-    df['season'] = df['season'].astype('category')
-
-    moornames = {'RAMA12': '12.0N, 90.0E',
-                 'RAMA15': '15.0N, 90.0E',
-                 'NRL1': '5.0N, 85.5E',
-                 'NRL2': '6.5N, 85.5E',
-                 'NRL3': '8.0N, 85.5E',
-                 'NRL4': '8.0N, 87.0E',
-                 'NRL5': '8.0N, 88.5E'}
-
-    df['moor'] = (df['latlon']
-                  .map(dict(zip(moornames.values(),
-                                moornames.keys())))
-                  .astype('category'))
-
-    if moor is not None:
-        df = df.loc[df.moor == moor]
-
-    df = bin_ktdf(df, bins)
-
-    return df
-
-
 def make_vert_distrib_plot(varname,
                            bins=default_density_bins,
                            moor=None,
@@ -491,7 +416,7 @@ def make_vert_distrib_plot(varname,
 
     ''' user-friendly wrapper function to make vertical distribution plot. '''
 
-    df = convert_nc_to_binned_df(varname, bins, moor)
+    df = nc_to_binned_df(varname, bins, moor)
 
     f, ax = vert_distrib(df, df.bin,
                          label_moorings=label_moorings,
@@ -568,9 +493,9 @@ def make_labeled_map(ax=None):
 def mark_χpod_depths_on_clim(ax=[]):
 
     argoT = xr.open_dataset('~/datasets/argoclim/RG_ArgoClim_Temperature_2016.nc',
-                            autoclose=True, decode_times=False)
+                            decode_times=False)
     argoS = xr.open_dataset('~/datasets/argoclim/RG_ArgoClim_Salinity_2016.nc',
-                            autoclose=True, decode_times=False)
+                            decode_times=False)
 
     def mark_range(ax, top, middle, bottom, color=colors['NRL']):
         xlim = ax.get_xlim()

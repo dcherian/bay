@@ -1,11 +1,13 @@
-import dcpy.oceans
+import airsea
 import numpy as np
 import pandas as pd
 import tqdm
 
+import dcpy.oceans
 import xarray as xr
 
 region = dict(lon=slice(80, 94), lat=slice(4, 24))
+default_density_bins = [1018, 1021, 1022, 1022.5, 1023, 1023.5, 1024.25, 1029]
 ebob_region = dict(lon=slice(85.5, 88.5), lat=slice(5, 8))
 seasons = ['NE', 'NESW', 'SW', 'SWNE']
 moor_names = {'ra12': 'RAMA 12N',
@@ -113,26 +115,28 @@ def make_merged_nc(moorings):
      .to_netcdf('bay_merged_6hourly.nc'))
 
 
-def bin_and_to_dataframe(KTm, ρbins=None, Sbins=None):
-    def bin(var, bins):
-        binned = bins[np.digitize(var, bins)-1]
-        return xr.DataArray(binned, dims=var.dims, coords=var.coords)
+def nc_to_binned_df(varname='KT',
+                    bins=default_density_bins,
+                    moor=None,
+                    filename='bay_merged_hourly.nc'):
+    ''' reads KT from merged .nc file and returns DataFrame version
+        suitable for processing.'''
 
-    if ρbins is not None:
-        KTm['ρbinned'] = bin(KTm.ρ, ρbins)
-    if Sbins is not None:
-        KTm['Sbinned'] = bin(KTm.S, Sbins)
+    turb = xr.open_dataset(filename, autoclose=True).load()
 
-    if np.all(KTm['KT'].values > 0):
-        KTm['KT'].values = np.log10(KTm['KT'].values)
+    turb[varname].values = np.log10(turb[varname].values)
 
-    KTdf = (KTm[['KT', 'ρbinned', 'z', 'season']]
-            .to_dataframe()
-            .dropna(axis=0, subset=['KT'])
-            .reset_index())
+    turb['season'] = turb.time.monsoon.labels
 
-    KTdf['latlon'] = (KTdf['lat'].astype('str') + 'N, '
-                      + KTdf['lon'].astype('str') + 'E').astype('category')
+    df = (turb[[varname, 'T', 'S', 'z', 'ρ', 'mld', 'ild', 'season']]
+          .to_dataframe()
+          .dropna(axis=0, subset=[varname])
+          .reset_index())
+
+    df['latlon'] = (df['lat'].astype('float32').astype('str') + 'N, '
+                    + df['lon'].astype('float32').astype('str')
+                    + 'E').astype('category')
+    df['season'] = df['season'].astype('category')
 
     moornames = {'RAMA12': '12.0N, 90.0E',
                  'RAMA15': '15.0N, 90.0E',
@@ -141,10 +145,51 @@ def bin_and_to_dataframe(KTm, ρbins=None, Sbins=None):
                  'NRL3': '8.0N, 85.5E',
                  'NRL4': '8.0N, 87.0E',
                  'NRL5': '8.0N, 88.5E'}
-    KTdf['moor'] = (KTdf['latlon'].map(
-        dict(zip(moornames.values(), moornames.keys())))
-                    .astype('category'))
-    return KTdf
+
+    df['moor'] = (df['latlon']
+                  .map(dict(zip(moornames.values(),
+                                moornames.keys())))
+                  .astype('category'))
+
+    if moor is not None:
+        df = df.loc[df.moor == moor]
+
+    df = bin_ml_bl_rho(df, bins)
+
+    return df
+
+
+def bin_ml_bl_rho(df, bins):
+
+    error_depth = 5
+
+    depth_minus_mld = (df.z - df.mld)
+    depth_minus_ild = (df.z - df.ild)
+    mask_ml = depth_minus_mld <= error_depth
+    mask_bl = np.logical_and(np.logical_not(mask_ml),
+                             depth_minus_ild <= error_depth)
+    mask_ml_plus = np.logical_and(
+        np.logical_not(np.logical_or(mask_ml, mask_bl)),
+        depth_minus_mld <= 15)
+    mask_ml_plus = np.zeros_like(mask_ml).astype('bool')
+    mask_deep = np.logical_not(np.logical_or(
+        np.logical_or(mask_ml, mask_bl),
+        mask_ml_plus))
+
+    df['bin'] = ''
+    df.loc[mask_ml, 'bin'] = 'ML'
+    df.loc[mask_bl, 'bin'] = 'BL'
+    # df.bin[mask_ml_plus] = 'ML+'
+    # bins = get_kmeans_bins(7, df['ρ'][mask_deep])
+    # df.bin = pd.qcut(df.ρ, 10, precision=1)
+    df.loc[mask_deep, 'bin'] = pd.cut(df.ρ.loc[mask_deep],
+                                      bins,
+                                      precision=1)
+    df['bin'] = df['bin'].astype('category')
+
+    assert(np.sum(df.bin == '') == 0)
+
+    return df
 
 
 def remake_summaries(moorings=None):
@@ -230,3 +275,39 @@ def calc_wind_input():
     wind_input.mld.attrs['description'] = 'MIMOC mixed layer depth'
 
     wind_input.to_netcdf('~/bay/estimates/wind-power-input-2014.nc')
+
+
+def bin_and_to_dataframe(KTm, ρbins=None, Sbins=None):
+    ''' OLD DEPRECATED VERSION. DO NOT USE. '''
+
+    def bin(var, bins):
+        binned = bins[np.digitize(var, bins)-1]
+        return xr.DataArray(binned, dims=var.dims, coords=var.coords)
+
+    if ρbins is not None:
+        KTm['ρbinned'] = bin(KTm.ρ, ρbins)
+    if Sbins is not None:
+        KTm['Sbinned'] = bin(KTm.S, Sbins)
+
+    if np.all(KTm['KT'].values > 0):
+        KTm['KT'].values = np.log10(KTm['KT'].values)
+
+    KTdf = (KTm[['KT', 'ρbinned', 'z', 'season']]
+            .to_dataframe()
+            .dropna(axis=0, subset=['KT'])
+            .reset_index())
+
+    KTdf['latlon'] = (KTdf['lat'].astype('str') + 'N, '
+                      + KTdf['lon'].astype('str') + 'E').astype('category')
+
+    moornames = {'RAMA12': '12.0N, 90.0E',
+                 'RAMA15': '15.0N, 90.0E',
+                 'NRL1': '5.0N, 85.5E',
+                 'NRL2': '6.5N, 85.5E',
+                 'NRL3': '8.0N, 85.5E',
+                 'NRL4': '8.0N, 87.0E',
+                 'NRL5': '8.0N, 88.5E'}
+    KTdf['moor'] = (KTdf['latlon'].map(
+        dict(zip(moornames.values(), moornames.keys())))
+                    .astype('category'))
+    return KTdf
