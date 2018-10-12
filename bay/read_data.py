@@ -191,5 +191,6 @@ def __common(mooring, minimal=False):
     if not minimal:
         mooring.ReadTropflux('../tropflux/')
         mooring.ReadSSH()
+        mooring.calc_niw_input()
 
     return mooring
