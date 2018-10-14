@@ -4088,7 +4088,7 @@ ebob = df.where(df.lat == 8).dropna(how='all')
 
 ebob['JqT'] = ebob['Jq'] * ebob['T']
 ebob['JsS'] = ebob['Js'] * ebob['S']
-ebob = ebob.where(np.abs(ebob['Jq']) < 1000)
+ebob = ebob.where(np.abs(ebob['Jq']) < 2000)
 
 grouped = ebob.groupby(['season', 'bin'])
 averaged = grouped.mean().to_xarray()
@@ -4099,13 +4099,15 @@ averaged['S'] = averaged['JsS'] / averaged['Js']
 stddev['T'] = 0
 stddev['S'] = 0
 
-# argo = (dcpy.oceans.read_argo_clim().sel(**bay.ebob_region))
+if 'argo_seas' not in locals():
+    argo = (dcpy.oceans.read_argo_clim()
+            .sel(lat=slice(7.5, 8.5), lon=slice(85.5, 88.5), time='2014')
+            .drop(['Tmean', 'Tanom', 'BATHYMETRY_MASK',
+                   'Smean', 'Sanom'])
+            .mean(['lat', 'lon']))
+    argo_seas = (argo.groupby(argo.time.monsoon.labels)
+                 .mean(dim='time').compute())
 
-# argo = (argo.drop(['Tmean', 'Tanom', 'BATHYMETRY_MASK',
-#                   'Smean', 'Sanom'])
-#         .groupby(argo.time.monsoon.labels).mean(dim='time')
-#         .compute())
-# argo = argo.mean(['lat', 'lon'])
 
 # df = averaged.to_dataframe().reset_index()
 
@@ -4113,16 +4115,32 @@ stddev['S'] = 0
 # 2. add argo climatology profiles?
 # 3.
 
-varnames = ['T', 'S', 'ρ', 'KT', 'Jq', 'Js']
+varnames = ['T', 'S', 'KT', 'Jq', 'Js']
 f, ax = plt.subplots(1, len(varnames), sharey=True, constrained_layout=True)
-axes = dict(zip(varnames, ax.flat))
+
+# f = plt.figure(constrained_layout=False)
+# gs = f.add_gridspec(2, len(varnames), height_ratios=[20, 1])
+# ax = list()
+# ax.append(f.add_subplot(gs[:, 0]))
+# for idx in range(1, len(varnames)):
+#     ax.append(f.add_subplot(gs[:, idx], sharey=ax[0]))
+
+# axes['leg'] = f.add_subplot(gs[1, :])
+axes = dict(zip(varnames, ax))
 
 for var in varnames:
     for ss in averaged.season:
-        axes[var].errorbar(averaged.sel(season=ss)[var].values,
-                           averaged.sel(season=ss).z.values,
-                           xerr=stddev.sel(season=ss)[var].values/10,
-                           fmt='o-')
+        if var == 'T' or var == 'S':
+            fmt = 'o-'
+        else:
+            fmt = 'o-'
+
+        hdl = axes[var].errorbar(averaged.sel(season=ss)[var].values,
+                                 averaged.sel(season=ss).z.values,
+                                 xerr=0, fmt=fmt, ms=2)
+        # if var == 'T' or var == 'S':
+        #     argo_seas[var].sel(monsoon=ss, pres=slice(0, 120)).plot(
+        #         ax=axes[var], color=hdl[0].get_color(), y='pres', _labels=False)
 
     axes[var].tick_params(which='both', labeltop=True, labelbottom=False,
                           top=True, bottom=False)
@@ -4132,13 +4150,47 @@ for var in varnames:
     axes[var].spines['bottom'].set_visible(False)
 
 axes['KT'].set_xscale('log')
-axes['KT'].set_ylim([110, 0])
+axes['KT'].set_ylim([110, 20])
 
-axes['Js'].legend(averaged.season.values)
+# axes['leg'].legend(averaged.season.values, ncol=4, loc='center')
 
-axes['Js'].set_xlim([0, 0.005])
+[axes[aa].axvline(0, color='gray', ls='--', zorder=-10)
+ for aa in ['Jq', 'Js']]
+axes['S'].axvline(35, color='gray', ls='--', zorder=-10)
+axes['KT'].grid(True, axis='x')
+axes['Js'].set_xlim([-0.001, 0.01])
 axes['Jq'].set_xlim([-15, 5])
 
+axes['T'].set_xlabel('Flux weighted T')
+axes['S'].set_xlabel('Flux weighted S')
+axes['KT'].set_xlabel('$K_T$ [m²/s]')
+axes['Jq'].set_xlabel('$J_q^t$ [W/m²]')
+axes['Js'].set_xlabel('$J_s^t$ [g/m²/s]')
+
+f.set_size_inches((6, 4))
+plt.savefig('images/paper1/smc-vertical-flux.pdf')
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+# Out[575]:
+:END:
+
+*** further filter ra12
+
+#+BEGIN_SRC ipython :session :results none
+
+# ra12.CombineTurb()  # reset
+
+mm1 = ra12.χpod[526].convert_to_xarray('mm1')
+tzm = mm1.dTdz.interp(time=ra12.Jq.time)
+
+plt.figure()
+Jq = ra12.Jq.sel(depth=15, time='2014')
+Jq.resample(time='D').mean('time').plot()
+(-np.sign(tzm) * np.abs(Jq)).resample(time='D').mean('time').plot()
+(-np.sign(tzm) * np.abs(Jq.where(np.abs(tzm) > 8e-4))).resample(time='D').mean('time').plot()
+(Jq.where(np.abs(tzm) > 1e-3)).resample(time='D').mean('time').plot()
 #+END_SRC
 *** refactor out
 * OSM 2018 figures
