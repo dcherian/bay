@@ -3557,7 +3557,7 @@ for season in bay.seasons:
 
     hniw = ((niw.wind_input*1000).sel(monsoon=season)
             .plot.contourf(ax=axes['atm'][season], cmap=mpl.cm.Blues,
-                           levels=40, vmin=0, vmax=2, add_colorbar=False))
+                           levels=40, vmin=0, vmax=0.8, add_colorbar=False))
 
     axes['atm'][season].quiver(niw.lon, niw.lat,
                                niw.taux.sel(monsoon=season),
@@ -3589,7 +3589,7 @@ hcb2 = plt.colorbar(hniw, ax=ax[0, 2:], orientation='horizontal',
                     label='Near-inertial wind input [mW/m²]',
                     shrink=1)
 hcb1.set_ticks(np.arange(0, 0.31, 0.05))
-hcb2.set_ticks(np.arange(0, 2.1, 0.5))
+hcb2.set_ticks(np.arange(0, 0.81, 0.2))
 
 f.set_size_inches(6, 5)
 plt.subplots_adjust(left=0.080, right=0.99, bottom=0.1, wspace=0.05, hspace=0.4, top=0.99)
