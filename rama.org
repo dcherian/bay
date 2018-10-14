@@ -1757,6 +1757,40 @@ plt.show()
 
  [[file:images/rama1314-T-s-ρ.png]]
 
+* further filtering
+My daily means are small because I get large positive heat fluxes at night. I am going to filter saying that I don't know the sign when mooring |dTdz| < 4e-4 (using seabirds accuracy spec of 2e-3 C ≡ 2 instruments * 2e-3C / 10m).
+
+#+BEGIN_SRC ipython :session :results none
+mm1 = ra12.χpod[527].convert_to_xarray('mm1')
+mmw = ra12.χpod[527].convert_to_xarray('mm1w')
+
+mm1i = mm1.interp_like(mmw)
+
+mmw_filt = mmw.where(~np.logical_and(mm1i.dTdz.rolling(time=6).mean() < 0,
+                                     mm1i.dTdz > -1e-3))
+
+mm1.dTdz.plot()
+mmw.dTdz.plot()
+mmw_filt.dTdz.plot()
+
+mm1.Jq.resample(time='D').mean('time').plot()
+mmw.Jq.resample(time='D').mean('time').plot()
+mmw_filt.Jq.resample(time='D').mean('time').plot()
+
+mm1.Jq.plot()
+mmw.Jq.plot()
+mmw_filt.Jq.plot()
+
+
+turb = ra12.turb.sel(time='2015')
+turb['mld'] = turb.mld.rolling(time=24).mean()
+mlturb = xr.Dataset()
+for var in ['Jq', 'KT']:
+    mlturb[var] = turb[var].sel(depth=15)
+    mlturb[var] = xr.where(turb.mld > 25, turb[var].sel(depth=30), mlturb[var])
+    mlturb[var] = xr.where(turb.mld > 39, turb[var].sel(depth=45), mlturb[var])
+
+#+END_SRC
 * xarray tests :noexport:
 #+BEGIN_SRC ipython :session :ipyfile images/temp/img13517bmT.png
 offset_line_plot(dcpy.ts.xfilter(ra12.χ.resample('3H', dim='time', how='mean'),
