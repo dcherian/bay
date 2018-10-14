@@ -3919,19 +3919,10 @@ nrl4.MarkSeasonsAndEvents()
 #+END_SRC
 *** Figure 3: RAMA vs NRL time series comparison
 #+BEGIN_SRC ipython :session :ipyfile images/temp/imgcqnSXp.png
-# def full_extent(ax, pad=0.0):
-#     """Get the full extent of an axes, including axes labels, tick labels, and
-#     titles."""
-
-#     from matplotlib.transforms import Bbox
-#     # For text objects, we need to draw the figure first, otherwise the extents
-#     # are undefined.
-#     ax.figure.canvas.draw()
-#     items = [ax, ax.title, ax.xaxis.label, ax.yaxis.label]
-#     items += (ax.get_xticklabels() + ax.get_yticklabels())
-#     bbox = Bbox.union([item.get_window_extent() for item in items])
-
-#     return bbox.expanded(1.0 + pad, 1.0 + pad)
+if 'ra12' not in locals():
+    ra12 = bay.read_ra12()
+if 'nrl5' not in locals():
+    nrl5 = bay.read_nrl5()
 
 from dcpy.plots import annotate_end
 
@@ -3948,30 +3939,56 @@ def int_spec(spec, lofreq, hifreq):
 
     return timeseries
 
+def interp_shear(shear):
+    z = nrl5.zχpod.isel(num=1).median().values + 10
+    return (shear.sel(depth=z, method='nearest')
+            .interpolate_na(dim='time')
+            .dropna('time'))
 
-f, axx = plt.subplots(5, 1, sharex=True, constrained_layout=True)
-f.set_constrained_layout_pads(hspace=0.001)
-axes = dict(met12=axx[0], met8=axx[2],
-            KT=axx[1], Tz=axx[3], shear=axx[4])
+mm1 = ra12.χpod[526].convert_to_xarray('mm1')
+mmw = ra12.χpod[526].convert_to_xarray('mm1w')
+tzm = mm1.dTdz.interp(time=mmw.time)
+ra12.χpod[526].Jq['mm1w'] = (-np.sign(tzm) * np.abs(
+    np.where(np.abs(tzm) > 1e-3, ra12.χpod[526].Jq['mm1w'], np.nan)))
+ra12.CombineTurb()
 
-ax, hkr = ra12.met_turb_summary(region={'time': '2014', 'depth': 15},
-                                ax=axx[:2])
-axn, hkn = nrl5.met_turb_summary(region={'time': '2014', 'depth': 104.0},
-                                 ax=[axx[2], axx[1]])
+fM2 = 24/12.42
+f0 = nrl5.inertial
 
-hdl_pointr, hdl_textr = annotate_end(hkr[0], label='12N 15m')
+# text label locations
+x0 = 0.025
+y0 = 0.8
 
-hdl_pointn, hdl_textb = annotate_end(hkn[0], label='8N 104m')
+f, axx = plt.subplots(8, 1, sharex=True, constrained_layout=True)
+f.set_constrained_layout_pads(hspace=0.001, h_pad=0)
+axes = dict(zip(['met12', 'met8', 'KT', 'Jq', 'Js', 'Tz', 'S', 'shear'], axx))
+
+hmet12 = (ra12.met.τ.resample(time='D').mean()
+          .sel(time='2014').plot(ax=axes['met12'], color='k', lw=1.2))
+hmet12[0].set_clip_on(False)
+hmet12[0].set_in_layout(False)
+
+# energy_input = np.cumsum(niw.wind_input.sel(lat=nrl5.lat,
+#                                             lon=nrl5.lon,
+#                                             method='nearest')
+#            * np.diff(niw.time).astype('timedelta64[s]').astype('float32').mean())
+nrl5.tropflux.tau.sel(time='2014').plot(ax=axes['met8'], color='k', lw=1.2)
+axes['met8'].set_ylabel('τ [N/m²]')
+axes['input'] = axes['met8'].twinx()
+axes['input'].spines['right'].set_visible(True)
+axes['input'].plot(nrl5.niw.time, nrl5.niw.true_flux*1000, color='gray')
+axes['input'].set_zorder(-2)
+axes['input'].set_ylabel('Π [mW/m²]')
+axes['input'].set_ylim([-50, 50])
 
 htxt = [axes['met12'].text(time, 0.35, season, va='bottom', zorder=-1)
         for time, season
-        in zip(['2014-02-01', '2014-04-15', '2014-07-16', '2014-10-20'],
-               ['NE', 'NESW', 'SW', 'SWNE'])]
+        in zip(['2014-02-01', '2014-03-21', '2014-07-16', '2014-10-20',
+                '2014-12-15'],
+               ['NE', 'NESW', 'SW', 'SWNE', 'NE'])]
 
 axes['met12'].set_xlim(('2014-01', '2015-01'))
 axes['met12'].set_ylim([0, 0.35])
-axes['KT'].grid(False, axis='x')
-axes['KT'].grid(True, which='both', axis='y')
 
 plt.sca(axes['shear'])
 plt.cla()
@@ -3992,16 +4009,41 @@ _, htm4 = annotate_end(hm4[0], '$M_4$')
 _, htf0 = annotate_end(hf0[0], '$f_0$')
 htm4.set_va('top')
 
-(ra12.Tz.isel(depth=0)
- .resample(time='D').mean(dim='time')
- .plot(ax=axes['Tz'], _labels=False))
-(nrl5.Tz.isel(depth=1)
- .resample(time='D').mean(dim='time')
- .plot(ax=axes['Tz'], _labels=False))
+handles = dict()
+for name in ['KT', 'Tz', 'Jq', 'Js']:
+    handles[name] = dict()
+    handles[name]['r'] = (ra12.turb[name].isel(depth=0).sel(time='2014')
+                          .resample(time='D').mean('time')
+                          .plot(ax=axes[name], _labels=False, lw=1.2))
+    handles[name]['n'] = (nrl5.turb[name].isel(depth=1).sel(time='2014')
+                          .resample(time='D').mean('time')
+                          .plot(ax=axes[name], _labels=False, lw=1.2))
+    axes[name].text(x0, y0, 'Daily avg. ' +
+                    xr.plot.utils.label_from_attrs(nrl5.turb[name]),
+                    transform=axes[name].transAxes)
+
+annotate_end(handles['KT']['r'][0], label='12N 15m')
+annotate_end(handles['KT']['n'][0], label='8N 104m')
+axes['KT'].set_yscale('log')
+axes['KT'].grid(False, axis='x')
+axes['KT'].grid(True, which='both', axis='y')
+
+hsr = (ra12.ctd.S.isel(depth=1).sel(time='2014')
+       .resample(time='6H').mean(dim='time')
+       .plot(ax=axes['S'], _labels=False))
+hsn = (nrl5.ctd.S.isel(z=0).sel(time='2014')
+       .resample(time='6H').mean(dim='time')
+       .plot(ax=axes['S'], _labels=False))
+
+_, htsr = annotate_end(hsr[0], label='12N 10m')
+_, htsn = annotate_end(hsn[0], label='8N 105m')
+htsr.set_va('top')
 
 [aa.set_xlabel('') for aa in axx]
 [aa.set_title('') for aa in axx]
+[nrl5.MarkSeasonsAndEvents(ax=aa, events=False) for aa in axx]
 axes['shear'].xaxis.set_tick_params(rotation=0)
+[tt.set_ha('center') for tt in axes['shear'].get_xticklabels()]
 axes['shear'].xaxis.set_major_formatter(mpl.dates.DateFormatter('%b-%d'))
 axes['shear'].set_xlabel('2014')
 
@@ -4009,33 +4051,35 @@ fmt = axes['shear'].yaxis.get_major_formatter()
 fmt.set_scientific(True)
 axes['shear'].yaxis.set_major_formatter(fmt)
 
-x0 = 0.025
-y0 = 0.8
 axes['shear'].text(x0, y0, 'Shear variance at 8N', transform=axes['shear'].transAxes)
-axes['Tz'].text(x0, y0, '$T_z$ [C/m]', transform=axes['Tz'].transAxes)
 axes['met12'].text(x0, y0, 'Forcing at 12N', transform=axes['met12'].transAxes)
-axes['KT'].text(x0, y0, 'Daily avg. $K_T$ [m$^2$/s]', transform=axes['KT'].transAxes)
+axes['S'].text(x0, y0, 'Salinity [psu]', transform=axes['S'].transAxes)
 axes['met8'].text(x0, y0, 'Forcing at 8N', transform=axes['met8'].transAxes)
 
+axes['Jq'].set_zorder(10)
+
+handles['Jq']['r'][0].set_clip_on(False)
+handles['Jq']['r'][0].set_in_layout(False)
+
 dcpy.plots.liney(0, ax=axes['Tz'])
+axes['Jq'].set_ylim([-50, 50])
 axes['Tz'].set_ylim([-0.1, 0.3])
 axes['KT'].set_ylabel('')
-f.set_size_inches((7, 6))
+f.set_size_inches((7, 8))
 
 f.savefig('images/paper1/rama-vs-nrl.pdf')
 #+END_SRC
 
 #+RESULTS:
 :RESULTS:
-# Out[757]:
-[[file:images/temp/imgcqnSXp.png]]
+# Out[687]:
 :END:
 
 *** Figure 4: Vertical profile of K_T distributions
 *** Figure 5: Vertical profiles of KT, Jq, etc. for 8N
-#+BEGIN_SRC ipython :session :ipyfile images/temp/imgiFb2lm.png
+#+BEGIN_SRC ipython :session :results none
 if 'df' not in locals():
-    df = bay.nc_to_binned_df('./bay_merged_hourly.nc')
+    df = bay.nc_to_binned_df('./bay_merged_10min.nc')
 
 ebob = df.where(df.lat == 8).dropna(how='all')
 # ebob['moor'] = ebob.moor.astype('category')
