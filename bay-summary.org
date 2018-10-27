@@ -3260,7 +3260,7 @@ plt.legend()
 #+RESULTS:
 [[file:../images//temp/img3907e_A.png]]
 
-* [#B] ARGO data : S_min and S_max
+* ARGO data : S_min and S_max
 [[file:../images//argo-smin-smax.png]]
 * code tests
 ** MLD calc
@@ -3458,6 +3458,7 @@ bibliography:~/Papers/bibtexLibrary.bib
 * Paper figures
 ** summary paper
 *** Figure 1: map + depths on argo climatology
+
 #+BEGIN_SRC ipython :session :ipyfile images/temp/imgeMzvg3.png
 import cartopy.crs as ccrs
 
@@ -3954,6 +3955,7 @@ nrl4.KT.z.resample(time='D').mean(dim='time').plot.line(x='time')
 nrl4.MarkSeasonsAndEvents()
 #+END_SRC
 *** Figure 3: RAMA vs NRL time series comparison
+
 #+BEGIN_SRC ipython :session :ipyfile images/temp/imgcqnSXp.png
 if 'ra12' not in locals():
     ra12 = bay.read_ra12()
@@ -3981,12 +3983,12 @@ def interp_shear(shear):
             .interpolate_na(dim='time')
             .dropna('time'))
 
-mm1 = ra12.χpod[526].convert_to_xarray('mm1')
-mmw = ra12.χpod[526].convert_to_xarray('mm1w')
-tzm = mm1.dTdz.interp(time=mmw.time)
-ra12.χpod[526].Jq['mm1w'] = (-np.sign(tzm) * np.abs(
-    np.where(np.abs(tzm) > 1e-3, ra12.χpod[526].Jq['mm1w'], np.nan)))
-ra12.CombineTurb()
+# mm1 = ra12.χpod[526].convert_to_xarray('mm1')
+# mmw = ra12.χpod[526].convert_to_xarray('mm1w')
+# tzm = mm1.dTdz.interp(time=mmw.time)
+# ra12.χpod[526].Jq['mm1w'] = (-np.sign(tzm) * np.abs(
+#     np.where(np.abs(tzm) > 1e-3, ra12.χpod[526].Jq['mm1w'], np.nan)))
+# ra12.CombineTurb()
 
 fM2 = 24/12.42
 f0 = nrl5.inertial
