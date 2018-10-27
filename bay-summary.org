@@ -3956,6 +3956,15 @@ nrl4.MarkSeasonsAndEvents()
 #+END_SRC
 *** Figure 3: RAMA vs NRL time series comparison
 
+todo [5/5]
+- [X] bring back net heat flux
+- [X] color axes by variable
+- [X] combine turbulent fluxes for each location in one panel so that I can see something
+  - [X] again color axes
+  - [X] rearrange for some symmetry
+- [X] move 8N forcing down below
+- [X] add total shear variance to last panel
+
 #+BEGIN_SRC ipython :session :ipyfile images/temp/imgcqnSXp.png
 if 'ra12' not in locals():
     ra12 = bay.read_ra12()
@@ -3963,6 +3972,12 @@ if 'nrl5' not in locals():
     nrl5 = bay.read_nrl5()
 
 from dcpy.plots import annotate_end
+
+def set_ax_color(ax, color, spine='left'):
+    ax.spines[spine].set_color(color)
+    [tt.set_color(color) for tt in ax.get_yticklabels()]
+    ax.yaxis.label.set_color(color)
+    ax.tick_params('y', colors=color)
 
 def int_spec(spec, lofreq, hifreq):
     ''' Integrate spectrogram between lofreq, hifreq.
@@ -3983,13 +3998,34 @@ def interp_shear(shear):
             .interpolate_na(dim='time')
             .dropna('time'))
 
-# mm1 = ra12.χpod[526].convert_to_xarray('mm1')
+mm1 = ra12.χpod[526].convert_to_xarray('mm1')
 # mmw = ra12.χpod[526].convert_to_xarray('mm1w')
 # tzm = mm1.dTdz.interp(time=mmw.time)
 # ra12.χpod[526].Jq['mm1w'] = (-np.sign(tzm) * np.abs(
 #     np.where(np.abs(tzm) > 1e-3, ra12.χpod[526].Jq['mm1w'], np.nan)))
 # ra12.CombineTurb()
 
+# rama12 : filter out convective time periods
+jq0 = ra12.flux.Jq0.interp_like(ra12.Jq)
+tzm = mm1.dTdz.interp_like(ra12.Jq)
+N2 = ra12.N2.isel(depth=0)
+jq0.values[np.isnan(jq0)] = 2
+mask = ~np.logical_and(
+    np.logical_and(jq0 < 0,
+                   ra12.Jq.depth[0] < ra12.mld.interp_like(ra12.Jq)),
+    np.abs(tzm) < 1e-3)
+
+ra12.Jq[0, :] = ra12.Jq.isel(depth=0).where(mask)
+
+# f, ax = plt.subplots(2, 1, sharex=True)
+# ra12.Jq.isel(depth=0).plot(ax=ax[0])
+# ra12.Jq.isel(depth=0).where(mask).plot(ax=ax[0])
+# ra12.Jq.isel(depth=0).where(np.abs(tzm) > 1e-3).plot(ax=ax[0])
+# ra12.Jq.isel(depth=0).resample(time='D').mean('time').plot(ax=ax[1])
+# ra12.Jq.isel(depth=0).where(mask).resample(time='D').mean('time').plot(ax=ax[1])
+# ra12.Jq.isel(depth=0).where(np.abs(tzm) > 1e-3).resample(time='D').mean('time').plot(ax=ax[1])
+
+trange = '2014'
 fM2 = 24/12.42
 f0 = nrl5.inertial
 
@@ -3997,12 +4033,13 @@ f0 = nrl5.inertial
 x0 = 0.025
 y0 = 0.8
 
-f, axx = plt.subplots(8, 1, sharex=True, constrained_layout=True)
+f, axx = plt.subplots(9, 1, sharex=True, constrained_layout=True)
 f.set_constrained_layout_pads(hspace=0.001, h_pad=0)
-axes = dict(zip(['met12', 'met8', 'KT', 'Jq', 'Js', 'Tz', 'S', 'shear'], axx))
+axes = dict(zip(['met12', 'jq12', 'KT', 'jq8', 'met8',
+                 'coverage','Tz', 'S', 'shear'], axx))
 
 hmet12 = (ra12.met.τ.resample(time='D').mean()
-          .sel(time='2014').plot(ax=axes['met12'], color='k', lw=1.2))
+          .sel(time=trange).plot(ax=axes['met12'], color='k', lw=1.2))
 hmet12[0].set_clip_on(False)
 hmet12[0].set_in_layout(False)
 
@@ -4010,99 +4047,156 @@ hmet12[0].set_in_layout(False)
 #                                             lon=nrl5.lon,
 #                                             method='nearest')
 #            * np.diff(niw.time).astype('timedelta64[s]').astype('float32').mean())
-nrl5.tropflux.tau.sel(time='2014').plot(ax=axes['met8'], color='k', lw=1.2)
-axes['met8'].set_ylabel('τ [N/m²]')
+nrl5.tropflux.tau.sel(time=trange).plot(ax=axes['met8'], color='k', lw=1.2)
 axes['input'] = axes['met8'].twinx()
-axes['input'].spines['right'].set_visible(True)
 axes['input'].plot(nrl5.niw.time, nrl5.niw.true_flux*1000, color='gray')
-axes['input'].set_zorder(-2)
-axes['input'].set_ylabel('Π [mW/m²]')
-axes['input'].set_ylim([-50, 50])
+axes['input'].spines['right'].set_visible(True)
 
+shear_pod = interp_shear(nrl5.vel.uz) + 1j*interp_shear(nrl5.vel.vz)
+shearspec = (dcpy.ts.Spectrogram(np.abs(shear_pod), dim='time',
+                                nfft=30*24, shift=2*24,
+                                multitaper=True, decimate=False, dt=1/24)
+             .sel(time=trange))
+hm2 = ((int_spec(shearspec, 0.9*(fM2-f0), 1.1*(fM2+f0))/1e-6)
+       .plot(ax=axes['shear'], label='$M_2$'))
+hm4 = ((int_spec(shearspec, 0.9*(fM2*2-f0), 1.1*(fM2*2-f0))/1e-6)
+       .plot(ax=axes['shear'], label='$M_4$'))
+hf0 = ((int_spec(shearspec, 0.6*f0, 1.5*f0)/1e-6)
+       .plot(ax=axes['shear'], label='$f_0$', color='C4'))
+hiw = ((int_spec(shearspec, 0.6*f0, shearspec.freq.max())/1e-6)
+       .plot(ax=axes['shear'], label='> f_0', color='k', yscale='log'))
+_, htm2 = annotate_end(hm2[0], '$M_2$')
+_, htm4 = annotate_end(hm4[0], '$M_4$', va='top')
+_, htf0 = annotate_end(hf0[0], '$f_0$')
+_, hiw0 = annotate_end(hiw[0], '$> f_0$', va='center')
+
+handles = dict()
+for name, label in zip(['KT', 'Tz'], ['c', 'g']):
+    handles[name] = dict()
+    handles[name]['r'] = (ra12.turb[name].isel(depth=0).sel(time=trange)
+                          .resample(time='D').mean('time')
+                          .plot(ax=axes[name], _labels=False, lw=1.2))
+    handles[name]['n'] = (nrl5.turb[name].isel(depth=1).sel(time=trange)
+                          .resample(time='D').mean('time')
+                          .plot(ax=axes[name], _labels=False, lw=1.2))
+    axes[name].text(x0, y0, label+') Daily avg. ' +
+                    xr.plot.utils.label_from_attrs(nrl5.turb[name]),
+                    transform=axes[name].transAxes)
+
+annotate_end(handles['KT']['r'][0], label='12N 15m', va='center')
+annotate_end(handles['KT']['n'][0], label='8N 104m')
+
+for m, z,  axname, hname in zip([ra12, nrl5], [0, 1],
+                                ['jq12', 'jq8'], ['r', 'n']):
+    axes['js'+axname[2:]] = axes[axname].twinx()
+    axs = axes['js'+axname[2:]]
+    hq = (m.turb['Jq'].isel(depth=z).sel(time=trange)
+          .resample(time='D').mean('time')
+          .plot(ax=axes[axname], _labels=False, lw=1.2,
+                color=handles['KT'][hname][0].get_color()))
+
+    hs = ((m.turb['Js']/1e-2).isel(depth=z).sel(time=trange)
+          .resample(time='D').mean('time')
+          .plot(ax=axs, _labels=False, lw=1.2, color='gray'))
+    for hh in [hq, hs]:
+        hh[0].set_clip_on(False)
+        hh[0].set_in_layout(False)
+
+    axs.set_zorder(-1)
+    axs.spines['right'].set_visible(True)
+
+hsr = (ra12.ctd.S.isel(depth=1).sel(time=trange)
+       .resample(time='6H').mean(dim='time')
+       .plot(ax=axes['S'], _labels=False))
+hsn = (nrl5.ctd.S.isel(z=0).sel(time=trange)
+       .resample(time='6H').mean(dim='time')
+       .plot(ax=axes['S'], _labels=False))
+
+_, htsr = annotate_end(hsr[0], label='12N 10m', va='top')
+_, htsn = annotate_end(hsn[0], label='8N 105m')
+
+annotate_end(handles['Tz']['r'][0], label='12N 10m')
+annotate_end(handles['Tz']['n'][0], label='8N 105m')
+
+jqd = jq0.resample(time='D').mean()
+axes['jq0'] = axes['met12'].twinx()
+ra12.PlotFlux(axes['jq0'], jqd.time.values, jqd.values)
+
+# labels
 htxt = [axes['met12'].text(time, 0.35, season, va='bottom', zorder=-1)
         for time, season
         in zip(['2014-02-01', '2014-03-21', '2014-07-16', '2014-10-20',
                 '2014-12-15'],
                ['NE', 'NESW', 'SW', 'SWNE', 'NE'])]
 
+axes['met12'].text(x0, y0, 'a) Forcing at 12N', transform=axes['met12'].transAxes)
+axes['jq12'].text(x0, y0, 'b) Turbulent fluxes at 12N',
+                   transform=axes['jq12'].transAxes)
+axes['jq8'].text(x0, y0, 'd) Turbulent fluxes  at 8N',
+                 transform=axes['jq8'].transAxes)
+axes['met8'].text(x0, y0, 'e) Forcing at 8N', transform=axes['met8'].transAxes)
+axes['coverage'].text(x0, 0.05, 'f) Fraction daily coverage', va='bottom',
+                      transform=axes['coverage'].transAxes)
+axes['S'].text(x0, y0, 'h) Salinity [psu]', transform=axes['S'].transAxes)
+axes['shear'].text(x0, y0, 'i) Shear variance at 8N [$10^{-6}$ units]',
+                   transform=axes['shear'].transAxes)
+
+for jj in [ra12.Jq.isel(depth=0), nrl5.Jq.isel(depth=1)]:
+    ((jj.sel(time=trange).groupby(jj.sel(time=trange).time.dt.floor('D'))
+      .count()/144)
+     .plot(ax=axes['coverage']))
+
+# customize axes
 axes['met12'].set_xlim(('2014-01', '2015-01'))
 axes['met12'].set_ylim([0, 0.35])
+axes['met12'].set_ylabel('$τ$ [N/m²]')
+axes['jq0'].set_ylabel('$J_q^0$ [W/m²]')
+axes['jq0'].set_ylim([-200, 200])
+axes['jq0'].set_zorder(-1)
+axes['jq0'].spines['right'].set_visible(True)
 
-plt.sca(axes['shear'])
-plt.cla()
-shear_pod = interp_shear(nrl5.vel.uz) + 1j*interp_shear(nrl5.vel.vz)
-shearspec = (dcpy.ts.Spectrogram(np.abs(shear_pod), dim='time',
-                                nfft=30*24, shift=2*24,
-                                multitaper=True, decimate=False, dt=1/24)
-             .sel(time='2014'))
+axes['met8'].set_ylabel('$τ$ [N/m²]')
+axes['input'].set_zorder(-2)
+axes['input'].set_ylabel('Π [mW/m²]')
+axes['input'].set_ylim([-50, 50])
 
-hm2 = (int_spec(shearspec, 0.9*(fM2-f0), 1.1*(fM2+f0))
-       .plot(ax=axes['shear'], label='$M_2$'))
-hm4 = (int_spec(shearspec, 0.9*(fM2*2-f0), 1.1*(fM2*2-f0))
-       .plot(ax=axes['shear'], label='$M_4$'))
-hf0 = (int_spec(shearspec, 0.6*f0, 1.5*f0)
-       .plot(ax=axes['shear'], label='$f_0$', color='k'))
-_, htm2 = annotate_end(hm2[0], '$M_2$')
-_, htm4 = annotate_end(hm4[0], '$M_4$')
-_, htf0 = annotate_end(hf0[0], '$f_0$')
-htm4.set_va('top')
-
-handles = dict()
-for name in ['KT', 'Tz', 'Jq', 'Js']:
-    handles[name] = dict()
-    handles[name]['r'] = (ra12.turb[name].isel(depth=0).sel(time='2014')
-                          .resample(time='D').mean('time')
-                          .plot(ax=axes[name], _labels=False, lw=1.2))
-    handles[name]['n'] = (nrl5.turb[name].isel(depth=1).sel(time='2014')
-                          .resample(time='D').mean('time')
-                          .plot(ax=axes[name], _labels=False, lw=1.2))
-    axes[name].text(x0, y0, 'Daily avg. ' +
-                    xr.plot.utils.label_from_attrs(nrl5.turb[name]),
-                    transform=axes[name].transAxes)
-
-annotate_end(handles['KT']['r'][0], label='12N 15m')
-annotate_end(handles['KT']['n'][0], label='8N 104m')
+axes['KT'].set_ylabel('')
+axes['KT'].set_ylim([1e-7, 1e-1])
+axes['KT'].set_yticks([1e-6, 1e-5, 1e-4, 1e-3])
 axes['KT'].set_yscale('log')
 axes['KT'].grid(False, axis='x')
 axes['KT'].grid(True, which='both', axis='y')
 
-hsr = (ra12.ctd.S.isel(depth=1).sel(time='2014')
-       .resample(time='6H').mean(dim='time')
-       .plot(ax=axes['S'], _labels=False))
-hsn = (nrl5.ctd.S.isel(z=0).sel(time='2014')
-       .resample(time='6H').mean(dim='time')
-       .plot(ax=axes['S'], _labels=False))
+axes['jq12'].set_ylim([-50, 50])
+axes['jq8'].set_ylim([-15, 15])
+axes['js8'].set_ylim([-1e-2, 2e-1])
+axes['jq8'].grid(False)
+[axes[aa].set_ylabel('$J_q^t$ [W/m²]') for aa in ['jq12', 'jq8']]
+[axes[aa].set_ylabel('$J_s^t$ \n [$10^{-2}$ g/m²/s]') for aa in ['js12', 'js8']]
+set_ax_color(axes['jq12'], hsr[0].get_color())
+set_ax_color(axes['jq8'], hsn[0].get_color())
+[set_ax_color(axes[aa], 'gray', 'right') for aa in ['js12', 'js8']]
 
-_, htsr = annotate_end(hsr[0], label='12N 10m')
-_, htsn = annotate_end(hsn[0], label='8N 105m')
-htsr.set_va('top')
+axes['coverage'].set_ylabel('')
+axes['coverage'].set_yticks([0, 0.5, 1])
+
+dcpy.plots.liney(0, ax=axes['Tz'])
+axes['Tz'].set_ylim([-0.08, 0.38])
+
+# fmt = axes['shear'].yaxis.get_major_formatter()
+# fmt.set_scientific(True)
+# axes['shear'].yaxis.set_major_formatter(fmt)
 
 [aa.set_xlabel('') for aa in axx]
 [aa.set_title('') for aa in axx]
-[nrl5.MarkSeasonsAndEvents(ax=aa, events=False) for aa in axx]
+[nrl5.MarkSeasonsAndEvents(ax=axes[aa], events=False)
+ for aa in ['jq0', 'js12', 'js8', 'KT', 'Tz', 'S', 'shear', 'input', 'coverage']]
+
 axes['shear'].xaxis.set_tick_params(rotation=0)
 [tt.set_ha('center') for tt in axes['shear'].get_xticklabels()]
 axes['shear'].xaxis.set_major_formatter(mpl.dates.DateFormatter('%b-%d'))
 axes['shear'].set_xlabel('2014')
 
-fmt = axes['shear'].yaxis.get_major_formatter()
-fmt.set_scientific(True)
-axes['shear'].yaxis.set_major_formatter(fmt)
-
-axes['shear'].text(x0, y0, 'Shear variance at 8N', transform=axes['shear'].transAxes)
-axes['met12'].text(x0, y0, 'Forcing at 12N', transform=axes['met12'].transAxes)
-axes['S'].text(x0, y0, 'Salinity [psu]', transform=axes['S'].transAxes)
-axes['met8'].text(x0, y0, 'Forcing at 8N', transform=axes['met8'].transAxes)
-
-axes['Jq'].set_zorder(10)
-
-handles['Jq']['r'][0].set_clip_on(False)
-handles['Jq']['r'][0].set_in_layout(False)
-
-dcpy.plots.liney(0, ax=axes['Tz'])
-axes['Jq'].set_ylim([-50, 50])
-axes['Tz'].set_ylim([-0.1, 0.3])
-axes['KT'].set_ylabel('')
 f.set_size_inches((7, 8))
 
 f.savefig('images/paper1/rama-vs-nrl.pdf')
@@ -4115,6 +4209,24 @@ f.savefig('images/paper1/rama-vs-nrl.pdf')
 
 *** Figure 4: Vertical profile of K_T distributions
 *** Figure 5: Vertical profiles of KT, Jq, etc. for 8N
+#+BEGIN_SRC ipython :session :results none
+
+f, ax = plt.subplots(4, 1, sharey=True, sharex='col')
+axes = dict(zip(bay.seasons, ax))
+
+grouped = ebob.groupby(['season', 'bin'])
+
+for (season, rhobin), group in grouped:
+    axes[season].boxplot(group['Jq'],
+                         positions=[group.z.median()],
+                         vert=False, sym='.',
+                         whis=500,
+                         widths=5)
+
+axes[season].set_ylim([120, 0])
+axes[season].set_yticks(range(120, 0, -20))
+#+END_SRC
+
 #+BEGIN_SRC ipython :session :results none
 if 'df' not in locals():
     df = bay.nc_to_binned_df('./bay_merged_10min.nc')
@@ -4464,6 +4576,17 @@ with plt.rc_context({'font.size': 15,
 # Out[16]:
 [[file:images/argo-clim-χpod-depths.png]]
 :END:
+* Satellite data
+SMAP: https://podaac.jpl.nasa.gov/dataset/SMAP_RSS_L3_SSS_SMI_8DAY-RUNNINGMEAN_V2?ids=ProcessingLevel:Collections&values=*3*:SMAP-SSS
+
+MODIS Chl-a:
+https://podaac.jpl.nasa.gov/dataset/MODIS_Aqua_L3_CHLA_Daily_4km_V2014.0_R?ids=Measurement:Variable&values=Ocean%20Optics:Ocean%20Color
+
+** Visible imagery
+This might be a good product: https://lpdaac.usgs.gov/dataset_discovery/modis/modis_products_table/mod09q1_v006.
+I got there from here: https://modis.gsfc.nasa.gov/data/dataprod/mod09.php
+
+will need to follow cite:Gumley2010.
 * test bootstrap
 #+BEGIN_SRC ipython :session :ipyfile images/temp/imgMFPMNy.png
 import numpy as np
