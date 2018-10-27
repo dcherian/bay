@@ -4126,11 +4126,11 @@ ebob = df.where(df.lat == 8).dropna(how='all')
 
 ebob['JqT'] = ebob['Jq'] * ebob['T']
 ebob['JsS'] = ebob['Js'] * ebob['S']
-ebob = ebob.where(np.abs(ebob['Jq']) < 2000)
+ebob = ebob.where(np.abs(ebob['Jq']) < 1000)
 
 grouped = ebob.groupby(['season', 'bin'])
-averaged = grouped.mean().to_xarray()
-stddev = grouped.std().to_xarray()
+averaged = grouped.mean().where(grouped.count() > 1440).to_xarray()
+stddev = grouped.std().where(grouped.count() > 1440).to_xarray()
 
 averaged['T'] = averaged['JqT'] / averaged['Jq']
 averaged['S'] = averaged['JsS'] / averaged['Js']
@@ -4154,18 +4154,19 @@ if 'argo_seas' not in locals():
 # 3.
 
 varnames = ['T', 'S', 'KT', 'Jq', 'Js']
-f, ax = plt.subplots(1, len(varnames), sharey=True, constrained_layout=True)
 
-# f = plt.figure(constrained_layout=False)
-# gs = f.add_gridspec(2, len(varnames), height_ratios=[20, 1])
-# ax = list()
-# ax.append(f.add_subplot(gs[:, 0]))
-# for idx in range(1, len(varnames)):
-#     ax.append(f.add_subplot(gs[:, idx], sharey=ax[0]))
+f = plt.figure(constrained_layout=True)
+f.set_constrained_layout_pads(wspace=0/72, w_pad=0, hspace=0, h_pad=0)
+gs = mpl.gridspec.GridSpec(2, len(varnames), figure=f, height_ratios=[20, 1])
+ax = list()
+ax.append(f.add_subplot(gs[0, 0]))
+for idx in range(1, len(varnames)):
+    ax.append(f.add_subplot(gs[0, idx], sharey=ax[0]))
 
-# axes['leg'] = f.add_subplot(gs[1, :])
 axes = dict(zip(varnames, ax))
+axes['leg'] = f.add_subplot(gs[1, :])
 
+hdl = list()
 for var in varnames:
     for ss in averaged.season:
         if var == 'T' or var == 'S':
@@ -4173,9 +4174,9 @@ for var in varnames:
         else:
             fmt = 'o-'
 
-        hdl = axes[var].errorbar(averaged.sel(season=ss)[var].values,
-                                 averaged.sel(season=ss).z.values,
-                                 xerr=0, fmt=fmt, ms=2)
+        hdl.append(axes[var].errorbar(averaged.sel(season=ss)[var].values,
+                                      averaged.sel(season=ss).z.values,
+                                      xerr=0, fmt=fmt, ms=2))
         # if var == 'T' or var == 'S':
         #     argo_seas[var].sel(monsoon=ss, pres=slice(0, 120)).plot(
         #         ax=axes[var], color=hdl[0].get_color(), y='pres', _labels=False)
@@ -4186,18 +4187,20 @@ for var in varnames:
     axes[var].xaxis.set_label_position('top')
     axes[var].spines['top'].set_visible(True)
     axes[var].spines['bottom'].set_visible(False)
+    axes[var].spines['left'].set_bounds(110, 30)
 
-axes['KT'].set_xscale('log')
-axes['KT'].set_ylim([110, 20])
-
-# axes['leg'].legend(averaged.season.values, ncol=4, loc='center')
+axes['T'].set_ylabel('Depth [m]')
 
 [axes[aa].axvline(0, color='gray', ls='--', zorder=-10)
  for aa in ['Jq', 'Js']]
 axes['S'].axvline(35, color='gray', ls='--', zorder=-10)
+axes['Js'].set_xlim([-0.0005, 0.005])
+axes['Jq'].set_xlim([-10, 2])
+
 axes['KT'].grid(True, axis='x')
-axes['Js'].set_xlim([-0.001, 0.01])
-axes['Jq'].set_xlim([-15, 5])
+axes['KT'].set_xticks([1e-6, 1e-5, 1e-4])
+axes['KT'].set_xlim([1e-7, 0.3e-3])
+axes['KT'].set_xscale('log')
 
 axes['T'].set_xlabel('Flux weighted T')
 axes['S'].set_xlabel('Flux weighted S')
@@ -4205,7 +4208,16 @@ axes['KT'].set_xlabel('$K_T$ [m²/s]')
 axes['Jq'].set_xlabel('$J_q^t$ [W/m²]')
 axes['Js'].set_xlabel('$J_s^t$ [g/m²/s]')
 
-f.set_size_inches((6, 4))
+axes['Js'].set_ylim([110, 25])
+
+[aa.tick_params(labelleft=False) for aa in ax[1:]]
+
+axes['leg'].legend(labels=bay.seasons, ncol=4, handles=hdl[:4], loc='center')
+axes['leg'].set_yticks([])
+axes['leg'].set_xticks([])
+[spine.set_visible(False) for spine in axes['leg'].spines.values()]
+
+f.set_size_inches((6, 3.5))
 plt.savefig('images/paper1/smc-vertical-flux.pdf')
 #+END_SRC
 
