@@ -1679,9 +1679,45 @@ ewa.imag.plot(ax=ax[1, 1])
 # Out[214]:
 : [<matplotlib.lines.Line2D at 0x7f7c58aeb780>]
 :END:
+** Internal tides radiating out from the Andaman Sea :ebob:todo:
+Let's use the RAMA 8N mooring to see if there's some seasonality to the internal tide energy being radiated out. It would be good to do this with some NIOT buoy data.
+
+Emily says the best thing to look for is the $w$ field; this is what she did for her thesis stuff. I'm punting this to future work for the EBOB paper.
+
+#+BEGIN_SRC ipython :session :ipyfile images/rama-8n-2m2-3m2.png
+def read_pmel(file):
+    ds = xr.open_dataset(file, decode_cf=False)
+    for var in ds:
+        ds[var].attrs['missing_value'] = ds.attrs['missing_value']
+        ds[var].attrs['_FillValue'] = ds.attrs['_FillValue']
+
+    return xr.decode_cf(ds)
+
+r8 = (read_pmel('~/TaoTritonPirataRama/high_resolution/10m/t8n90e_10m.cdf')
+      .rename({'T_20': 'temp'})
+      .squeeze().load())
+
+T = r8.temp.sel(depth=slice(80, 200)).mean('depth')
+
+for ii in [2, 3]:
+    bp = dcpy.ts.BandPassButter(T, np.array([1/1.05, 1.05])*24/12.42*ii,
+                                dt=1/144, debug=False)
+    (bp**2).groupby('time.month').mean('time').plot(label=str(ii)+'$M_2$')
+plt.legend()
+
+# port blair sea level
+# sl = xr.open_dataset('~/datasets/sealevel/port-blair.nc')
+# sl.sea_level.squeeze().plot()
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+# Out[81]:
+: <matplotlib.legend.Legend at 0x7f1c620e2550>
+[[file:images/rama-8n-2m2-3m2.png]]
+:END:
 * checking inter-mooring variability
 #+BEGIN_SRC ipython :session :ipyfile images/temp/imgBRHfA4.png
-
 turb = xr.open_dataset('bay_merged_hourly.nc')
 
 ra = (turb.KT.sel(lon=90)
