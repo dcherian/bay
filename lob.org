@@ -10,8 +10,7 @@ if 'mur' in locals():
     mur.close()
     del mur
 
-mur = xr.open_mfdataset('./datasets/mur/*.nc')
-mur.rename({'analysed_sst': 'sst'}, inplace=True)
+mur = xr.open_mfdataset('./datasets/mur/*.nc').rename({'analysed_sst': 'sst'})
 # sst = mur.sst.chunk({'time':365})
 #+END_SRC
 
@@ -24,8 +23,7 @@ if 'mur' in locals():
     mur.close()
     del mur
 
-cmc = xr.open_mfdataset('./datasets/cmc/*.nc')
-cmc.rename({'analysed_sst': 'sst'}, inplace=True)
+cmc = xr.open_mfdataset('./datasets/cmc/*.nc').rename({'analysed_sst': 'sst'})
 sst = cmc['sst'].where(cmc.mask == 1).load()
 sst.name = 'CMC SST'
 #+END_SRC

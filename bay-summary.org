@@ -1363,7 +1363,7 @@ ax[0].set_xlim(['2014-01-01', '2014-12-31'])
  .plot(x='month', robust=True, vmin=0, ax=ax[1], cmap=mpl.cm.Reds))
 ax[1].set_title('Longitudinally-averaged monthly-mean wind-input [mW/m²]')
 
-plt.savefig('images/niw-input-lon-mean.png')
+f.savefig('images/niw-input-lon-mean.png')
 #+END_SRC
 #+CAPTION: Monthly mean near-inertial wave input. These values seem low currently. :( I've used MIMOC MLD (Argo MLD has some gaps) and Tropflux winds. For about half the year, there's very little wind input north of 10N!
 [[file:images/niw-input-monthly.png]]
