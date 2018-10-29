@@ -3596,9 +3596,10 @@ for season in bay.seasons:
             .plot.contourf(ax=axes['atm'][season], cmap=mpl.cm.Blues,
                            levels=40, vmin=0, vmax=0.8, add_colorbar=False))
 
-    axes['atm'][season].quiver(niw.lon, niw.lat,
-                               niw.taux.sel(monsoon=season),
-                               niw.tauy.sel(monsoon=season))
+    axes['atm'][season].quiver(tropflux.longitude, tropflux.latitude,
+                               tropflux.taux.sel(monsoon=season),
+                               tropflux.tauy.sel(monsoon=season),
+                               scale=0.8, width=0.006)
     [axes[row][season].text(0.05, 0.875, season,
                             transform=axes[row][season].transAxes,
                             color='k', zorder=10)

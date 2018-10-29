@@ -213,12 +213,15 @@ def calc_wind_input():
                   lon=region['lon'],
                   time=slice('2013-12-01', '2014-11-30'))
 
-    u = xr.open_mfdataset('/home/deepak/datasets/ncep/uwnd*.nc')
-    v = xr.open_mfdataset('/home/deepak/datasets/ncep/vwnd*.nc')
+    u = xr.open_mfdataset('/home/deepak/datasets/ncep/uwnd*.nc').load()
+    v = xr.open_mfdataset('/home/deepak/datasets/ncep/vwnd*.nc').load()
     taux = u.uwnd.sel(trange).copy(
         data=airsea.windstress.stress(u.uwnd.sel(trange)))
     tauy = v.vwnd.sel(trange).copy(
         data=airsea.windstress.stress(v.vwnd.sel(trange)))
+
+    taux = taux * np.sign(u.uwnd)
+    tauy = tauy * np.sign(v.vwnd)
     tau = (xr.merge([taux, tauy]).sortby('lat')
            .rename({'uwnd': 'taux', 'vwnd': 'tauy'}))
 
