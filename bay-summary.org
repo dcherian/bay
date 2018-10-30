@@ -2113,6 +2113,72 @@ plt.gca().set_xlim(['2014-01-01', '2014-12-31'])
 # Out[18]:
 : (735234.0, 735598.0)
 :END:
+** richardson number
+Nothing conclusive; though it does decrease for the entirety of the time that AS water is present.
+
+#+BEGIN_SRC ipython :session :ipyfile images/temp/imgkmuAvt.png
+shear = nrl5.vel.shear.sel(depth=120, method='nearest').interpolate_na('time')
+N2 = ((9.81/1025 * nrl5.ctd.ρ.diff('z')/nrl5.ctd.depth.diff('z'))
+      .isel(z=1))
+S2 = shear ** 2
+Ri = (N2.resample(time='H').mean()/S2).sel(time='2014')
+
+f, ax = plt.subplots(4, 1, sharex=True)
+(Ri.plot(ax=ax[0], yscale='log', ylim=[0.1, 1e2]))
+ax[0].set_ylabel('hourly $Ri$')
+
+((4*N2).resample(time='H').mean().sel(time='2014')
+ .plot(label='$4N²$', ax=ax[1]))
+(S2.resample(time='H').mean().sel(time='2014')
+ .plot(label='$S²$', ax=ax[1]))
+ax[1].legend()
+ax[1].set_ylabel('')
+
+((Ri.where(Ri < 2).resample(time='D').count()/24)
+ .plot(ax=ax[2], label='< 2'))
+# ((Ri.where(Ri < 5).resample(time='D').count()/24)
+#  .plot(ax=ax[2], label='< 5'))
+((Ri.where(Ri < 10).resample(time='D').count()/24)
+ .plot(ax=ax[2], label='< 10'))
+ax[2].set_ylabel('Fraction of day')
+ax[2].legend(title='hourly Ri')
+
+(nrl5.KT.resample(time='D').mean('time').sel(time='2014')
+ .plot.line(x='time', ax=ax[-1], yscale='log'))
+
+[aa.set_xlabel('') for aa in ax]
+
+f.savefig('images/nrl5-ri.png')
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+# Out[58]:
+:END:
+
+** shear variance by bandpassing
+#+BEGIN_SRC ipython :session :ipyfile images/temp/imgef1xCD.png
+def calc_variance(freqs):
+    return (dcpy.ts.BandPassButter(
+        nrl5.vel.shear.sel(depth=120, method='nearest')
+        .interpolate_na('time'),
+        freqs, dim='time', dt=1/24, debug=False)
+            .resample(time='D').var())
+
+inertial = calc_variance(np.array([1/1.5, 1.5]) * nrl5.inertial.values)
+M2 = calc_variance(np.array([1/1.05, 1.05]) * 24/12.42)
+M4 = calc_variance(np.array([1/1.05, 1.05]) * 24/12.42*2)
+
+plt.figure()
+inertial.plot()
+M2.plot()
+M4.plot()
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+# Out[107]:
+:END:
 * Barrier layers
 When the freshwater arrives, I see large values of Jqt at 30m/45m. This is at both 12N, 15N in both 2014, 2015.
 
@@ -3535,14 +3601,14 @@ if 'tropflux' not in locals():
     tropflux = (tropflux.groupby(tropflux.time.monsoon.labels)
                 .mean(dim='time'))
 
-if 'trmm' not in locals():
-    trmm = (dcpy.oceans.read_trmm()
-            .sel(time='2014',
-                 lat=slice(2, 25),
-                 lon=slice(78, 96)))
-    trmm = (trmm.groupby(trmm.time.monsoon.labels)
-            .sum(dim='time')
-            .load())
+# if 'trmm' not in locals():
+#     trmm = (dcpy.oceans.read_trmm()
+#             .sel(time='2014',
+#                  lat=slice(2, 25),
+#                  lon=slice(78, 96)))
+#     trmm = (trmm.groupby(trmm.time.monsoon.labels)
+#             .sum(dim='time')
+#             .load())
 
 if 'sss' not in locals():
     aq = dcpy.oceans.read_aquarius()
@@ -3966,7 +4032,7 @@ todo [5/5]
 - [X] move 8N forcing down below
 - [X] add total shear variance to last panel
 
-#+BEGIN_SRC ipython :session :ipyfile images/temp/imgcqnSXp.png
+#+BEGIN_SRC ipython :session :results none
 if 'ra12' not in locals():
     ra12 = bay.read_ra12()
 if 'nrl5' not in locals():
@@ -4053,23 +4119,32 @@ axes['input'] = axes['met8'].twinx()
 axes['input'].plot(nrl5.niw.time, nrl5.niw.true_flux*1000, color='gray')
 axes['input'].spines['right'].set_visible(True)
 
-shear_pod = interp_shear(nrl5.vel.uz) + 1j*interp_shear(nrl5.vel.vz)
-shearspec = (dcpy.ts.Spectrogram(np.abs(shear_pod), dim='time',
-                                nfft=30*24, shift=2*24,
-                                multitaper=True, decimate=False, dt=1/24)
-             .sel(time=trange))
-hm2 = ((int_spec(shearspec, 0.9*(fM2-f0), 1.1*(fM2+f0))/1e-6)
-       .plot(ax=axes['shear'], label='$M_2$'))
-hm4 = ((int_spec(shearspec, 0.9*(fM2*2-f0), 1.1*(fM2*2-f0))/1e-6)
-       .plot(ax=axes['shear'], label='$M_4$'))
-hf0 = ((int_spec(shearspec, 0.6*f0, 1.5*f0)/1e-6)
-       .plot(ax=axes['shear'], label='$f_0$', color='C4'))
-hiw = ((int_spec(shearspec, 0.6*f0, shearspec.freq.max())/1e-6)
-       .plot(ax=axes['shear'], label='> f_0', color='k', yscale='log'))
+# shear_pod = interp_shear(nrl5.vel.uz) + 1j*interp_shear(nrl5.vel.vz)
+# shearspec = (dcpy.ts.Spectrogram(np.abs(shear_pod), dim='time',
+#                                 nfft=30*24, shift=2*24,
+#                                 multitaper=True, decimate=False, dt=1/24)
+#              .sel(time=trange))
+# hm2 = ((int_spec(shearspec, 0.9*(fM2-f0), 1.1*(fM2+f0))/1e-6)
+#        .plot(ax=axes['shear'], label='$M_2$'))
+# hm4 = ((int_spec(shearspec, 0.9*(fM2*2-f0), 1.1*(fM2*2-f0))/1e-6)
+#        .plot(ax=axes['shear'], label='$M_4$'))
+# hf0 = ((int_spec(shearspec, 0.6*f0, 1.5*f0)/1e-6)
+#        .plot(ax=axes['shear'], label='$f_0$', color='C4'))
+# hiw = ((int_spec(shearspec, 0.6*f0, shearspec.freq.max())/1e-6)
+#        .plot(ax=axes['shear'], label='> f_0', color='k', yscale='log'))
+
+shear = nrl5.calc_shear_bandpass(depth=120).sel(time='2014')
+
+hm2 = (shear['M2']/1e-6).plot(ax=axes['shear'])
+hm4 = (shear['M4']/1e-6).plot(ax=axes['shear'])
+hf0 = (shear['f0']/1e-6).plot(ax=axes['shear'])
+for hh in [hm2, hm4, hf0]:
+    hh[0].set_clip_on(False)
+    hh[0].set_in_layout(False)
 _, htm2 = annotate_end(hm2[0], '$M_2$')
 _, htm4 = annotate_end(hm4[0], '$M_4$', va='top')
 _, htf0 = annotate_end(hf0[0], '$f_0$')
-_, hiw0 = annotate_end(hiw[0], '$> f_0$', va='center')
+# _, hiw0 = annotate_end(hiw[0], '$> f_0$', va='center')
 
 handles = dict()
 for name, label in zip(['KT', 'Tz'], ['c', 'g']):
@@ -4181,6 +4256,8 @@ set_ax_color(axes['jq8'], hsn[0].get_color())
 axes['coverage'].set_ylabel('')
 axes['coverage'].set_yticks([0, 0.5, 1])
 
+axes['shear'].set_ylim([0, 2.5])
+
 dcpy.plots.liney(0, ax=axes['Tz'])
 axes['Tz'].set_ylim([-0.08, 0.38])
 
@@ -4202,16 +4279,10 @@ f.set_size_inches((7, 8))
 
 f.savefig('images/paper1/rama-vs-nrl.pdf')
 #+END_SRC
-
-#+RESULTS:
-:RESULTS:
-# Out[687]:
-:END:
-
+[[file:images/paper1/rama-vs-nrl.pdf]]
 *** Figure 4: Vertical profile of K_T distributions
 *** Figure 5: Vertical profiles of KT, Jq, etc. for 8N
 #+BEGIN_SRC ipython :session :results none
-
 f, ax = plt.subplots(4, 1, sharey=True, sharex='col')
 axes = dict(zip(bay.seasons, ax))
 
@@ -4240,6 +4311,7 @@ ebob = df.where(df.lat == 8).dropna(how='all')
 ebob['JqT'] = ebob['Jq'] * ebob['T']
 ebob['JsS'] = ebob['Js'] * ebob['S']
 ebob = ebob.where(np.abs(ebob['Jq']) < 1000)
+ebob = ebob.where(np.abs(ebob['Js']) < 0.5) # 0.1 takes out a lot!
 
 grouped = ebob.groupby(['season', 'bin'])
 averaged = grouped.mean().where(grouped.count() > 1440).to_xarray()
@@ -4250,14 +4322,14 @@ averaged['S'] = averaged['JsS'] / averaged['Js']
 stddev['T'] = 0
 stddev['S'] = 0
 
-if 'argo_seas' not in locals():
-    argo = (dcpy.oceans.read_argo_clim()
-            .sel(lat=slice(7.5, 8.5), lon=slice(85.5, 88.5), time='2014')
-            .drop(['Tmean', 'Tanom', 'BATHYMETRY_MASK',
-                   'Smean', 'Sanom'])
-            .mean(['lat', 'lon']))
-    argo_seas = (argo.groupby(argo.time.monsoon.labels)
-                 .mean(dim='time').compute())
+# if 'argo_seas' not in locals():
+#     argo = (dcpy.oceans.read_argo_clim()
+#             .sel(lat=slice(7.5, 8.5), lon=slice(85.5, 88.5), time='2014')
+#             .drop(['Tmean', 'Tanom', 'BATHYMETRY_MASK',
+#                    'Smean', 'Sanom'])
+#             .mean(['lat', 'lon']))
+#     argo_seas = (argo.groupby(argo.time.monsoon.labels)
+#                  .mean(dim='time').compute())
 
 
 # df = averaged.to_dataframe().reset_index()
@@ -4307,7 +4379,7 @@ axes['T'].set_ylabel('Depth [m]')
 [axes[aa].axvline(0, color='gray', ls='--', zorder=-10)
  for aa in ['Jq', 'Js']]
 axes['S'].axvline(35, color='gray', ls='--', zorder=-10)
-axes['Js'].set_xlim([-0.0005, 0.005])
+axes['Js'].set_xlim([-0.0005, 0.003])
 axes['Jq'].set_xlim([-10, 2])
 
 axes['KT'].grid(True, axis='x')
@@ -4356,6 +4428,17 @@ Jq.resample(time='D').mean('time').plot()
 (Jq.where(np.abs(tzm) > 1e-3)).resample(time='D').mean('time').plot()
 #+END_SRC
 *** refactor out
+* Satellite data
+SMAP: https://podaac.jpl.nasa.gov/dataset/SMAP_RSS_L3_SSS_SMI_8DAY-RUNNINGMEAN_V2?ids=ProcessingLevel:Collections&values=*3*:SMAP-SSS
+
+MODIS Chl-a:
+https://podaac.jpl.nasa.gov/dataset/MODIS_Aqua_L3_CHLA_Daily_4km_V2014.0_R?ids=Measurement:Variable&values=Ocean%20Optics:Ocean%20Color
+
+** Visible imagery
+This might be a good product: https://lpdaac.usgs.gov/dataset_discovery/modis/modis_products_table/mod09q1_v006.
+I got there from here: https://modis.gsfc.nasa.gov/data/dataprod/mod09.php
+
+will need to follow cite:Gumley2010.
 * OSM 2018 figures
 ** rama vs nrl | met & K_T
 #+BEGIN_SRC ipython :session :results none
@@ -4577,17 +4660,6 @@ with plt.rc_context({'font.size': 15,
 # Out[16]:
 [[file:images/argo-clim-χpod-depths.png]]
 :END:
-* Satellite data
-SMAP: https://podaac.jpl.nasa.gov/dataset/SMAP_RSS_L3_SSS_SMI_8DAY-RUNNINGMEAN_V2?ids=ProcessingLevel:Collections&values=*3*:SMAP-SSS
-
-MODIS Chl-a:
-https://podaac.jpl.nasa.gov/dataset/MODIS_Aqua_L3_CHLA_Daily_4km_V2014.0_R?ids=Measurement:Variable&values=Ocean%20Optics:Ocean%20Color
-
-** Visible imagery
-This might be a good product: https://lpdaac.usgs.gov/dataset_discovery/modis/modis_products_table/mod09q1_v006.
-I got there from here: https://modis.gsfc.nasa.gov/data/dataprod/mod09.php
-
-will need to follow cite:Gumley2010.
 * test bootstrap
 #+BEGIN_SRC ipython :session :ipyfile images/temp/imgMFPMNy.png
 import numpy as np
