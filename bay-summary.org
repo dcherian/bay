@@ -4100,10 +4100,10 @@ f0 = nrl5.inertial
 x0 = 0.025
 y0 = 0.8
 
-f, axx = plt.subplots(9, 1, sharex=True, constrained_layout=True)
+f, axx = plt.subplots(7, 1, sharex=True, constrained_layout=True)
 f.set_constrained_layout_pads(hspace=0.001, h_pad=0)
 axes = dict(zip(['met12', 'jq12', 'KT', 'jq8', 'met8',
-                 'coverage','Tz', 'S', 'shear'], axx))
+                 'coverage', 'shear'], axx))
 
 hmet12 = (ra12.met.τ.resample(time='D').mean()
           .sel(time=trange).plot(ax=axes['met12'], color='k', lw=1.2))
@@ -4133,7 +4133,8 @@ axes['input'].spines['right'].set_visible(True)
 # hiw = ((int_spec(shearspec, 0.6*f0, shearspec.freq.max())/1e-6)
 #        .plot(ax=axes['shear'], label='> f_0', color='k', yscale='log'))
 
-shear = nrl5.calc_shear_bandpass(depth=120).sel(time='2014')
+shear = (nrl5.calc_shear_bandpass(depth=120).sel(time='2014')
+         .resample(time='D').var())
 
 hm2 = (shear['M2']/1e-6).plot(ax=axes['shear'])
 hm4 = (shear['M4']/1e-6).plot(ax=axes['shear'])
@@ -4147,17 +4148,16 @@ _, htf0 = annotate_end(hf0[0], '$f_0$')
 # _, hiw0 = annotate_end(hiw[0], '$> f_0$', va='center')
 
 handles = dict()
-for name, label in zip(['KT', 'Tz'], ['c', 'g']):
-    handles[name] = dict()
-    handles[name]['r'] = (ra12.turb[name].isel(depth=0).sel(time=trange)
-                          .resample(time='D').mean('time')
-                          .plot(ax=axes[name], _labels=False, lw=1.2))
-    handles[name]['n'] = (nrl5.turb[name].isel(depth=1).sel(time=trange)
-                          .resample(time='D').mean('time')
-                          .plot(ax=axes[name], _labels=False, lw=1.2))
-    axes[name].text(x0, y0, label+') Daily avg. ' +
-                    xr.plot.utils.label_from_attrs(nrl5.turb[name]),
-                    transform=axes[name].transAxes)
+handles['KT'] = dict()
+handles['KT']['r'] = (ra12.KT.isel(depth=0).sel(time=trange)
+                      .resample(time='D').mean('time')
+                      .plot(ax=axes['KT'], _labels=False, lw=1.2))
+handles['KT']['n'] = (nrl5.KT.isel(depth=1).sel(time=trange)
+                      .resample(time='D').mean('time')
+                      .plot(ax=axes['KT'], _labels=False, lw=1.2))
+axes['KT'].text(x0, y0, 'c) Daily avg. K_T [m²/s]' +
+                xr.plot.utils.label_from_attrs(nrl5.KT),
+                transform=axes['KT'].transAxes)
 
 annotate_end(handles['KT']['r'][0], label='12N 15m', va='center')
 annotate_end(handles['KT']['n'][0], label='8N 104m')
@@ -4181,18 +4181,18 @@ for m, z,  axname, hname in zip([ra12, nrl5], [0, 1],
     axs.set_zorder(-1)
     axs.spines['right'].set_visible(True)
 
-hsr = (ra12.ctd.S.isel(depth=1).sel(time=trange)
-       .resample(time='6H').mean(dim='time')
-       .plot(ax=axes['S'], _labels=False))
-hsn = (nrl5.ctd.S.isel(z=0).sel(time=trange)
-       .resample(time='6H').mean(dim='time')
-       .plot(ax=axes['S'], _labels=False))
+# hsr = (ra12.ctd.S.isel(depth=1).sel(time=trange)
+#        .resample(time='6H').mean(dim='time')
+#        .plot(ax=axes['S'], _labels=False))
+# hsn = (nrl5.ctd.S.isel(z=0).sel(time=trange)
+#        .resample(time='6H').mean(dim='time')
+#        .plot(ax=axes['S'], _labels=False))
 
-_, htsr = annotate_end(hsr[0], label='12N 10m', va='top')
-_, htsn = annotate_end(hsn[0], label='8N 105m')
+# _, htsr = annotate_end(hsr[0], label='12N 10m', va='top')
+# _, htsn = annotate_end(hsn[0], label='8N 105m')
 
-annotate_end(handles['Tz']['r'][0], label='12N 10m')
-annotate_end(handles['Tz']['n'][0], label='8N 105m')
+# annotate_end(handles['Tz']['r'][0], label='12N 10m')
+# annotate_end(handles['Tz']['n'][0], label='8N 105m')
 
 jqd = jq0.resample(time='D').mean()
 axes['jq0'] = axes['met12'].twinx()
@@ -4213,8 +4213,8 @@ axes['jq8'].text(x0, y0, 'd) Turbulent fluxes  at 8N',
 axes['met8'].text(x0, y0, 'e) Forcing at 8N', transform=axes['met8'].transAxes)
 axes['coverage'].text(x0, 0.05, 'f) Fraction daily coverage', va='bottom',
                       transform=axes['coverage'].transAxes)
-axes['S'].text(x0, y0, 'h) Salinity [psu]', transform=axes['S'].transAxes)
-axes['shear'].text(x0, y0, 'i) Shear variance at 8N [$10^{-6}$ units]',
+# axes['S'].text(x0, y0, 'h) Salinity [psu]', transform=axes['S'].transAxes)
+axes['shear'].text(x0, y0, 'g) Shear variance at 8N [$10^{-6}$ units]',
                    transform=axes['shear'].transAxes)
 
 for jj in [ra12.Jq.isel(depth=0), nrl5.Jq.isel(depth=1)]:
@@ -4249,17 +4249,14 @@ axes['js8'].set_ylim([-1e-2, 2e-1])
 axes['jq8'].grid(False)
 [axes[aa].set_ylabel('$J_q^t$ [W/m²]') for aa in ['jq12', 'jq8']]
 [axes[aa].set_ylabel('$J_s^t$ \n [$10^{-2}$ g/m²/s]') for aa in ['js12', 'js8']]
-set_ax_color(axes['jq12'], hsr[0].get_color())
-set_ax_color(axes['jq8'], hsn[0].get_color())
+set_ax_color(axes['jq12'], handles['KT']['r'][0].get_color())
+set_ax_color(axes['jq8'], handles['KT']['n'][0].get_color())
 [set_ax_color(axes[aa], 'gray', 'right') for aa in ['js12', 'js8']]
 
 axes['coverage'].set_ylabel('')
 axes['coverage'].set_yticks([0, 0.5, 1])
 
-axes['shear'].set_ylim([0, 2.5])
-
-dcpy.plots.liney(0, ax=axes['Tz'])
-axes['Tz'].set_ylim([-0.08, 0.38])
+# axes['shear'].set_ylim([0, 2.5])
 
 # fmt = axes['shear'].yaxis.get_major_formatter()
 # fmt.set_scientific(True)
@@ -4268,7 +4265,7 @@ axes['Tz'].set_ylim([-0.08, 0.38])
 [aa.set_xlabel('') for aa in axx]
 [aa.set_title('') for aa in axx]
 [nrl5.MarkSeasonsAndEvents(ax=axes[aa], events=False)
- for aa in ['jq0', 'js12', 'js8', 'KT', 'Tz', 'S', 'shear', 'input', 'coverage']]
+ for aa in ['jq0', 'js12', 'js8', 'KT', 'shear', 'input', 'coverage']]
 
 axes['shear'].xaxis.set_tick_params(rotation=0)
 [tt.set_ha('center') for tt in axes['shear'].get_xticklabels()]
