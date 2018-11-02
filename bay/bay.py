@@ -250,6 +250,12 @@ def calc_wind_input():
     wind_input.name = 'wind_input'
     wind_input = wind_input.to_dataset()
 
+    dt = (wind_input.time.diff('time').values.mean()
+          .astype('timedelta64[s]').astype('float32'))
+    wind_input['cumulative'] = np.cumsum(wind_input.wind_input) * dt
+    wind_input['cumulative'].attrs['long_name'] = 'Energy'
+    wind_input['cumulative'].attrs['units'] = 'J/m²'
+
     wind_input.attrs['description'] = (
         'Near-inertial power input calculated using NCEP 6-hourly winds and '
         'the MIMOC mixed layer climatology using the method of Alford (2003) '
