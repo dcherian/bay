@@ -493,7 +493,7 @@ def make_labeled_map(ax=None):
     ax.set_yticks([2, 4, 5, 8, 12, 15, 18, 20, 22, 24])
 
 
-def mark_χpod_depths_on_clim(ax=[]):
+def mark_χpod_depths_on_clim(ax=[], orientation='horizontal'):
 
     argoT = xr.open_dataset('~/datasets/argoclim/RG_ArgoClim_Temperature_2016.nc',
                             decode_times=False)
@@ -528,7 +528,11 @@ def mark_χpod_depths_on_clim(ax=[]):
         return ax2
 
     if len(ax) == 0:
-        _, ax = plt.subplots(1, 2, sharey=True, constrained_layout=True)
+        if orientation == 'horizontal':
+            _, ax = plt.subplots(1, 2, sharey=True, constrained_layout=True)
+
+        elif orientation == 'vertical':
+            _, ax = plt.subplots(2, 1, sharey=True, constrained_layout=True)
 
     plot_profiles(ax[0], 90, 12, color=colors['RAMA'])
     plot_profiles(ax[1], 85.5, 5, color=colors['NRL'])
