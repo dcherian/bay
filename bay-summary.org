@@ -1340,6 +1340,80 @@ plt.savefig('images/niw-input-nrl5-check.png')
 [[file:images/niw-input-nrl5-check.png]]
 
 **** Basin-wide estimate
+
+#+BEGIN_SRC ipython :session
+import cartopy.crs as ccrs
+
+wind_input = xr.open_dataset('~/bay/estimates/wind-power-input-2014.nc')
+niw = wind_input.groupby(wind_input.time.monsoon.labels).mean('time')
+f = plt.figure(constrained_layout=False)
+
+gs = f.add_gridspec(2, 5, height_ratios=[2.5, 1])
+
+ax = dict()
+for ss, seas in enumerate(['NE', '2014-03', '2014-04', 'SW', 'SWNE']):
+    ax[seas] = f.add_subplot(gs[0, ss], projection=ccrs.PlateCarree())
+    bay.plot_coastline(ax[seas])
+    ax[seas].set_xticks(np.arange(80, 96, 5))
+    ax[seas].set_yticks(np.arange(4, 24, 3))
+    ax[seas].set_ylim([4, 24])
+    ax[seas].set_xlim([80, 95])
+
+    if '2014' in seas:
+        hniw = ((wind_input.wind_input*1000).sel(time=seas).mean('time')
+                .plot(cmap=mpl.cm.GnBu, edgecolors='w', lw=0.5,
+                      levels=np.arange(0, 0.9, 0.05), add_colorbar=False,
+                      ax=ax[seas]))
+
+    else:
+        hniw = ((niw.wind_input*1000).sel(monsoon=seas)
+                .plot(cmap=mpl.cm.GnBu, edgecolors='w', lw=0.5,
+                      levels=np.arange(0, 0.9, 0.05), add_colorbar=False,
+                      ax=ax[seas]))
+    ax[seas].text(0.05, 0.9, seas, transform=ax[seas].transAxes)
+    ax[seas].set_title('')
+    ax[seas].set_ylabel('')
+    ax[seas].set_xlabel('')
+
+    if ss > 0:
+        [tt.set_visible(False) for tt in ax[seas].get_yticklabels()]
+
+f.colorbar(hniw, ax=list(ax.values()), orientation='horizontal',
+           label='near-inertial energy flux $Π$ [mW/m²]', shrink=0.6)
+
+for ii, ll in zip([1, 1, 1], [8, 18]):
+    ax['ts'+str(ii)] = f.add_subplot(gs[ii, :])
+    axii = ax['ts'+str(ii)]
+    if isinstance(ll, slice):
+        processed_input = (
+            xrsp.integrate.trapz(np.cumsum(wind_input.wind_input
+                                           .sel(lon=87, method='nearest')
+                                           .sel(lat=ll),
+                                           axis=0)*86400*100e3, 'lat'))
+    else:
+        processed_input = (
+            np.cumsum(wind_input.wind_input
+                      .sel(lon=87, lat=ll, method='nearest'),
+                      axis=0)*86400)
+
+    hh = processed_input.plot.line(x='time', ax=axii, add_legend=False)
+    hh[0].set_clip_on(False)
+    dcpy.plots.annotate_end(hh[0], str(ll)+'N')
+
+    axii.set_xlim(['2013-12', '2014-12-01'])
+    axii.set_xlabel('')
+    axii.set_title('')
+    axii.set_ylabel('')
+
+axii.set_ylim([0, 3e4])
+[tt.set_rotation(0) for tt in ax['ts1'].get_xticklabels()]
+ax['ts1'].text(0.5, 0.1, 'Cumulative near-inertial energy input along 87E',
+               transform=ax['ts1'].transAxes)
+f.savefig('images/wind-input-map-ts.png', bbox_inches='tight')
+#+END_SRC
+#+CAPTION: Split NESW to Mar, Apr so we can see that the Northern Bay is a little different. The southern Bay really sees winds die down but there are steady up-coast winds north of 13N (I've checked this with tropflux)
+[[file:images/wind-input-map-ts.png]]
+
 #+BEGIN_SRC ipython :session :results none
 
 wind_input = xr.open_dataset('~/bay/estimates/wind-power-input-2014.nc')
@@ -1456,8 +1530,9 @@ argo_nrl5['rho'] = argo_nrl5.S.copy(data=sw.pden(argo_nrl5.S,
 argo_nrl5['N2'] = 10/1025 * argo_nrl5.rho.differentiate('pres')
 argo_nrl5_clim = argo_nrl5.groupby('time.month').mean(dim='time')
 #+END_SRC
-*** NIW energy at moorings
+*** NIW energy at moorings :noexport:
 
+OLD stuff
 #+BEGIN_SRC ipython :session :ipyfile images/seasonal-niw-nrl.png
 import bay
 
@@ -1556,6 +1631,53 @@ for nn in ['NRL1', 'NRL3', 'NRL4', 'NRL5']:
 
 
 #+END_SRC
+** Correlations
+#+BEGIN_SRC ipython :session
+f, ax = plt.subplots(1, 2, constrained_layout=True)
+
+freq='3H'
+KT = (ra12.KT.sel(depth=15)
+      .resample(time=freq).mean('time')
+      .sel(time=slice('2013-12', '2014-11'))
+      .dropna('time'))
+τ = np.sqrt(ra12.met.τ).resample(time=freq).mean('time').interp_like(KT)
+# ax[0].hexbin(τ, np.log10(KT), mincnt=1, alpha=0.5)
+ax[0].plot(τ, np.log10(KT), 'o', alpha=0.2, ms=4)
+ax[0].set_xlim([0, 0.6])
+ax[0].set_title('RAMA 12N 15m | Corr. coef = {0:.2f}'
+                .format(np.corrcoef(τ, np.log10(KT))[0, 1]))
+ax[0].set_xlabel('Wind speed (3 hr avg.)')
+ax[0].set_ylabel('$log_{10} K_T$ (3 hr avg.)')
+
+KT = (nrl5.KT.isel(depth=0)
+      .resample(time='4D').mean('time').shift(time=1)
+      .dropna('time'))
+τ = np.sqrt(nrl5.tropflux.tau).resample(time='4D').mean('time').interp_like(KT)
+ax[1].plot(τ, np.log10(KT), 'o', alpha=0.2, ms=4, color='C1')
+# plt.xcorr(τ, np.log10(KT), detrend=mpl.mlab.detrend_linear)
+
+f.savefig('images/wind-KT-correlations.png')
+#+END_SRC
+#+CAPTION: Trying scatter plot / correlations. Good results for the 15m instrument @ RAMA 12N. 30m, 45m not so much.
+[[file:images/wind-KT-correlations.png]]
+
+
+#+BEGIN_SRC ipython :session
+Rifreq = (Ri.where(Ri < 100).resample(time='D').mean('time'))
+KT = (nrl5.KT.where(nrl5.KT > 1e-6).mean('depth')
+      .resample(time='D').mean('time')
+      .sel(time='2014'))
+
+f, ax = plt.subplots(1, 1, constrained_layout=True)
+ax.plot(Rifreq, np.log10(KT), 'o', alpha=0.1)
+ax.set_ylabel('Daily mean $log_{10} K_T$ [m²/s]')
+ax.set_xlabel('Daily mean Ri')
+f.savefig('images/nrl5-kt-ri-correlation.png')
+#+END_SRC
+#+CAPTION:
+[[file:images/nrl5-kt-ri-correlation.png
+]]
+
 ** Wavelets vs spectrograms
 Wavelets need a good understanding of wavelet choice.
 
@@ -1962,11 +2084,26 @@ for m in [nrl3, nrl4, nrl5]:
     KE = ((np.abs(m.vel.w.sel(depth=slice(120, 200)))**2)
           .mean('depth'))
 
-    shear = ((np.abs(m.vel.shear.sel(depth=slice(120, 200))))
-             .mean('depth'))
+    if 'shear_fit' not in m.vel:
+        u = (m.vel.u.sel(depth=slice(120, 200))
+             .interpolate_na('time')
+             .dropna('time', how='any'))
+        v = (m.vel.u.sel(depth=slice(120, 200))
+             .interpolate_na('time')
+             .dropna('time', how='any'))
+        uz = np.apply_along_axis(lambda x: np.polyfit(u.depth, x, 1)[0],
+                                 u.get_axis_num('depth'), u.values)
+        vz = np.apply_along_axis(lambda x: np.polyfit(u.depth, x, 1)[0],
+                                 v.get_axis_num('depth'), v.values)
+        m.vel['shear_fit'] = xr.DataArray(np.hypot(uz, vz), dims=['time'],
+                                          coords={'time': u.time})
+
+    shear = m.vel.shear.sel(depth=slice(120, 200)).mean('depth')
 
     dm_ke.append(_cd_plot(KE, period=1/m.inertial.values, label=m.name, ax=ax[0]))
-    dm_sh.append(_cd_plot(shear, period=1/m.inertial.values, label=m.name, ax=ax[1]))
+    dm_sh.append(_cd_plot(m.vel.shear_fit,
+                          period=1/m.inertial.values,
+                          label=m.name, ax=ax[1]))
 
     # dcpy.ts.PlotSpectrogram(KE.interpolate_na('time'), dt=1/24,
     #                         nfft=14*24, shift=1*24, multitaper=True)
@@ -1984,10 +2121,32 @@ nrl5.MarkSeasonsAndEvents(ax=ax[1])
 ax[0].legend()
 ax[0].set_title('8N NIW KE in thermocline (120-200m) | complex demod amplitude')
 ax[1].set_title('8N NIW shear in thermocline (120-200m) | complex demod amplitude')
-f.savefig('images/nrl-niw-KE-seasonal-cycle.png')
+# f.savefig('images/nrl-niw-KE-seasonal-cycle.png')
 #+END_SRC
-#+CAPTION: Averaged over 120-200m, and then over all moorings at 8N; there is a seasonal cycle in NIW KE. Steps: complex demodulate at inertial frequency; run 4 day hann smoother on amplitude (because the peak is broad, the amplitude time series has "high frequency" variability). Black line is mean of all 3.
+#+CAPTION: Averaged over 120-200m, and then over all moorings at 8N; there is a seasonal cycle in NIW KE. The shear is a linear fit to velocity profiles in that depth range. Steps: complex demodulate at inertial frequency; run 4 day hann smoother on amplitude (because the peak is broad, the amplitude time series has "high frequency" variability). Black line is mean of all 3.
  [[file:images/nrl-niw-KE-seasonal-cycle.png]]
+
+#+BEGIN_SRC ipython :session
+u = nrl5.vel.u.sel(depth=slice(120, 160)).interpolate_na('time')
+v = nrl5.vel.v.sel(depth=slice(120, 160)).interpolate_na('time')
+
+uz = np.apply_along_axis(lambda x: np.polyfit(u.depth, x, 1)[0],
+                         u.get_axis_num('depth'), u.values)
+vz = np.apply_along_axis(lambda x: np.polyfit(u.depth, x, 1)[0],
+                         v.get_axis_num('depth'), v.values)
+
+shear = xr.DataArray(np.hypot(uz, vz), dims=['time'], coords={'time': u.time})
+
+f, ax = plt.subplots(1, 1, constrained_layout=True)
+shear.plot(ax=ax)
+nrl5.vel.shear.sel(depth=slice(120, 160)).mean('depth').plot()
+
+ax.set_title('Shear between 120m and 160m NRL5')
+ax.legend(['linear fit', 'mean (shear)'])
+f.savefig('images/linear-fit-shear.png')
+#+END_SRC
+#+CAPTION: Comparing a linear fit over a range of depths vs shear averaged over those depths
+[[file:images/linear-fit-shear.png]]
 
 #+BEGIN_SRC ipython :session
 KT = nrl5.KT.where(nrl5.KT > 3e-7).resample(time='D').mean('time').shift(time=2)
