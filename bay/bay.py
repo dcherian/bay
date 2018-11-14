@@ -208,22 +208,46 @@ def remake_summaries(moorings=None):
         m.Summarize(savefig=True)
 
 
-def calc_wind_input():
-    trange = dict(lat=slice(24, 2, None),
-                  lon=region['lon'],
-                  time=slice('2013-12-01', '2014-11-30'))
+def calc_wind_input(kind='merra2'):
 
-    u = xr.open_mfdataset('/home/deepak/datasets/ncep/uwnd*.nc').load()
-    v = xr.open_mfdataset('/home/deepak/datasets/ncep/vwnd*.nc').load()
-    taux = u.uwnd.sel(trange).copy(
-        data=airsea.windstress.stress(u.uwnd.sel(trange)))
-    tauy = v.vwnd.sel(trange).copy(
-        data=airsea.windstress.stress(v.vwnd.sel(trange)))
+    if kind == 'ncep':
+        trange = dict(lat=slice(24, 2, None),
+                      lon=region['lon'],
+                      time=slice('2013-12-01', '2014-11-30'))
 
-    taux = taux * np.sign(u.uwnd)
-    tauy = tauy * np.sign(v.vwnd)
-    tau = (xr.merge([taux, tauy]).sortby('lat')
-           .rename({'uwnd': 'taux', 'vwnd': 'tauy'}))
+        u = xr.open_mfdataset('/home/deepak/datasets/ncep/uwnd*.nc').load()
+        v = xr.open_mfdataset('/home/deepak/datasets/ncep/vwnd*.nc').load()
+        taux = u.uwnd.sel(trange).copy(
+            data=airsea.windstress.stress(u.uwnd.sel(trange)))
+        tauy = v.vwnd.sel(trange).copy(
+            data=airsea.windstress.stress(v.vwnd.sel(trange)))
+
+        taux = taux * np.sign(u.uwnd)
+        tauy = tauy * np.sign(v.vwnd)
+
+        tau = (xr.merge([taux, tauy]).sortby('lat')
+               .rename({'uwnd': 'taux', 'vwnd': 'tauy'})).compute()
+
+        windstr = 'NCEP 6-hourly winds'
+        windshortstr = 'ncep'
+
+    elif kind == 'merra2':
+        trange = dict(time=slice('2013-12-01', '2014-11-30'))
+        merra = (xr.open_mfdataset('/home/deepak/bay/datasets/merra2/*.nc')
+                 .sel(trange))
+        taux = merra.U10M.copy(data=airsea.windstress.stress(merra.U10M))
+        tauy = merra.V10M.copy(data=airsea.windstress.stress(merra.V10M))
+
+        taux = taux * np.sign(merra.U10M)
+        tauy = tauy * np.sign(merra.V10M)
+
+        windstr = 'MERRA-2 hourly winds averaged to 6-hourly'
+        windshortstr = 'merra2'
+
+        tau = (xr.merge([taux, tauy]).sortby('lat')
+               .rename({'U10M': 'taux', 'V10M': 'tauy'})
+               .resample(time='6H').mean('time')
+               .compute())
 
     mimoc = xr.open_mfdataset('/home/deepak/datasets/mimoc/MIMOC_ML_*.nc',
                               concat_dim='month')
@@ -257,9 +281,10 @@ def calc_wind_input():
     wind_input['cumulative'].attrs['units'] = 'J/m²'
 
     wind_input.attrs['description'] = (
-        'Near-inertial power input calculated using NCEP 6-hourly winds and '
-        'the MIMOC mixed layer climatology using the method of Alford (2003) '
-        'to solve the Pollard & Millard slab model.')
+        'Near-inertial power input calculated using ' + windstr +
+        'and the MIMOC mixed layer climatology using the '
+        'method of Alford (2003) to solve the '
+        'Pollard & Millard slab model.')
 
     wind_input['taux'] = tau.taux
     wind_input['tauy'] = tau.tauy
@@ -277,16 +302,17 @@ def calc_wind_input():
 
     wind_input.taux.attrs['long_name'] = '$τ_x$'
     wind_input.taux.attrs['units'] = 'N/m²'
-    wind_input.mld.attrs['description'] = 'NCEP'
+    wind_input.taux.attrs['description'] = windshortstr
     wind_input.tauy.attrs['long_name'] = '$τ_y$'
     wind_input.tauy.attrs['units'] = 'N/m²'
-    wind_input.mld.attrs['description'] = 'Tropflux'
+    wind_input.tauy.attrs['description'] = windshortstr
 
     wind_input.mld.attrs['long_name'] = 'MLD'
     wind_input.mld.attrs['units'] = 'm'
     wind_input.mld.attrs['description'] = 'MIMOC mixed layer depth'
 
-    wind_input.to_netcdf('~/bay/estimates/wind-power-input-2014.nc')
+    wind_input.to_netcdf('~/bay/estimates/' + windshortstr
+                         + '-wind-power-input-2014.nc')
 
 
 def bin_and_to_dataframe(KTm, ρbins=None, Sbins=None):
