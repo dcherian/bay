@@ -1216,8 +1216,10 @@ plt.gca().set_yscale('log')
 **** double check with in-situ data : looks OK
 Doing for RAMA12 and topmost bin from NRL5.
 
+From a quick check; merra2 does better for nrl5, but ncep does better for RAMA?
+
 #+BEGIN_SRC ipython :session :results none
-def compare_fluxes(mooring):
+def compare_fluxes(mooring, input_file='merra2'):
 
     # 1/1.25, 1.25 taken from Alford (2003)
     freqs = np.array([1/1.25, 1.25]) * mooring.inertial.values
@@ -1266,11 +1268,13 @@ def compare_fluxes(mooring):
     #     mld=mld,
     #     f0=dcpy.oceans.coriolis(mooring.lat))
 
-    wind_input = (xr.open_dataset(
-        '/home/deepak/bay/estimates/wind-power-input-2014.nc')
-                  .sel(lat=mooring.lat, lon=mooring.lon, method='nearest')
-                  .sel(time='2014')
-                  .load())
+    wind_input = (
+        xr.open_dataset(
+            '/home/deepak/bay/estimates/' + input_file
+            + '-wind-power-input-2014.nc')
+        .sel(lat=mooring.lat, lon=mooring.lon, method='nearest')
+        .sel(time='2014')
+        .load())
     model_input = wind_input.wind_input
     ZImodel = wind_input.ui + 1j * wind_input.vi
     # ZIfilt = filt(ZImodel.dropna('time'))
@@ -1278,8 +1282,8 @@ def compare_fluxes(mooring):
 
     f, ax = plt.subplots(2, 2, sharex='col', constrained_layout=True,
                          gridspec_kw={'width_ratios': [2, 1]})
-    ZImodel.plot(ax=ax[0, 0], lw=0.5)
-    ZI.plot(ax=ax[0, 0])
+    np.real(ZImodel).plot(ax=ax[0, 0], lw=0.5)
+    np.real(ZI).plot(ax=ax[0, 0])
     # ZIfilt.plot(ax=ax[0, 0], color='k')
     ax[0, 0].legend(['slab model', 'true'])
 
@@ -1295,7 +1299,7 @@ def compare_fluxes(mooring):
     dcpy.ts.PlotSpectrum(model_input.dropna('time'), ax=ax[1, 1])
     dcpy.ts.PlotSpectrum(flux.dropna('time'), ax=ax[1, 1])
     # dcpy.ts.PlotSpectrum(filt_input.dropna('time'), ax=ax[1, 1], color='k')
-    ax[1, 1].legend(['unfiltered flux', 'true flux'])
+    ax[1, 1].legend(['slab model flux', 'true flux'])
     dcpy.plots.linex(freqs, ax=ax[:, 1])
     dcpy.plots.linex(mooring.inertial, ax=ax[:, 1])
 
@@ -1319,15 +1323,17 @@ def compare_fluxes(mooring):
     ax[1, 0].set_xlim(('2014-01-01', '2015-01-01'))
     ax[0, 1].set_title('Spectra of currents')
     ax[1, 1].set_title('Spectra of flux')
-    f.suptitle(mooring.name + ' | NCEP wind power input comparison | data vs model.')
+    f.suptitle(mooring.name + ' | ' + input_file
+               + 'wind power input comparison | data vs model.')
 
-compare_fluxes(ra12)
-plt.savefig('images/niw-input-ra12-check.png')
+for input_file in ['merra2', 'ncep']:
+    compare_fluxes(ra12, input_file)
+    plt.savefig('images/niw-input-' + input_file + '-ra12-check.png')
 
-nrl5.vel['time'] = nrl5.vel.time.dt.round('H')
-nrl5.tropflux['time'] = nrl5.tropflux.time.dt.round('D')
-compare_fluxes(nrl5)
-plt.savefig('images/niw-input-nrl5-check.png')
+    nrl5.vel['time'] = nrl5.vel.time.dt.round('H')
+    nrl5.tropflux['time'] = nrl5.tropflux.time.dt.round('D')
+    compare_fluxes(nrl5, input_file)
+    plt.savefig('images/niw-input-'+ input_file + '-nrl5-check.png')
 #+END_SRC
 
 #+CAPTION: RAMA12 *with local winds*: Agreement between flux calculated using filtered currents (0.5f - 1.5f) and predicted *using local winds* is good. No tuning required! The black should agree with orange. Black is (0.5f - 1.5f) filtered version of blue. There's a lot of high frequency information in the solution (local winds) that makes the blue look worse but it really isn't.
@@ -1340,79 +1346,88 @@ plt.savefig('images/niw-input-nrl5-check.png')
 [[file:images/niw-input-nrl5-check.png]]
 
 **** Basin-wide estimate
-
 #+BEGIN_SRC ipython :session
 import cartopy.crs as ccrs
 
-wind_input = xr.open_dataset('~/bay/estimates/wind-power-input-2014.nc')
-niw = wind_input.groupby(wind_input.time.monsoon.labels).mean('time')
-f = plt.figure(constrained_layout=False)
+def plot_input(wind_input, windstr):
 
-gs = f.add_gridspec(2, 5, height_ratios=[2.5, 1])
+    niw = wind_input.groupby(wind_input.time.monsoon.labels).mean('time')
+    f = plt.figure(constrained_layout=False)
 
-ax = dict()
-for ss, seas in enumerate(['NE', '2014-03', '2014-04', 'SW', 'SWNE']):
-    ax[seas] = f.add_subplot(gs[0, ss], projection=ccrs.PlateCarree())
-    bay.plot_coastline(ax[seas])
-    ax[seas].set_xticks(np.arange(80, 96, 5))
-    ax[seas].set_yticks(np.arange(4, 24, 3))
-    ax[seas].set_ylim([4, 24])
-    ax[seas].set_xlim([80, 95])
+    gs = f.add_gridspec(2, 5, height_ratios=[2.5, 1])
 
-    if '2014' in seas:
-        hniw = ((wind_input.wind_input*1000).sel(time=seas).mean('time')
-                .plot(cmap=mpl.cm.GnBu, edgecolors='w', lw=0.5,
-                      levels=np.arange(0, 0.9, 0.05), add_colorbar=False,
-                      ax=ax[seas]))
+    ax = dict()
+    for ss, seas in enumerate(['NE', '2014-03', '2014-04', 'SW', 'SWNE']):
+        ax[seas] = f.add_subplot(gs[0, ss], projection=ccrs.PlateCarree())
+        bay.plot_coastline(ax[seas])
+        ax[seas].set_xticks(np.arange(80, 96, 5))
+        ax[seas].set_yticks(np.arange(4, 24, 3))
+        ax[seas].set_ylim([4, 24])
+        ax[seas].set_xlim([80, 95])
 
-    else:
-        hniw = ((niw.wind_input*1000).sel(monsoon=seas)
-                .plot(cmap=mpl.cm.GnBu, edgecolors='w', lw=0.5,
-                      levels=np.arange(0, 0.9, 0.05), add_colorbar=False,
-                      ax=ax[seas]))
-    ax[seas].text(0.05, 0.9, seas, transform=ax[seas].transAxes)
-    ax[seas].set_title('')
-    ax[seas].set_ylabel('')
-    ax[seas].set_xlabel('')
+        if '2014' in seas:
+            hniw = ((wind_input.wind_input*1000).sel(time=seas).mean('time')
+                    .plot(cmap=mpl.cm.GnBu,
+                          levels=np.arange(0, 1.2, 0.05), add_colorbar=False,
+                          ax=ax[seas]))
 
-    if ss > 0:
-        [tt.set_visible(False) for tt in ax[seas].get_yticklabels()]
+        else:
+            hniw = ((niw.wind_input*1000).sel(monsoon=seas)
+                    .plot(cmap=mpl.cm.GnBu,
+                          levels=np.arange(0, 1.2, 0.05), add_colorbar=False,
+                          ax=ax[seas]))
+        ax[seas].text(0.05, 0.9, seas, transform=ax[seas].transAxes)
+        ax[seas].set_title('')
+        ax[seas].set_ylabel('')
+        ax[seas].set_xlabel('')
 
-f.colorbar(hniw, ax=list(ax.values()), orientation='horizontal',
-           label='near-inertial energy flux $Π$ [mW/m²]', shrink=0.6)
+        if ss > 0:
+            [tt.set_visible(False) for tt in ax[seas].get_yticklabels()]
 
-for ii, ll in zip([1, 1, 1], [8, 18]):
-    ax['ts'+str(ii)] = f.add_subplot(gs[ii, :])
-    axii = ax['ts'+str(ii)]
-    if isinstance(ll, slice):
-        processed_input = (
-            xrsp.integrate.trapz(np.cumsum(wind_input.wind_input
-                                           .sel(lon=87, method='nearest')
-                                           .sel(lat=ll),
-                                           axis=0)*86400*100e3, 'lat'))
-    else:
-        processed_input = (
-            np.cumsum(wind_input.wind_input
-                      .sel(lon=87, lat=ll, method='nearest'),
-                      axis=0)*86400)
+    f.colorbar(hniw, ax=list(ax.values()), orientation='horizontal',
+               label=windstr+' near-inertial energy flux $Π$ [mW/m²]', shrink=0.6)
 
-    hh = processed_input.plot.line(x='time', ax=axii, add_legend=False)
-    hh[0].set_clip_on(False)
-    dcpy.plots.annotate_end(hh[0], str(ll)+'N')
+    for ii, ll in zip([1, 1, 1], [8, 18]):
+        ax['ts'+str(ii)] = f.add_subplot(gs[ii, :])
+        axii = ax['ts'+str(ii)]
+        if isinstance(ll, slice):
+            processed_input = (
+                xrsp.integrate.trapz(np.cumsum(wind_input.wind_input
+                                               .sel(lon=87, method='nearest')
+                                               .sel(lat=ll),
+                                               axis=0)*86400*100e3, 'lat'))
+        else:
+            processed_input = (
+                np.cumsum(wind_input.wind_input
+                          .sel(lon=87, lat=ll, method='nearest'),
+                          axis=0)*86400)
 
-    axii.set_xlim(['2013-12', '2014-12-01'])
-    axii.set_xlabel('')
-    axii.set_title('')
-    axii.set_ylabel('')
+        hh = processed_input.plot.line(x='time', ax=axii, add_legend=False)
+        hh[0].set_clip_on(False)
+        dcpy.plots.annotate_end(hh[0], str(ll)+'N')
 
-axii.set_ylim([0, 3e4])
-[tt.set_rotation(0) for tt in ax['ts1'].get_xticklabels()]
-ax['ts1'].text(0.5, 0.1, 'Cumulative near-inertial energy input along 87E',
-               transform=ax['ts1'].transAxes)
-f.savefig('images/wind-input-map-ts.png', bbox_inches='tight')
+        axii.set_xlim(['2013-12', '2014-12-01'])
+        axii.set_xlabel('')
+        axii.set_title('')
+        axii.set_ylabel('')
+
+    axii.set_ylim([0, 3e4])
+    [tt.set_rotation(0) for tt in ax['ts1'].get_xticklabels()]
+    ax['ts1'].text(0.5, 0.1, 'Cumulative near-inertial energy input along 87E',
+                   transform=ax['ts1'].transAxes)
+    f.savefig('images/wind-input-' + windstr + '-map-ts.png',
+              bbox_inches='tight')
+
+merra2 = xr.open_dataset('~/bay/estimates/merra2-wind-power-input-2014.nc')
+ncep = xr.open_dataset('~/bay/estimates/ncep-wind-power-input-2014.nc')
+plot_input(merra2, 'MERRA-2')
+plot_input(ncep, 'NCEP')
 #+END_SRC
-#+CAPTION: Split NESW to Mar, Apr so we can see that the Northern Bay is a little different. The southern Bay really sees winds die down but there are steady up-coast winds north of 13N (I've checked this with tropflux)
-[[file:images/wind-input-map-ts.png]]
+#+CAPTION: MERRA-2: Split NESW to Mar, Apr so we can see that the Northern Bay is a little different. The southern Bay really sees winds die down but there are steady up-coast winds north of 13N (I've checked this with tropflux)
+[[file:images/wind-input-MERRA-2-map-ts.png]]
+
+#+CAPTION: Above but with NCEP (scales are same)
+[[file:images/wind-input-NCEP-map-ts.png]]
 
 #+BEGIN_SRC ipython :session :results none
 
@@ -1512,13 +1527,8 @@ ax[1].grid(True)
 ax[2].grid(True)
 
 #+END_SRC
-
-#+RESULTS:
-:RESULTS:
-# Out[6]:
-: <matplotlib.legend.Legend at 0x7fcf64041dd8>
 [[file:images/nrl5-Ri.png]]
-:END:
+
 
 Argo N2 agrees with NRL5, so I'm not doing something insane
 #+BEGIN_SRC ipython :session :ipyfile images/temp/img9hBMIK.png
