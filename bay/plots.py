@@ -280,7 +280,7 @@ def vert_distrib(df, bins, varname='KT', pal=None, f=None, ax=None,
         xlim = kwargs.pop('xlim', None)
         xlines = kwargs.pop('xlines', [])
 
-    months = {'NE': 'Dec-Feb', 'NESW': 'Mar-May',
+    months = {'NE': 'Dec-Feb', 'NESW': 'Mar-Apr',
               'SW': 'Jun-Sep', 'SWNE': 'Oct-Nov'}
 
     for seas in ax:
@@ -419,7 +419,7 @@ def make_vert_distrib_plot(varname,
     df = nc_to_binned_df(bins=bins, moor=moor)
 
     if varname == 'KT':
-        df['KT'].values = np.log10(df['KT'].values)
+        df['KT'] = np.log10(df['KT'])
 
     f, ax = vert_distrib(df, df.bin,
                          label_moorings=label_moorings,
