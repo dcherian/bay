@@ -2984,8 +2984,118 @@ cite:Vinayachandran2005:
 #+BEGIN_QUOTE
 Biological productivity in the Bay of Bengal is believed to be considerably less than in the Arabian Sea, particularly during the summer monsoon [Kumar et al., 2002; Madhupratap et al., 2003]. A possible reason for this difference is that the Bay receives large quantities of freshwater from rainfall and rivers. The fresh water caps the upper layer of the northern Bay and neighboring coastal regions, leading to the formation of a barrier layer [Vinayachandran et al., 2002] that can affect thermodynamic processes in the mixed layer. Specifically, the strong stratification due to the barrier layer impedes the transfer of nutrients into the euphotic zone from below [Gomes et al., 2000].
 #+END_QUOTE
+* MISO signals
+** MISO gyaan
+strong correlation between SST variations and wind speed in 10-90 day band over North Indian Ocean.
 
-* MISO signals?
+correlation is over large spatial scales. moored observations might not be best platform?
+
++2+ 3 modes of /atmospheric/ variability:
+  - *10-20 (25) day mode* moves westward from the Pacific Ocean
+    - 5 km/day has some northward movement too
+  - *30-40(60) day mode* /boreal summer ISO/  moving /approx/ north from the equatorial indian ocean
+    - This mode sees largest SST response : 1-1.5C changes citep:Sengupta2001a. These perturbations propagate northward
+    - The active-break cycle is forced by atmospheric dynamics at least in the summer
+    - northward propagation could be a result of SST response.
+    - 1°-2° latitude/day
+    - _No contribution_ from reflected Rossby waves
+  - *90-day mode* preferential excitement of Kelvin & Rossby waves by "larger scale, 90-day winds" + enhancement by reflected Rossby waves.
+
+One view is that the 10-20 day and 30-40 day modes constructively interfere to form active spells (Krishnamurti, Masunari ...).
+
+Prior to the active phase of the MISO, basin-wide warm SST anomalies up to 1°C occur in the entire BoB and favor the development of MISO convection [Sengupta et al., 2001; Kemball-Cook and Wang, 2001; Joseph and Sabin, 2008]. The MISO convection causes basin-wide SST cooling in the BoB, which suppresses convection and leads to the subsequent dry condition (break spell) [Vecchi and Harrison, 2002].
+
+Wintertime intraseasonal variability = oceanic mesoscale.
+
+Salinity changes well correlated with meridional velocity changes → NS advection of gradient. T-S relation would let you remove temperature advection signal? (MISOBOB whitepaper)
+  [[file:images/misobob-15n90e-filtered-TSv.png]]
+*** GS Bhat / Debasis talk
+1. Air temperature shows peaks more than RAMA data. WHOI 18N SST shows more peaks
+2. Spectra show different peaks, i.e. timescales are different, depending on variable used...
+3. 20-day westward mode: propagates over from South China Sea, over Bay then moves northward.
+4. Hole in total PPT and variance near Sri Lanka
+5. 7-25, 25-80 day variances are max over water and very low over land
+*** cite:Li2018
+- CFSv2 better than CFSv1; operational by IITM
+- ignroe the 10-20day; focus on 30-60d mode
+
+#+BEGIN_QUOTE
+Systematic biases for MISOs, however, still exist, exhibiting apparently weaker amplitude and slower northward propagation compared to observations. The eastern Arabian Sea (EAS)–western Bay of Bengal (WBB) region (EAS–WBB region; 128–208N, 658–858E) is found to be critical for the MISO prediction. In that region, the forecast and observed MISO trajectories begin to bifurcate from each other, and forecast errors grow rapidly. Further diagnosis reveals that local air–sea interaction in that region is severely underrepresented in CFSv2. Sea surface temperature (SST) response to surface heat flux forcing and convection response to SST forcing are both too weak, leading to the underestimated MISO amplitude.
+#+END_QUOTE
+*** cite:Han2005
+- wind spectra peak is at 30-60 days; indian ocean response peak is at 90 days → resonance
+- Reflected Rossby waves result in interior signal.
+- Most of the energy is near the equator.
+- Almost nothing along the 90E line, north of 10N ☹.
+- Critical latitude for Rossby waves predicts importance of remote forcing in interior. North of 10N, we should see peaks for T > 70 days forced by equatorial winds.
+*** cite:Cheng2013
+  - apparently the 90 day peak is a thing.
+*** cite:Vialard2012
+  - Strongest SST response is seen in the north - off Oman and BoB north of 15N
+  - Most of AS response → wind stress forcing
+  - Concurrent with the northward propagation of atmospheric intraseasonal oscillations, the SST variations appear first at the southern tip of India (day 0), in the Somali upwelling (day 10), northern Bay of Bengal (day 19) and finally Oman upwelling (day 23), as the atmospheric intraseasonal oscillation moves northward.
+*** cite:Li2017
+  - Salinity stratification and SST
+    - shallow MLD → traps heat → *enhanced SST variability*
+    - barrier layer suppresses heat exchange between warm mixed layer and thermocline
+      → maintains high SST and hence convective activity.
+
+  - 10-80m barrier layers seen in RAMA measurements.
+
+  - Passage of MISO → deeper MLD, ILD
+    - MLD, ILD are shallower before convection and deeper after convection.
+      - MLD ← winds | ILD ← heat flux
+    - thinner barrier layers before & during active phase.
+    - Barrier layer thickens but composite trends tend to be weak
+      - different influencers for MLD/ILD ⇒ BLT = random cancellations
+    - peak-to-peak changes are O(10-20m)
+    [[file:images/li-2017-miso-map.png]]
+
+  - removing the ISO signals in /all atmospheric forcing/ recreates pattern seen in unmodified simulation.
+    → the observed MLD/BLT variability is all being driven by the oceanic mesoscale.
+    - hence, MISO composites are averages over random phases of this variability?
+
+  - Northern bay: SSS anomalies are driven by wind-forced advection
+    #+ATTR_HTML: :width 100%
+    #+CAPTION: t=0 is max PPT.
+    [[file:images/li-2017-miso-wind-sss.png]]
+    - break phase = westward surface currents = move low salinity water into the bay
+    - active phase = eastward surface currents = move high salinity water across the bay & compress freshwater plume against land
+    - form cyclonic/anticyclonic gyres (right after active/break) near coastal Bangaladesh = thermocline shoaling & baroclinic wave response.
+
+  - *WHEN AVERAGED OVER LARGE AREA*
+    - wind → MLD through mixing / freshwater advection
+    - heat flux → Isothermal Layer depth
+
+  - Local changes in ILD are mostly mesoscale variability.
+*** cite:Li2017a
+*Summary:* From May to mid-June, the shallow MLD and thin barrier layer greatly enhance intraseasonal SST anomalies, which can amplify convection fluctuations of the MISO through air-sea interaction and leads to intense but short duration post-convection break spells. When either the MLD or the BLT is large, intraseasonal SSTs tend to be weak.
+
+- Duncan and Han [2009] found that Q_T  (latent + sensible)  is important in producing intraseasonal SSTs in the BoB, whereas Vialard et al. [2012] emphasized SWR as the dominant driver, and both studies suggested weak effect of wind stress forcing.
+  - Our result to some degree reconciles the two previous studies, _confirming the dominance of surface heat flux and showing the equal contributions from SWR and Q_T_.
+
+- The weak wind stress effect here is a dramatic difference from the cases in other regions. Wind stress-driven ocean processes, especially vertical entrainment, are of first-order importance in producing intraseasonal SSTs in other regions, such as the southern and equatorial Indian Ocean
+
+- intraseasonal SST fluctuations affects convection primarily in May-June
+  - thin mixed layer + thin barrier layer
+  - weaker break + stronger active phase = more P
+  - shallow MLD ⇒ more deepening during cooling phase; thin BLT means more entrainment cooling ⇒ more intense break (i.e. much larger -ve P anomaly)
+  - As a result of this series of air-sea interaction processes, the MISOs developed under the double-small ocean condition induce strong intraseasonal fluctuations in rainfall variability with usually intense but short-duration break spells, while otherwise the break spells are weak but prolonged.
+   [[file:images/li-2017-miso-mld-blt.png]]
+
+- Barrier layer effects on SST seen in post-convection cooling not pre-convection warming.
+*** cite:Vecchi2002
+  - Under active atmospheric convection, SST cools in Bay > 4N.
+  - Cooling eventually shuts down convection.
+  - SST minima precedes convection (shutdown?) by ~ 10 days
+  - warm SST anomaly precedes active convection
+*** cite:Sengupta2001a
+  - SST oscillations are driven by surface heat flux changes ← both wind speed + atmospheric deep convection. Mostly Shortwave!
+  - ∂(SST)/∂t ∝ Q_net for SW monsoon but not so much in Oct --- they say this is due to barrier layer / fresh water advected over the mooring.
+
+*** cite:McPhaden2009
+- see long Rossby waves (120 day period) in RAMA record?
+
 ** Summary
 cite:Sobel2010 show large TRMM 30-90 day variance between May and October in the Bay.
 [[file:../images//sobel-trmm-variance.png]]
