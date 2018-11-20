@@ -4148,7 +4148,7 @@ if 'oscar' not in locals():
                   longitude=bay.region['lon'],
                   time=slice('2013-12-01', '2014-11-30')))
     oscar = (oscar
-             .groupby(oscar.time.monsoon.labels).mean('time')
+             .groupby(oscar.time.monsoon.splitlabels).mean('time')
              .load().squeeze()
              .sortby('latitude'))
 
@@ -4158,7 +4158,7 @@ if 'ssha' not in locals():
             .sel(time=slice('2013-12-01', '2014-11-30'))
             .load())
     ssha['EKE'] = 0.5 * (ssha.ugosa**2 + ssha.vgosa**2)
-    eke = (ssha.EKE.groupby(ssha.EKE.time.monsoon.labels)
+    eke = (ssha.EKE.groupby(ssha.EKE.time.monsoon.splitlabels)
            .mean(dim='time'))
 
 if 'tropflux' not in locals():
@@ -4168,46 +4168,36 @@ if 'tropflux' not in locals():
                      latitude=slice(2, 25),
                      longitude=slice(78, 96))
                 .load())
-    tropflux = (tropflux.groupby(tropflux.time.monsoon.labels)
+    tropflux = (tropflux.groupby(tropflux.time.monsoon.splitlabels)
                 .mean(dim='time'))
-
-# if 'trmm' not in locals():
-#     trmm = (dcpy.oceans.read_trmm()
-#             .sel(time='2014',
-#                  lat=slice(2, 25),
-#                  lon=slice(78, 96)))
-#     trmm = (trmm.groupby(trmm.time.monsoon.labels)
-#             .sum(dim='time')
-#             .load())
 
 if 'sss' not in locals():
     aq = dcpy.oceans.read_aquarius()
     sss = aq.sss.sel(latitude=slice(2, 25),
                      longitude=slice(78, 96))
-    sss = (sss.groupby(sss.time.monsoon.labels)
+    sss = (sss.groupby(sss.time.monsoon.splitlabels)
            .mean(dim='time')
            .load())
 
 if 'wind_input' not in locals():
-    wind_input = xr.open_dataset('~/bay/estimates/wind-power-input-2014.nc')
-    niw = wind_input.groupby(wind_input.time.monsoon.labels).mean('time')
+    wind_input = xr.open_dataset('~/bay/estimates/merra2-wind-power-input-2014.nc')
+    niw = wind_input.groupby(wind_input.time.monsoon.splitlabels).mean('time')
 
-
-f, ax = plt.subplots(2, 4, sharex=True, sharey=True,
+f, ax = plt.subplots(2, 5, sharex=True, sharey=True,
                      subplot_kw=dict(projection=ccrs.PlateCarree()),
                      constrained_layout=False)
 axes = dict()
 if ax.shape[0] > ax.shape[1]:
-    axes['oce'] = dict(zip(bay.seasons, ax[:, 0]))
-    axes['atm'] = dict(zip(bay.seasons, ax[:, 1]))
+    axes['oce'] = dict(zip(bay.splitseasons, ax[:, 0]))
+    axes['atm'] = dict(zip(bay.splitseasons, ax[:, 1]))
 else:
-    axes['oce'] = dict(zip(bay.seasons, ax[0, :]))
-    axes['atm'] = dict(zip(bay.seasons, ax[1, :]))
+    axes['oce'] = dict(zip(bay.splitseasons, ax[0, :]))
+    axes['atm'] = dict(zip(bay.splitseasons, ax[1, :]))
 
 osc = oscar.sel(latitude=slice(None, None, 2),
                 longitude=slice(None, None, 2))
 
-for season in bay.seasons:
+for season in bay.splitseasons:
     heke = (eke.sel(monsoon=season)
             .plot.contourf(ax=axes['oce'][season],
                            x='longitude', y='latitude',
@@ -4229,14 +4219,13 @@ for season in bay.seasons:
                                         scale=4)
 
     hniw = ((niw.wind_input*1000).sel(monsoon=season)
-            .plot(ax=axes['atm'][season], cmap=mpl.cm.GnBu,
-                  edgecolor='w', lw=1,
-                  levels=40, vmin=0, vmax=0.8, add_colorbar=False))
+            .plot.contourf(ax=axes['atm'][season], cmap=mpl.cm.GnBu,
+                           levels=40, vmin=0, vmax=1.2, add_colorbar=False))
 
-    axes['atm'][season].quiver(tropflux.longitude, tropflux.latitude,
-                               tropflux.taux.sel(monsoon=season),
-                               tropflux.tauy.sel(monsoon=season),
-                               scale=0.8, width=0.006)
+    axes['atm'][season].quiver(niw.lon[::2], niw.lat[::2],
+                               niw.taux.sel(monsoon=season)[::2, ::2],
+                               niw.tauy.sel(monsoon=season)[::2, ::2],
+                               scale=0.4, width=0.006)
     [axes[row][season].text(0.05, 0.875, season,
                             transform=axes[row][season].transAxes,
                             color='k', zorder=10)
@@ -4252,22 +4241,23 @@ def common(ax):
     bay.plot_coastline(ax)
     ax.set_extent([80, 94, 4, 24])
     bay.mark_moors(ax=ax, color='black', colortext='white',
-                   fontsize=7.5, markersize=9)
+                   fontsize=7, markersize=8)
 
 [common(aa) for aa in ax.flat]
 [aa.set_xlabel('Longitude') for aa in ax[1, :]]
 [aa.set_ylabel('Latitude') for aa in ax[:, 0]]
 
-hcb1 = plt.colorbar(heke, ax=ax[0, :2], orientation='horizontal',
-                    label='EKE [m²/s²]', shrink=1)
+hcb1 = plt.colorbar(heke, ax=ax[0, :3], orientation='horizontal',
+                    label='EKE [m²/s²]', shrink=0.7, anchor=(0.3, 1.0))
 hcb2 = plt.colorbar(hniw, ax=ax[0, 2:], orientation='horizontal',
                     label='Near-inertial wind input [mW/m²]',
-                    shrink=1)
+                    shrink=0.7, anchor=(0.8, 1.0))
 hcb1.set_ticks(np.arange(0, 0.31, 0.05))
-hcb2.set_ticks(np.arange(0, 0.81, 0.2))
+hcb2.set_ticks(np.arange(0, 1.21, 0.2))
 
 f.set_size_inches(6, 5)
-plt.subplots_adjust(left=0.080, right=0.99, bottom=0.1, wspace=0.05, hspace=0.4, top=0.99)
+plt.subplots_adjust(left=0.080, right=0.99, bottom=0.1, wspace=0.05,
+                    hspace=0.4, top=0.99)
 
 plt.savefig('images/paper1/spatial-maps.pdf', transparent=False,
             bbox_inches='tight')
@@ -4719,6 +4709,7 @@ f5.savefig('images/paper1/nrl5.pdf')
 [[file:images/paper1/nrl5.pdf]]
 
 *** Figure 5: Vertical profile of K_T distributions
+
 #+BEGIN_SRC ipython :session :results none
 import bay
 bay = importlib.reload(bay)
@@ -4726,9 +4717,82 @@ bay = importlib.reload(bay)
 moors = ['RAMA12', 'RAMA15', 'NRL1', 'NRL2', 'NRL3', 'NRL4', 'NRL5']
 
 bay.make_vert_distrib_plot('KT', label_moorings=False)
+
+plt.subplots_adjust(wspace=-0.2)
+
 plt.savefig('images/vert-profile.svg', bbox_inches='tight')
 plt.savefig('images/paper1/bay-KT-vert-profile.pdf', bbox_inches='tight')
 plt.savefig('images/bay-KT-vert-profile.png', bbox_inches='tight')
+#+END_SRC
+[[file:images/bay-KT-vert-profile.png]]
+
+**** add in mean wind stress?
+#+BEGIN_SRC ipython :session :results none
+import bay
+bay = importlib.reload(bay)
+
+moors = ['RAMA12', 'RAMA15', 'NRL1', 'NRL2', 'NRL3', 'NRL4', 'NRL5']
+
+# bay.make_vert_distrib_plot('KT', label_moorings=False)
+
+if 'df' not in locals():
+    df = bay.nc_to_binned_df(bins=bay.default_density_bins, moor=None)
+    df['KT'] = np.log10(df['KT'])
+
+# f = plt.figure()
+# gs = mpl.gridspec.GridSpec(2, 4, figure=f, height_ratios=(1, 8))
+
+# axx1 = []
+# for ii in range(4):
+#     axx1.append(f.add_subplot(gs[0, ii]))
+
+# axx2 = []
+# for ii in range(4):
+#     axx2.append(f.add_subplot(gs[1, ii]))
+
+# f, axx = plt.subplots(2, 4, gridspec_kw={'height_ratios': (1, 12)},
+#                       sharey='row')
+# ax = dict(zip(bay.seasons, axx[1, :]))
+# bay.vert_distrib(df, df.bin,
+#                  f=f, ax=ax,
+#                  label_moorings=False,
+#                  percentile=True)
+
+# [aa.set_title('') for aa in axx[1, :]]
+
+# months = {'NE': 'Dec-Feb', 'NESW': 'Mar-Apr',
+#           'SW': 'Jun-Sep', 'SWNE': 'Oct-Nov'}
+# [axx[0, idx].set_title(list(months.keys())[idx] + '\n' + months[mm])
+#  for idx, mm in enumerate(ax)]
+
+# # read Tropflux here
+# if 'tropflux' not in locals():
+#     tropflux = (xr.open_mfdataset('../datasets/tropflux/tau*_tropflux_1d_*.nc')
+#                 .drop('tau')
+#                 .sel(time=slice('2013-12-01', '2014-11-30'),
+#                      latitude=slice(2, 25),
+#                      longitude=slice(78, 96))
+#                 .load())
+#     tropflux = (tropflux.groupby(tropflux.time.monsoon.labels)
+#                 .mean(dim='time'))
+
+# mean_winds = tropflux.mean(['latitude', 'longitude'])
+# std_winds = tropflux.std(['latitude', 'longitude'])
+# for ii, ss in enumerate(bay.seasons):
+#     hh = axx[0, ii].quiver(0, 0, mean_winds.sel(monsoon=ss).taux,
+#                            mean_winds.sel(monsoon=ss).tauy, scale=0.3)
+#     hh.set_clip_on(False)
+#     hh.set_in_layout(False)
+#     axx[0, ii].spines['left'].set_visible(False)
+#     axx[0, ii].spines['bottom'].set_visible(False)
+#     axx[0, ii].set_xticks([])
+#     axx[0, ii].set_yticks([])
+
+plt.subplots_adjust(wspace=-0.2)
+
+# plt.savefig('images/vert-profile.svg', bbox_inches='tight')
+# plt.savefig('images/paper1/bay-KT-vert-profile.pdf', bbox_inches='tight')
+# plt.savefig('images/bay-KT-vert-profile.png', bbox_inches='tight')
 #+END_SRC
 [[file:images/bay-KT-vert-profile.png]]
 
