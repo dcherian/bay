@@ -1500,6 +1500,32 @@ g.add_colorbar()
 # Out[660]:
 : <xarray.plot.facetgrid.FacetGrid at 0x7f9d1b4cc860>
 :END:
+*** NIW as fraction of total shear variance
+#+BEGIN_SRC ipython :session
+if 'nrl3' not in locals():
+    nrl3 = bay.read_nrl3()
+
+if 'nrl4' not in locals():
+    nrl4 = bay.read_nrl4()
+
+if 'nrl5' not in locals():
+    nrl5 = bay.read_nrl5()
+
+
+nrl5.plot_niw_fraction()
+f.savefig('images/niw-fraction-nrl5.png')
+
+nrl3.plot_niw_fraction()
+f.savefig('images/niw-fraction-nrl5.png')
+
+nrl4.plot_niw_fraction()
+f.savefig('images/niw-fraction-nrl5.png')
+#+END_SRC
+#+CAPTION: Rolling 4 day variances of shear, KE. Near-inertial component estimated by bandpass filtering.
+[[file:images/niw-fraction-nrl3.png]]
+[[file:images/niw-fraction-nrl4.png]]
+[[file:images/niw-fraction-nrl5.png]]
+
 *** Seasonal cycle of Ri at EBOB?
 #+BEGIN_SRC ipython :session :ipyfile images/nrl5-Ri.png
 N2 = nrl5.N2.isel(depth=1)
