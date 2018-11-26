@@ -300,7 +300,7 @@ def vert_distrib(df, bins, varname='KT', pal=None, f=None, ax=None,
 
         if add_offset:
             if type(interval) != str and interval.mid < 1020:
-                if season == 'SWNE':
+                if season == 'SWNE' or season == 'NE':
                     zloc += 5
             elif interval == 'BL':
                 if season == 'NESW':

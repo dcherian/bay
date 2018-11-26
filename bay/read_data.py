@@ -29,11 +29,12 @@ def read_ra12(minimal=False):
     ra12.AddChipod(810, 15, 'mmw', 'Turb.mat', dir='../rama/RAMA14/')
     ra12.AddChipod(811, 30, 'mm1w', 'Turb.mat', dir='../rama/RAMA14/')
     ra12.AddChipod(812, 45, 'mm2w', 'Turb.mat', dir='../rama/RAMA14/')
+    ra12.ReadMet('../rama/data/met12n90e_10m.cdf', WindType='pmel')
+    ra12.ReadMet(FluxType='pmel')
+
     if not minimal:
-        ra12.ReadMet('../rama/data/met12n90e_10m.cdf', WindType='pmel')
         # ra12.ReadMet('../rama/data/jq0_12n90e_hr.mat', FluxType='merged')
         ra12.ReadMet(FluxType='precip')
-        ra12.ReadMet(FluxType='pmel')
         ra12.ReadTropflux('../rama/tropflux/')
         ra12.ReadVel('../rama/data/cur12n90e_30m.cdf', FileType='pmel')
 
@@ -68,11 +69,11 @@ def read_ra15(minimal=False):
     ra15 = moor.moor(90, 15, 'RAMA 15N', 'ra15', 'rama', '../rama/RAMA14/')
     ra15.AddChipod(813, 15, 'pmw', 'Turb.mat')
     # ra15.AddChipod(814, 30, 'mm1w', 'Turb.mat')
+    ra15.ReadMet('../rama/data/met15n90e_10m.cdf', WindType='pmel')
+    ra15.ReadMet(FluxType='pmel')
     if not minimal:
         ra15.χpod[813].load_pitot()
-    # ra15.χpod[814].load_pitot()
-        ra15.ReadMet('../rama/data/met15n90e_10m.cdf', WindType='pmel')
-        ra15.ReadMet(FluxType='pmel')
+        # ra15.χpod[814].load_pitot()
         ra15.ReadVel('../rama/data/cur15n90e_30m.cdf', FileType='pmel')
 
     ra15.ReadCTD('../rama/RamaPrelimProcessed/RAMA14-15N.mat', 'ramaprelim')
@@ -96,7 +97,7 @@ def read_ra15(minimal=False):
 
     ra15 = _filter_wda_rama(ra15)
 
-    ra15 = __common(ra15)
+    ra15 = __common(ra15, minimal)
 
     return ra15
 
@@ -210,7 +211,9 @@ def _filter_wda_rama(mooring):
             tzm = pod.chi[pod.best[:-1]].dTdz
 
         tzm = tzm.interp(time=best.time)
+        jq0 = mooring.flux.Jq0.interp(time=tzm.time)
 
-        mooring.χpod[unit].chi[pod.best] = best.where(np.abs(tzm) > 1e-3)
+        mooring.χpod[unit].chi[pod.best] = best.where(
+            ~((np.abs(tzm) < 1e-3) & (jq0 < 0)))
 
     return mooring

@@ -939,11 +939,6 @@ spec.name = 'PSD(T)'
 plt.figure(); np.log10(spec).plot(x='time', **plot_kwargs)
 
 #+END_SRC
-#+RESULTS:
-:RESULTS:
-# Out[978]:
-: <matplotlib.collections.QuadMesh at 0x7f2f604b4a90>
-:END:
 
 #+BEGIN_SRC ipython :session :ipyfile images/temp/imgnRA15P.png
 T = nrl5.ctd.T_S.isel(z=3)
@@ -1510,7 +1505,6 @@ if 'nrl4' not in locals():
 
 if 'nrl5' not in locals():
     nrl5 = bay.read_nrl5()
-
 
 nrl5.plot_niw_fraction()
 f.savefig('images/niw-fraction-nrl5.png')
@@ -3747,6 +3741,47 @@ dcpy.ts.plot_detailed_scalogram(m.tropflux.swr.dropna(dim='time'))
 #+END_EXAMPLE
 :END:
 
+* Model biases
+** Summary
+1. There is a dry bias over central India.
+2. cold bias above 80m and warm bias below 100m.
+3. saline bias above 80m too
+** papers
+
+- cite:Koul2018
+  - Using an ocean initial condition obtained by assimilating Argo improves stratification profile in Bay of Bengal → reduces mixing → reduces bias.
+  - Apparently one approach is to use "synthetic salinity profiles" where S = T-S relationship × T. Using plain Argo works better than Argo + synthetic salinity.
+  - Improved upper ocean state improves precipitation forecasts.
+
+- cite:Chowdary2016
+ #+BEGIN_QUOTE
+ The surface salinity bias in MOM5 is smaller than in CFSv2 due to prescribed local freshwater flux and seasonally varying river discharge. However, the bias is higher around 70 m in summer and 40 m in fall. This bias is attributed to excessive vertical mixing in the upper ocean. Despite the fact that representation of salinity in INC-GODAS is more realistic due to data assimilation, the vertical mixing scheme still imposes systematic errors.
+ #+END_QUOTE
+
+  1. CFSv2 shows very high salinity in the upper 20 m north of 14°N for all seasons.
+  2. CFSv2 displays a large cold bias for the upper 80 m of the water column, a positive bias in salinity from the surface to 100 m depth, and a positive bias in density up to 60 m depth
+  3. CFSv2 displays a too-weak stability for the upper 100 m as compared to WOA13
+  4. vertical shear is higher in all models compared to ECCO2
+  5. CFSv2, biases are consistent with excessive mixing, bringing cold, saline water upward and resulting in a positive bias in temperature below 80 m and a reduced bias in salinity below 60 m (Figure 2d,e). This prescribed mixing is likely triggered by subcritical Richardson numbers, due to a combination of high shear and low stratification in the model.
+  6. However, precipitation in general is underestimated over most of the BoB, which arises from the biased rainfall simulation from the GFS.This strong positive E−P in the model would contribute to the high salinity bias, especially in the surface layer of the BoB in CFSv2.
+
+  #+BEGIN_QUOTE
+  Much of the surface layer in the BoB is freshwater stratified, so subject to the “interior ocean mixing” portion of KPP. Internal wave breaking in this layer is likely much more related to locally wind-generated near-inertial internal waves than the background levels assumed in KPP (Johnston et al., 2016, in this issue), and needs to be parameterized differently
+  #+END_QUOTE
+
+- cite:Chowdary2016a:
+ #+BEGIN_QUOTE
+  CFSv2 ... displays warm (cold) subsurface (surface) temperature bias in the tropical Indian Ocean (TIO), with deeper than observed mixed layer and thermocline. In the model, the maximum warm bias is reported between 150- and 200-m depth. Detailed analysis reveals that the enhanced vertical mixing by strong vertical shear of horizontal currents is primarily responsible for TIO subsurface warming.
+ #+END_QUOTE
+  1. CFSv2 is known to suffer from strong cold sea surface temperature (SST) bias over the TIO
+  2. The cold bias in TIO SST is common to almost all phase 5 of the Coupled Model Intercomparison Project (CMIP5) climate models.
+  3. Strong shear enhances the mixing of the upper ocean and weakens stability, leading to subsurface warming in the TIO. This excess mixing supports positive salinity bias in the upper few hundred meters.
+  4. To estimate bias in CFSv2 VTHF (vertical turbulent heat flux), we have generated K_h from stand-alone ocean model MOM5 (considered as a reference profile), which is forced with observed winds.
+     [[file:images/chowdary-2016-cfs-biases.png]]
+  5. the subsurface warm bias is mainly caused by excess vertical shear of horizontal currents’ induced downward transfer of heat.
+
+- cite:Chaudhari2013
+  - CFS (*not CFSv2*) SST shows cold bias in EBoB region
 * vel spectra
 #+BEGIN_SRC ipython :session :ipyfile images/temp/img3907nzu.png
 u = rama.SelectVar('u', region=dict(lon=90, lat=12))
@@ -4209,9 +4244,22 @@ if 'wind_input' not in locals():
     wind_input = xr.open_dataset('~/bay/estimates/merra2-wind-power-input-2014.nc')
     niw = wind_input.groupby(wind_input.time.monsoon.splitlabels).mean('time')
 
+osc = oscar.sel(latitude=slice(None, None, 2),
+                longitude=slice(None, None, 2))
+
+def common(ax):
+    ax.set_xticks(range(80, 96, 4))
+    ax.set_yticks(range(4, 24, 4))
+    bay.plot_coastline(ax)
+    ax.set_extent([80, 94, 4, 24])
+    bay.mark_moors(ax=ax, color='black', colortext='white',
+                   fontsize=7, markersize=8)
+
 f, ax = plt.subplots(2, 5, sharex=True, sharey=True,
                      subplot_kw=dict(projection=ccrs.PlateCarree()),
                      constrained_layout=False)
+[common(aa) for aa in ax.flat]
+
 axes = dict()
 if ax.shape[0] > ax.shape[1]:
     axes['oce'] = dict(zip(bay.splitseasons, ax[:, 0]))
@@ -4219,9 +4267,6 @@ if ax.shape[0] > ax.shape[1]:
 else:
     axes['oce'] = dict(zip(bay.splitseasons, ax[0, :]))
     axes['atm'] = dict(zip(bay.splitseasons, ax[1, :]))
-
-osc = oscar.sel(latitude=slice(None, None, 2),
-                longitude=slice(None, None, 2))
 
 for season in bay.splitseasons:
     heke = (eke.sel(monsoon=season)
@@ -4231,18 +4276,19 @@ for season in bay.splitseasons:
                            levels=np.linspace(0, 0.3, 40),
                            add_colorbar=False))
 
-    hsss = (sss.sel(monsoon=season)
-            .plot.contour(ax=axes['oce'][season],
-                          x='longitude', y='latitude',
-                          levels=[29, 30, 31, 32, 33, 34],
-                          colors='k', linewidths=1))
-    plt.clabel(hsss, fontsize='smaller', fmt='%2.0f')
-
     hoscar = axes['oce'][season].quiver(osc.longitude, osc.latitude,
                                         osc.u.sel(monsoon=season),
                                         osc.v.sel(monsoon=season),
                                         width=0.006,
-                                        scale=4)
+                                        scale=3)
+
+    # hsss = (sss.sel(monsoon=season)
+    #         .plot.contour(ax=axes['oce'][season],
+    #                       x='longitude', y='latitude',
+    #                       levels=[29, 30, 31, 32, 33, 34],
+    #                       colors='k', linewidths=1))
+    # hlab = axes['oce'][season].clabel(hsss, fontsize='smaller', fmt='%2.0f')
+    # [hh.set_backgroundcolor('lightgray') for hh in hlab]
 
     hniw = ((niw.wind_input*1000).sel(monsoon=season)
             .plot.contourf(ax=axes['atm'][season], cmap=mpl.cm.GnBu,
@@ -4257,19 +4303,12 @@ for season in bay.splitseasons:
                             color='k', zorder=10)
      for row in axes]
 
-
-def common(ax):
-    ax.set_xticks(range(80, 96, 4))
-    ax.set_yticks(range(4, 24, 4))
+def clean_axis(ax):
     ax.set_title('')
     ax.set_xlabel('')
     ax.set_ylabel('')
-    bay.plot_coastline(ax)
-    ax.set_extent([80, 94, 4, 24])
-    bay.mark_moors(ax=ax, color='black', colortext='white',
-                   fontsize=7, markersize=8)
 
-[common(aa) for aa in ax.flat]
+[clean_axis(aa) for aa in ax.flat]
 [aa.set_xlabel('Longitude') for aa in ax[1, :]]
 [aa.set_ylabel('Latitude') for aa in ax[:, 0]]
 
@@ -4633,7 +4672,6 @@ f.savefig('images/paper1/rama12.pdf')
 #+END_SRC
 #+CAPTION:
 [[file:images/paper1/rama12.pdf]]
-
 *** Figure 4: NRL time series
 
 

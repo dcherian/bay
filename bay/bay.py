@@ -44,29 +44,9 @@ def make_merged_nc(moorings):
         if m.name == 'NRL3':
             subset.depth.values = np.array([30, 45])
 
-        subset['season'] = subset.time.monsoon.labels
-
-        depth_season = np.round(subset.z.groupby(subset['season'])
-                                .median(dim='time')).astype('int64')
-
-        seas = xr.broadcast(subset['KT'], subset['season'])[1]
-
-        mean_depth = xr.zeros_like(subset['KT'])
-        for ss in ['NE', 'NESW', 'SW', 'SWNE']:
-            mask = seas.values == ss
-            if np.all(~mask):
-                continue
-
-            zz = xr.broadcast(seas == ss, depth_season.sel(season=ss))[1]
-            mean_depth.values[mask] = zz.values[mask]
-
-        # get a reasonable depth for the subset
-        subset['mean_depth'] = mean_depth
-
         Turb = xr.merge([Turb, subset.reset_coords()])
 
     del subset
-    del mask
 
     # print('\t\t merging ...')
     # vards.append(xr.merge(varlist))
