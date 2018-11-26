@@ -233,7 +233,6 @@ def plot_distrib(ax, plotkind, var, zloc, zstd, width=12, percentile=False):
 def vert_distrib(df, bins, varname='KT', pal=None, f=None, ax=None,
                  label_moorings=True, label_bins=True, adjust_fig=True,
                  width=12, percentile=False, add_offset=True, **kwargs):
-
     '''
         Function to make vertical distribution plot when provided with
         appropriately formatted DataFrame.
@@ -255,14 +254,6 @@ def vert_distrib(df, bins, varname='KT', pal=None, f=None, ax=None,
             temp = pal_dist[-2, :].copy()
             pal_dist[-2, :] = pal_dist[-1, :]
             pal_dist[-1, :] = temp
-
-    # map_kind = {'NRL1': 'NRL',
-    #             'NRL2': 'NRL',
-    #             'NRL3': 'NRL',
-    #             'NRL4': 'NRL',
-    #             'NRL5': 'NRL',
-    #             'RAMA12': 'RAMA',
-    #             'RAMA15': 'RAMA'}
 
     if pal is None:
         pal = pal_dist

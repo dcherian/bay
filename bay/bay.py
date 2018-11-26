@@ -10,6 +10,7 @@ region = dict(lon=slice(80, 94), lat=slice(4, 24))
 default_density_bins = [1018, 1021, 1022, 1022.5, 1023, 1023.5, 1024.25, 1029]
 ebob_region = dict(lon=slice(85.5, 88.5), lat=slice(5, 8))
 seasons = ['NE', 'NESW', 'SW', 'SWNE']
+splitseasons = ['NE', 'Mar', 'Apr', 'SW', 'SWNE']
 moor_names = {'ra12': 'RAMA 12N',
               'ra15': 'RAMA 15N',
               'nrl1': 'NRL 1',
@@ -309,7 +310,8 @@ def calc_wind_input(kind='merra2'):
 
     wind_input.mld.attrs['long_name'] = 'MLD'
     wind_input.mld.attrs['units'] = 'm'
-    wind_input.mld.attrs['description'] = 'MIMOC mixed layer depth'
+    wind_input.mld.att
+    rs['description'] = 'MIMOC mixed layer depth'
 
     wind_input.to_netcdf('~/bay/estimates/' + windshortstr
                          + '-wind-power-input-2014.nc')
