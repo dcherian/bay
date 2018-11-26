@@ -2,6 +2,8 @@ import importlib
 
 import moor
 import chipy
+import numpy as np
+
 moor = importlib.reload(moor)
 chipy = importlib.reload(chipy)
 
@@ -54,6 +56,8 @@ def read_ra12(minimal=False):
         sw2014=slice('2014-05-08', '2014-09-22'),
         swne2014=slice('2014-09-23', '2014-11-22'))
 
+    ra12 = _filter_wda_rama(ra12)
+
     ra12 = __common(ra12, minimal)
 
     return ra12
@@ -89,6 +93,8 @@ def read_ra15(minimal=False):
     #     'NE': slice('2014-12-01', '2015-03-15'),
     #     'NESW': slice('2015-03-15', '2015-05-15'),
     #     'SW': slice('2015-05-15', '2015-09-30')}
+
+    ra15 = _filter_wda_rama(ra15)
 
     ra15 = __common(ra15)
 
@@ -192,5 +198,19 @@ def __common(mooring, minimal=False):
         mooring.ReadTropflux('../tropflux/')
         mooring.ReadSSH()
         mooring.calc_niw_input()
+
+    return mooring
+
+
+def _filter_wda_rama(mooring):
+    for unit in mooring.χpod:
+        pod = mooring.χpod[unit]
+        best = pod.chi[pod.best]
+        if 'w' in pod.best:  # e.g. mm1w
+            tzm = pod.chi[pod.best[:-1]].dTdz
+
+        tzm = tzm.interp(time=best.time)
+
+        mooring.χpod[unit].chi[pod.best] = best.where(np.abs(tzm) > 1e-3)
 
     return mooring
