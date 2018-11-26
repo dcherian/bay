@@ -310,8 +310,7 @@ def calc_wind_input(kind='merra2'):
 
     wind_input.mld.attrs['long_name'] = 'MLD'
     wind_input.mld.attrs['units'] = 'm'
-    wind_input.mld.att
-    rs['description'] = 'MIMOC mixed layer depth'
+    wind_input.mld.attrs['description'] = 'MIMOC mixed layer depth'
 
     wind_input.to_netcdf('~/bay/estimates/' + windshortstr
                          + '-wind-power-input-2014.nc')
