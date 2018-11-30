@@ -1975,11 +1975,9 @@ plt.gcf().set_size_inches((8, 5))
 
 #+END_SRC
 
-* Heat flux divergence
-* 8N sampling
+* Heat flux divergence @ 8N
+** 8N sampling
 #+BEGIN_SRC ipython :session
-
-
 # f, ax = plt.subplots(3, 2, constrained_layout=True, sharex=True, sharey='row')
 
 # for ii, mm in enumerate([nrl4, nrl5]):
@@ -3963,6 +3961,22 @@ plt.tight_layout()
 
 #+RESULTS:
 [[file:../images//KT-seasonal.png]]
+* data processing
+#+BEGIN_SRC ipython :session
+Snew = xr.zeros_like(nrl5.ctd.T) * np.nan
+
+for tt in Snew.time:
+    Snew.loc[:, tt] = np.interp(nrl5.ctd.depth2,
+                                nrl5.ctd.depth.loc[:, tt],
+                                nrl5.ctd.S.loc[:, tt],
+                                left=np.nan, right=np.nan)
+
+Snew.attrs = nrl5.ctd.S.attrs
+Snew.name = 'S'
+Snew.to_netcdf('../intermediate-files/'+nrl5.name+'-sgrid.nc')
+
+#+END_SRC
+
 * MLD climatology
 
 #+BEGIN_SRC ipython :session :ipyfile images/temp/img3907e_A.png
@@ -5224,20 +5238,41 @@ plt.savefig('images/paper1/smc-vertical-flux.pdf')
 :END:
 
 *** further filter ra12
+   #+BEGIN_SRC ipython :session
+f, ax = plt.subplots(1, 1, constrained_layout=True)
+
+nrl1.χpod[501].chi['mm'].Kt.plot(yscale='log')
+nrl1.KT.isel(depth=1).plot(yscale='log')
+#+END_SRC
 
 #+BEGIN_SRC ipython :session :results none
+# import copy
 
-# ra12.CombineTurb()  # reset
+# ra12_backup = copy.copy(ra12)
 
-mm1 = ra12.χpod[526].convert_to_xarray('mm1')
-tzm = mm1.dTdz.interp(time=ra12.Jq.time)
+ra12.CombineTurb()
 
-plt.figure()
+# plt.figure()
 Jq = ra12.Jq.sel(depth=15, time='2014')
-Jq.resample(time='D').mean('time').plot()
-(-np.sign(tzm) * np.abs(Jq)).resample(time='D').mean('time').plot()
-(-np.sign(tzm) * np.abs(Jq.where(np.abs(tzm) > 8e-4))).resample(time='D').mean('time').plot()
-(Jq.where(np.abs(tzm) > 1e-3)).resample(time='D').mean('time').plot()
+tzm = ra12.χpod[526].chi['mm1'].dTdz.interp(time=Jq.time)
+
+# Jq.resample(time='D').mean('time').plot()
+# (-np.sign(tzm) * np.abs(Jq)).resample(time='D').mean('time').plot()
+# (-np.sign(tzm) * np.abs(Jq.where(np.abs(tzm) > 8e-4))).resample(time='D').mean('time').plot()
+# (Jq.where(np.abs(tzm) > 1e-3)).resample(time='D').mean('time').plot()
+
+Jq0 = ra12.flux.Jq0.interp(time=Jq.time)
+Lmo = ra12.monin_obukhov().interp(time=Jq.time)
+mld = ra12.mld.interp(time=Jq.time)
+
+mask = np.logical_and(np.logical_and(np.abs(tzm) < 1e-3, mld > 15),
+                      Jq0 < 0)
+mask2 = np.abs(tzm) < 1e-3
+
+# mm1.Jq.resample(time='D').mean('time').plot()
+
+for jj in [Jq, Jq.where(~mask), Jq.where(~mask2)]:
+    jj.resample(time='D').mean('time').plot()
 #+END_SRC
 *** RAMA vs NRL combined :noexport:
 #+BEGIN_SRC ipython :session :results none
