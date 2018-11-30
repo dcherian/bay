@@ -919,16 +919,57 @@ ax.legend(('lowmix', 'himix'))
 :END:
 
 ** Seasonal cycle in internal wave energy?
+#+BEGIN_SRC ipython :session
+depth = 500
 
+var = nrl5.ctd.T.rename({'depth2': 'depth'})
+
+def spectrum_variance(var):
+    S, f = dcpy.ts.CenteredFFT(var.interpolate_na('time'))
+
+    ft = xr.DataArray(S, dims='freq', coords={'freq': f * 86400/3600})
+    ft = ft.where(ft.freq > 0, drop=True) * 2
+
+    ftiw = ft.where((ft.freq > 0.5*f0) & (ft.freq < 4), drop=True)
+
+    return (xrsp.integrate.trapz(np.abs(ftiw)**2, 'freq')/len(ftiw))
+
+f, ax = plt.subplots(1, 1, constrained_layout=True)
+
+for var, label in zip([nrl5.ctd.T.rename({'depth2': 'depth'}),
+                       nrl5.vel.u],
+                      ['T', 'u']):
+    var = (var.sel(time='2014')
+           .sel(depth=slice(50, 250)).mean('depth')
+           .interpolate_na('time'))
+
+    f0 = nrl5.inertial
+    N = argo.N2.mean('time').pipe(np.sqrt)*86400
+
+    variance = (var.groupby('time.month').apply(spectrum_variance))
+    hdl = (variance/variance.max()).plot()
+    dcpy.plots.annotate_end(hdl[0], label=label)
+
+ax.set_ylabel('Normalized internal wave-band variance\n(50m - 250m)')
+ax.set_title('NRL5')
+
+f.savefig('images/nrl5-monthly-iw-variance.png')
+#+END_SRC
+#+CAPTION: OK there is a seasonal cycle in near-inertial band variance; seen in both T and u. I need to calculate a baseline GM spectral value and plot it on here.
+[[file:images/nrl5-monthly-iw-variance.png]]
+
+
+*** older stuff
 Given a mooring calculate spectra at all depths. Average over season?
 
 #+BEGIN_SRC ipython :session :ipyfile images/temp/imgjHIylm.png
 
 # T = nrl5.ctd['T_S']
 
-kwargs = dict(dim='time', window=20*86400/10/60, shift=2*86400/10/60,
+kwargs = dict(dim='time', nfft=20*86400/10/60, shift=2*86400/10/60,
               multitaper=True)
-plot_kwargs = dict(cmap=svc.cm.blue_orange_div, add_colorbar=True)
+plot_kwargs = dict(cmap=svc.cm.blue_orange_div, add_colorbar=True,
+                   yscale='log')
 
 spec = dcpy.ts.Spectrogram(nrl5.ctd.T_S.isel(z=3), **kwargs,
                            dt=10/24/60)
@@ -952,21 +993,14 @@ dcpy.ts.PlotSpectrum(T.monsoon.sw, **kwargs)
 dcpy.ts.PlotSpectrum(T.monsoon.swne, **kwargs)
 tides = dcpy.ts.TidalAliases(600/86400)
 
-plt.gca().axvline(1/(2*np.pi/dcpy.oceans.coriolis(8.5)/86400))
-plt.gca().axvline(1/(2*np.pi/dcpy.oceans.coriolis(8.5)/86400))
+plt.gca().axvline(1/(2*np.pi/dcpy.oceans.coriolis(8)/86400))
+plt.gca().axvline(1/(2*np.pi/dcpy.oceans.coriolis(8)/86400))
 
 dcpy.plots.linex([tt for tt in tides.values()])
 
 plt.gca().legend(['NE', 'NESW', 'SW', 'SWNE'])
 
 #+END_SRC
-
-#+RESULTS:
-:RESULTS:
-# Out[22]:
-: <matplotlib.legend.Legend at 0x7f4248874b70>
-[[file:images/temp/imgnRA15P.png]]
-:END:
 
 Let's integrate temperature spectrum in 3 bands:
 1. Internal waves: 1/1.2f < freq < 1/20 minutes
@@ -4077,6 +4111,205 @@ plt.gcf().set_size_inches((6.5, 6.5))
 #+BEGIN_SRC ipython :session :ipyfile images/temp/img10427SMu.png
 
 #+END_SRC
+* GM spectra
+#+BEGIN_SRC ipython :session
+import numpy as np
+import xarray as xr
+import xrscipy as xrsp
+
+from GM81 import gm
+
+
+class gm81:
+
+    def __init__(self, N=2.5e-3, b=1300, f0=7.3e-5,
+                 jmax=100, nfreq=401, nk=201):
+        '''
+        Inputs
+        ------
+        b : e-folding scale of N(z)
+        N : buoyancy frequency
+
+        jmax : (optional) maximum number of vertical modes
+        nfreq : (optional) number of log-spaced frequencies
+        nk : (optional) number of log-spaced wavenumbers
+        '''
+
+        self.b = b
+        self.N = N
+        self.f0 = f0
+        self.N0 = 5.2e-3
+
+        # frequency
+        omg = xr.DataArray(np.logspace(np.log10(1.01*self.f0),
+                                       np.log10(self.N),
+                                       nfreq),
+                           dims='ω', attrs={'units': 'Hz'})
+        self.ω = omg.assign_coords(ω=omg)
+
+        # horizontal wavenumber
+        k = xr.DataArray(2 * np.pi * np.logspace(-6, -2, nk),
+                         dims='k', attrs={'units': 'rad/m'}, name='k')
+        self.k = k.assign_coords(k=k)
+
+        # mode number
+        j = xr.DataArray(np.arange(1, jmax), dims='j', name='j')
+        self.j = j.assign_coords(j=j)
+
+    def __repr__(self):
+        return ('GM81: b = , N = , f0 = ')
+
+    def _maybe_integrate(self, S, kind):
+        if kind == 'ω' or kind == 'freq':
+            return xrsp.integrate.trapz(S, 'j')
+
+    def KE(self, kind='ω'):
+        K = gm.K_omg_j(self.ω, self.j, self.f0, self.N, self.N0, self.b)
+        return self._maybe_integrate(K, kind)
+
+    def zeta(self, kind='ω'):
+        Z = gm.zeta_omg_j(self.ω, self.j, self.f0, self.N, self.N0, self.b)
+        return self._maybe_integrate(Z, kind)
+
+
+if 'argo' not in locals():
+    argo = (dcpy.oceans.read_argo_clim()
+            .sel(lat=nrl5.lat, lon=nrl5.lon, method='nearest')
+            .sel(time='2014')
+            .load()
+            .transpose())
+
+    argo['rho'] = xr.DataArray(
+        sw.pden(argo.S, argo.T, xr.broadcast(argo.pres, argo.S)[0]),
+        dims=argo.S.dims, coords=argo.S.coords)
+
+    argo['N2'] = 9.81/1025 * argo.rho.differentiate('pres')
+
+
+nrl5.vel['KE'] = 0.5 * np.hypot(nrl5.vel.u, nrl5.vel.v)
+
+depth = 200
+
+Tzlo = (nrl5.ctd.T.mean('time').differentiate('depth2')
+        .sel(depth2=depth, method='nearest'))
+# Tzlo = dcpy.ts.xfilter(Tz, 5*86400, kind='lowpass')
+Thi = dcpy.ts.xfilter(nrl5.ctd.T.sel(depth2=depth, method='nearest'), 5*86400,
+                      kind='highpass')
+ζ = Thi/Tzlo
+
+# KE spectrum
+f, axx = plt.subplots(4, 2, constrained_layout=True, sharex=True, sharey=True)
+ax = dict()
+ax['KE'] = dict(zip(bay.seasons, axx[:, 0]))
+ax['ζ'] = dict(zip(bay.seasons, axx[:, 1]))
+
+KEgroups = nrl5.vel.KE.groupby(nrl5.vel.time.monsoon.labels)
+ζgroups = ζ.groupby(ζ.time.monsoon.labels)
+
+for ((label, kgrp), (_, zgrp)) in zip(KEgroups, ζgroups):
+    dcpy.ts.PlotSpectrum((kgrp.sel(time=slice('2013-12', '2014-11'))
+                          .dropna('time', how='all'))
+                         .sel(depth=depth, method='nearest'),
+                         cycles_per='s', twoside=False, ax=ax['KE'][label],
+                         label=label)
+
+    dcpy.ts.PlotSpectrum((zgrp.sel(time=slice('2013-12', '2014-11'))
+                          .dropna('time', how='all')),
+                         cycles_per='s', twoside=False, ax=ax['ζ'][label],
+                         label=label)
+
+    N = np.sqrt(argo.N2
+                .sel(pres=depth, method='nearest')
+                .where(argo.N2.time.monsoon.labels == label)
+                .mean('time'))
+
+    g = gm81(N=N, f0=dcpy.oceans.coriolis(30), b=1300)
+    gmKE = g.KE('ω')
+    gmKE['ω'] = gmKE['ω'] / 2 / np.pi
+    gmKE['ω'].attrs['units'] = 'cps'
+    gmKE.plot(ax=ax['KE'][label])
+
+    gmζ = g.zeta('ω')
+    gmζ['ω'] = gmζ['ω'] / 2 / np.pi
+    gmζ['ω'].attrs['units'] = 'cps'
+    gmζ.plot(ax=ax['ζ'][label])
+
+[aa.set_title('') for aa in axx.flat]
+# [aa.set_xlabel('') for aa in axx.flat[:-1]]
+
+axx[0, 0].set_xlim((0.8 * g.f0/2/np.pi, 1/600/2))
+
+ax['KE']['NE'].set_title('KE spectra')
+ax['ζ']['NE'].set_title('Displacement spectra')
+dcpy.plots.linex(g.f0/2/np.pi, ax=axx.flat)
+
+# f.savefig('images/nrl5-gm-spectra.png')
+#+END_SRC
+#+CAPTION:
+[[file:images/gm-spectra.png]]
+
+
+#+BEGIN_SRC ipython :session
+import numpy as np
+import xrscipy as xrsp
+
+class levine02:
+    def __init__(self, f0, N, Nprofile, Eref=1, Nref=5.2e-3, js=3,
+                 jmax=100, nfreq=801, nk=401):
+
+        self.Nref = Nref
+        self.Eref = Eref
+        self.js = js
+        self.N = N
+        self.Nprofile = Nprofile
+        self.ωS2 = 2 * np.pi / 43200
+        self.f0 = f0
+
+        # frequency
+        omg = xr.DataArray(np.logspace(np.log10(1.01*self.f0),
+                                       np.log10(self.N),
+                                       nfreq),
+                           dims='ω', attrs={'units': 'Hz'})
+        self.ω = omg.assign_coords(ω=omg)
+
+        # horizontal wavenumber
+        k = xr.DataArray(2 * np.pi * np.logspace(-6, -2, nk),
+                         dims='k', attrs={'units': 'rad/m'}, name='k')
+        self.k = k.assign_coords(k=k)
+
+        # mode number
+        j = xr.DataArray(np.arange(1, jmax), dims='j', name='j')
+        self.j = j.assign_coords(j=j)
+
+        # determine WKB scaled vertical waveguide thickness and save
+        self.D = (1/self.Nref
+                  ,* xrsp.integrate.trapz(self.Nprofile,
+                                         self.Nprofile.dims[0]).values)
+
+        J = 1/(xrsp.integrate.trapz(1/(self.j**2 + self.js**2), 'j'))
+        self.H = J/(self.j**2 + self.js**2)
+        self.B = 2/np.pi * self.f0/(self.ω * np.sqrt(self.ω**2 - self.f0**2))
+
+        C = np.arccos(self.f0/self.Nref) - np.arccos(self.f0/self.ωS2)
+        other = ((1 + self.f0/self.ωS2) * (self.ω/self.ωS2)**3
+                 / ((self.ω/self.ωS2)**(2.5) + self.f0/self.ωS2))
+        self.Bhat = (np.pi/2 * self.B/C *
+                     xr.where(self.ω > self.ωS2, 1, other))
+
+        self.E = self.Eref * self.Bhat * self.H
+
+Nprofile = argo.N2.mean('time').pipe(np.sqrt)
+l02 = levine02(f0=dcpy.oceans.coriolis(30), N=0.02, Nprofile=Nprofile)
+
+xrsp.integrate.trapz(l02.E, 'j').plot(xscale='log', yscale='log')
+# f, ax = plt.subplots(1, 1, constrained_layout=True)
+
+
+# f.savefig('images/levine.png')
+  #+END_SRC
+#+CAPTION:
+[[file:images/levine.png]]
+
 * χ processing
 ** Winters & D'Asaro methodology
 *** Smyth et al 2001
