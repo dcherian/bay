@@ -1503,7 +1503,40 @@ f.savefig('images/niw-input-lon-mean.png')
 #+CAPTION: Average the above in lon. This is cool, because near-inertial waves only propagate equatorward. That means if the wind input is limited to < 10N, as it is, most of the Bay should see little inertial energy. i.e. our 8N χpods should be seeing high mixing relative to the rest of the Bay.
 [[file:images/niw-input-lon-mean.png]]
 
+**** Save all direct mooring estimates
+#+BEGIN_SRC ipython :session
+flux = []
+for func in [bay.read_ra12,
+             bay.read_ra15,
+             bay.read_nrl1,
+             bay.read_nrl2,
+             bay.read_nrl3,
+             bay.read_nrl4,
+             bay.read_nrl5]:
+    mooring = func()
+
+    flux.append(
+        mooring.niw.true_flux.interp(
+            time=pd.date_range(mooring.niw.time[0].values,
+                               mooring.niw.time[-1].values,
+                               freq='H')))
+
+
+for ii, ff in enumerate(flux):
+    if 'longitude' in ff.coords:
+        flux[ii] = ff.rename({'longitude': 'lon', 'latitude': 'lat'})
+
+    flux[ii] = ff.expand_dims(['lon', 'lat'])
+    try:
+        flux[ii] = ff.drop('depth')
+    except ValueError:
+        pass
+
+flux_merged = xr.merge(flux)
+flux_merged.to_netcdf('../estimates/mooring-near-inertial-input.nc')
+#+END_SRC
 **** old crap: need near-inertial current!                      :noexport:
+****
 #+BEGIN_SRC ipython :session :ipyfile images/temp/imgCv7Gly.png
 taux = xr.open_mfdataset('../datasets/tropflux/taux_tropflux_1d_*.nc')
 tauy = xr.open_mfdataset('../datasets/tropflux/tauy_tropflux_1d*.nc')
@@ -4471,7 +4504,8 @@ if 'oscar' not in locals():
 
 if 'ssha' not in locals():
     ssha = (xr.open_dataset('../datasets/ssh/'
-                            + 'dataset-duacs-rep-global-merged-allsat-phy-l4-v3_1522711420825.nc')
+                            + 'dataset-duacs-rep-global-merged-allsat'
+                            + '-phy-l4-v3_1522711420825.nc')
             .sel(time=slice('2013-12-01', '2014-11-30'))
             .load())
     ssha['EKE'] = 0.5 * (ssha.ugosa**2 + ssha.vgosa**2)
@@ -4500,6 +4534,12 @@ if 'wind_input' not in locals():
     wind_input = xr.open_dataset('~/bay/estimates/merra2-wind-power-input-2014.nc')
     niw = wind_input.groupby(wind_input.time.monsoon.splitlabels).mean('time')
 
+if 'true_input' not in locals():
+    true_input = xr.open_dataset('~/bay/estimates/mooring-near-inertial-input.nc')
+    true_input = (true_input.true_flux
+                  .groupby(true_input.time.monsoon.splitlabels)
+                  .mean('time'))
+
 osc = oscar.sel(latitude=slice(None, None, 2),
                 longitude=slice(None, None, 2))
 
@@ -4508,8 +4548,8 @@ def common(ax):
     ax.set_yticks(range(4, 24, 4))
     bay.plot_coastline(ax)
     ax.set_extent([80, 94, 4, 24])
-    bay.mark_moors(ax=ax, color='black', colortext='white',
-                   fontsize=7, markersize=8)
+    # bay.mark_moors(ax=ax, color='black', colortext='white',
+    #                fontsize=7, markersize=8)
 
 f, ax = plt.subplots(2, 5, sharex=True, sharey=True,
                      subplot_kw=dict(projection=ccrs.PlateCarree()),
@@ -4546,25 +4586,47 @@ for season in bay.splitseasons:
     # hlab = axes['oce'][season].clabel(hsss, fontsize='smaller', fmt='%2.0f')
     # [hh.set_backgroundcolor('lightgray') for hh in hlab]
 
+    kwargs = dict(cmap=mpl.cm.GnBu, vmin=0, vmax=1.2)
     hniw = ((niw.wind_input*1000).sel(monsoon=season)
-            .plot.contourf(ax=axes['atm'][season], cmap=mpl.cm.GnBu,
-                           levels=40, vmin=0, vmax=1.2, add_colorbar=False))
+            .plot.contourf(ax=axes['atm'][season], levels=40,
+                           add_colorbar=False, **kwargs))
 
-    axes['atm'][season].quiver(niw.lon[::2], niw.lat[::2],
-                               niw.taux.sel(monsoon=season)[::2, ::2],
-                               niw.tauy.sel(monsoon=season)[::2, ::2],
-                               scale=0.4, width=0.006)
-    [axes[row][season].text(0.05, 0.875, season,
-                            transform=axes[row][season].transAxes,
-                            color='k', zorder=10)
-     for row in axes]
+    _, lon, lat = xr.broadcast(true_input.sel(monsoon=season),
+                               true_input.lon, true_input.lat)
+    htrue = axes['atm'][season].scatter(
+        lon.values.ravel(), lat.values.ravel(),
+        c=(true_input*1000).sel(monsoon=season).values.ravel(),
+        edgecolor='darkgray', linewidths=1, **kwargs)
+
+    htau = axes['atm'][season].quiver(niw.lon[::2], niw.lat[::2],
+                                      niw.taux.sel(monsoon=season)[::2, ::2],
+                                      niw.tauy.sel(monsoon=season)[::2, ::2],
+                                      scale=0.4, width=0.006)
+
+    if season == 'NE':
+        keykwargs = dict(coordinates='axes', labelpos='S',
+                      fontproperties=dict(size=8))
+        axes['oce']['NE'].quiverkey(hoscar, 0.2, 0.96, 0.5, '0.5 m/s',
+                                    ,**keykwargs)
+
+        axes['atm']['NE'].quiverkey(htau, 0.25, 0.96, 0.1, '0.1 N/m²',
+                                    ,**keykwargs)
+
+    axes['oce'][season].set_title(season)
+
+    # [axes[row][season].text(0.05, 0.875, season,
+    #                         transform=axes[row][season].transAxes,
+    #                         color='k', zorder=10)
+     # for row in axes]
+
+
 
 def clean_axis(ax):
-    ax.set_title('')
     ax.set_xlabel('')
     ax.set_ylabel('')
 
 [clean_axis(aa) for aa in ax.flat]
+[axes['atm'][aa].set_title('') for aa in axes['atm']]
 [aa.set_xlabel('Longitude') for aa in ax[1, :]]
 [aa.set_ylabel('Latitude') for aa in ax[:, 0]]
 
@@ -4929,7 +4991,6 @@ f.savefig('images/paper1/rama12.pdf')
 #+CAPTION:
 [[file:images/paper1/rama12.pdf]]
 *** Figure 4: NRL time series
-
 
 #+BEGIN_SRC ipython :session :results none
 if 'nrl5' not in locals():
