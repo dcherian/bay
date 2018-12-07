@@ -1,4 +1,5 @@
 import airsea
+import cycler
 import numpy as np
 import pandas as pd
 import tqdm
@@ -17,7 +18,8 @@ moor_names = {'ra12': 'RAMA 12N',
               'nrl3': 'NRL 3',
               'nrl4': 'NRL 4',
               'nrl5': 'NRL 5'}
-
+monsoon_cycler = ((cycler.cycler(color=['r', 'r', 'b', 'b']))
+                  + (cycler.cycler(linestyle=['-', '--', '-', '--'])))
 
 def make_merged_nc(moorings):
     ''' Makes merged netCDF files with turbulence info.
