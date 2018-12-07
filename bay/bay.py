@@ -21,6 +21,7 @@ moor_names = {'ra12': 'RAMA 12N',
 monsoon_cycler = ((cycler.cycler(color=['r', 'r', 'b', 'b']))
                   + (cycler.cycler(linestyle=['-', '--', '-', '--'])))
 
+
 def make_merged_nc(moorings):
     ''' Makes merged netCDF files with turbulence info.
 

@@ -1,20 +1,21 @@
 import matplotlib.pyplot as plt
 import numpy as np
-import scipy as sp
 import pandas as pd
+import scipy as sp
 import seaborn as sns
-import xarray as xr
-import dcpy
+
 import cartopy.crs as ccrs
+import dcpy
+import xarray as xr
 from cartopy import feature
 
-from .bay import nc_to_binned_df, default_density_bins
+from .bay import default_density_bins, nc_to_binned_df
 
 # markers = {'RAMA': 'o', 'NRL': '^', 'OMM/WHOI': 'o'}
 # colors = {'RAMA': '#0074D9', 'NRL': '#3D9970', 'OMM/WHOI': '#FF4136'}
 # colors = {'RAMA': '#1696A3', 'NRL': '#F89B1F', 'OMM/WHOI': '#EA4D5B'}
-# colors = {'RAMA': '#1696A3', 'NRL': '#F89B1F', 'OMM/WHOI': '#EA4D5B'}
-colors = {'RAMA': '#1696A3', 'NRL': '#F89B1F', 'OMM/WHOI': 'gray'}
+colors = {'RAMA': '#1696A3', 'NRL': '#F89B1F', 'OMM/WHOI': '#EA4D5B'}
+# colors = {'RAMA': '#1696A3', 'NRL': '#F89B1F', 'OMM/WHOI': 'gray'}
 
 
 def plot_coastline(ax=None, facecolor="#FEF9E4"):
@@ -44,10 +45,6 @@ def make_map(pods, DX=0.6, DY=0.55, add_year=True, highlight=[],
                      'edgecolor': 'none',
                      'boxstyle': 'round'}}
 
-    # ProjParams = {'min_latitude' : 0.0, # same as lat_0 in proj4 string
-    #               'max_latitude' : 30.0, # same as lat_0 in proj4 string
-    #               'central_longitude' : 88.0, # same as lon_0
-    # }
     proj = ccrs.PlateCarree()
 
     def get_color(name, highlight):
@@ -114,7 +111,7 @@ def make_map(pods, DX=0.6, DY=0.55, add_year=True, highlight=[],
             dx += 0.6
 
         if pod['label'] == 'OMM/WHOI':
-            dy += 1.25
+            dy += 2
 
         labelargs['bbox']['facecolor'] = get_color(pod['label'], highlight)
 
@@ -230,7 +227,8 @@ def plot_distrib(ax, plotkind, var, zloc, zstd, width=12, percentile=False):
     return hdl, median, mean
 
 
-def vert_distrib(df, bins, varname='KT', pal=None, f=None, ax=None,
+def vert_distrib(df, bins, varname='KT', kind='distribution',
+                 pal=None, f=None, ax=None,
                  label_moorings=True, label_bins=True, adjust_fig=True,
                  width=12, percentile=False, add_offset=True, **kwargs):
     '''
@@ -265,7 +263,7 @@ def vert_distrib(df, bins, varname='KT', pal=None, f=None, ax=None,
     if varname is 'KT':
         title = '$\\log_{10}$ hourly averaged $K_T$ (m²/s)'
         xlim = kwargs.pop('xlim', [-7.5, 2])
-        xlines = kwargs.pop('xlines', [-5, -4, -1])
+        xlines = kwargs.pop('xlines', [-5, -4])
     else:
         title = varname
         xlim = kwargs.pop('xlim', None)
@@ -280,7 +278,7 @@ def vert_distrib(df, bins, varname='KT', pal=None, f=None, ax=None,
         aa.set_title(seas + '\n(' + months[seas] + ')')
         if xlim is not None:
             aa.set_xlim(xlim)
-            aa.set_xticks(range(-7, 0))
+            aa.set_xticks(range(-7, max(xlim)))
 
     # for plotting mean, median profile
     zvec = dict()
@@ -318,33 +316,43 @@ def vert_distrib(df, bins, varname='KT', pal=None, f=None, ax=None,
         if varname == 'ρ':
             var -= 1000
 
-        for mm in df['moor'].unique():
-            if len(df['moor'].where(df.moor == mm).dropna())/len(df) <= 0.10:
-                df = df.loc[df['moor'] != mm]
+        if kind == 'distribution':
+            for mm in df['moor'].unique():
+                if (len(df['moor'].where(df.moor == mm).dropna())/len(df)
+                    <= 0.10):
+                    df = df.loc[df['moor'] != mm]
 
-        hdl, median, mean = plot_distrib(ax[season], plotkind, var,
-                                         zloc, df.z.std(), width, percentile)
-        color = _get_color_from_hdl(hdl)
+            hdl, median, mean = plot_distrib(ax[season], plotkind, var,
+                                             zloc, df.z.std(), width,
+                                             percentile)
 
-        zvec[season].append(zloc)
-        mdnvec[season].append(median)
-        meanvec[season].append(mean)
+            zvec[season].append(zloc)
+            mdnvec[season].append(median)
+            meanvec[season].append(mean)
 
-        try:
             xtxt = hdl['cbars'].get_paths()[0].vertices[1, 0]
-            ytxt = zloc
+            color = _get_color_from_hdl(hdl)
 
-            if label_bins:
-                ax[season].text(xtxt, ytxt, '     '+bin_name,
-                                color=color, ha='left', va='center',
-                                fontsize=7)
-            if label_moorings:
-                ax[season].text(-0.75, ytxt,
-                                format_moor_names(df['moor'].unique()),
-                                color=color, ha='left',
-                                va='center', fontsize=6)
-        except TypeError:
-            pass
+        elif kind == 'mean_ci_profile':
+            mean = np.log10(df[varname].values)
+            err = np.abs(mean - np.log10(df.ci.values[0]))[:, np.newaxis]
+            hdl = ax[season].errorbar(mean, zloc,
+                                      xerr=err, fmt='^')
+
+            xtxt = hdl.lines[-1][0].get_segments()[0][1, 0]
+            color = hdl.lines[0].get_color()
+
+        ytxt = zloc
+
+        if label_bins:
+            ax[season].text(xtxt, ytxt, '     '+bin_name,
+                            color=color, ha='left', va='center',
+                            fontsize=7)
+        if label_moorings:
+            ax[season].text(-0.75, ytxt,
+                            format_moor_names(df['moor'].unique()),
+                            color=color, ha='left',
+                            va='center', fontsize=6)
 
     ax['NE'].set_ylabel('depth (m)')
     ax['NE'].set_ylim([120, 0])
@@ -366,7 +374,11 @@ def vert_distrib(df, bins, varname='KT', pal=None, f=None, ax=None,
         sns.despine(fig=f, left=False, bottom=False, trim=True)
         f.set_size_inches((8.5, 5.5))
         f.suptitle(title, y=0.03, va='baseline')
-        plt.subplots_adjust(wspace=0.25)
+
+    if label_moorings:
+        plt.subplots_adjust(wspace=-0.1)
+    else:
+        plt.subplots_adjust(wspace=-0.2)
 
     return f, ax
 
@@ -415,8 +427,6 @@ def make_vert_distrib_plot(varname,
     f, ax = vert_distrib(df, df.bin,
                          label_moorings=label_moorings,
                          percentile=True)
-
-    plt.subplots_adjust(wspace=-0.06)
 
 
 def make_labeled_map(ax=None):
@@ -471,10 +481,10 @@ def make_labeled_map(ax=None):
     }
 
     ax, colors = make_map(pods, DX=0.6, DY=0.55,
-                          add_year=True, highlight=['RAMA', 'NRL'],
+                          add_year=True, highlight=['RAMA', 'NRL', 'OMM/WHOI'],
                           ax=ax)
 
-    ax.text(87, 6.8, 'NRL\n(2014)',
+    ax.text(87, 6.8, 'EBoB\n(2014)',
             color=colors['NRL'], ha='center', va='center')
     ax.text(90-0.35, 18, 'OMM/WHOI',
             color=colors['OMM/WHOI'], ha='right', va='center')

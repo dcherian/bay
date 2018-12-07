@@ -2164,6 +2164,10 @@ seasonal = (filtered
             .mean('time'))
 
 # full near-inertial field
+ranges = dict(vmin=-0.05, vmax=0.05)
+common_kwargs = dict(x='time', yincrease=False, **ranges,
+                     add_colorbar=False, cmap=mpl.cm.RdBu_r)
+iso_kwargs = dict(y='mean_depth', levels=20)
 f, ax = plt.subplots(2, 2, constrained_layout=True, sharex=True, sharey=True)
 filtered.wkbu.plot(ax=ax[0, 0], **common_kwargs)
 filtered.wkbv.plot(ax=ax[1, 0], **common_kwargs)
@@ -2188,11 +2192,6 @@ ax[1].legend(handles=hdl, labels=bay.seasons, loc='lower right', ncol=2,
              title='Seasonal means')
 f.suptitle(mooring.name)
 f.savefig('images/seasonal-mean-KE-profiles-nrl4.png')
-
-ranges = dict(vmin=-0.05, vmax=0.05)
-common_kwargs = dict(x='time', yincrease=False, **ranges,
-                     add_colorbar=False, cmap=mpl.cm.RdBu_r)
-iso_kwargs = dict(y='mean_depth', levels=20)
   #+END_SRC
 #+CAPTION:
 [[file:images/nrl5-near-inertial.png]]
