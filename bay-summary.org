@@ -1505,30 +1505,25 @@ f.savefig('images/niw-input-lon-mean.png')
 
 **** Save all direct mooring estimates
 #+BEGIN_SRC ipython :session
-flux = []
-for func in [bay.read_ra12,
-             bay.read_ra15,
-             bay.read_nrl1,
-             bay.read_nrl2,
-             bay.read_nrl3,
-             bay.read_nrl4,
-             bay.read_nrl5]:
-    mooring = func()
+# [ra12, ra15, nrl1, nrl2, nrl3, nrl4, nrl5] = bay.read_all_moorings()
 
+flux = []
+for mooring in [ra12, ra15, nrl1, nrl2, nrl3, nrl4, nrl5]:
     flux.append(
         mooring.niw.true_flux.interp(
-            time=pd.date_range(mooring.niw.time[0].values,
-                               mooring.niw.time[-1].values,
+            time=pd.date_range(mooring.niw.time[0].dt.round('H').values,
+                               mooring.niw.time[-1].dt.round('H').values,
                                freq='H')))
-
 
 for ii, ff in enumerate(flux):
     if 'longitude' in ff.coords:
-        flux[ii] = ff.rename({'longitude': 'lon', 'latitude': 'lat'})
+        flux[ii] = flux[ii].rename({'longitude': 'lon', 'latitude': 'lat'})
 
-    flux[ii] = ff.expand_dims(['lon', 'lat'])
+    if 'depth' in ff.coords:
+        flux[ii] = flux[ii].drop('depth')
+
     try:
-        flux[ii] = ff.drop('depth')
+        flux[ii] = flux[ii].expand_dims(['lon', 'lat'])
     except ValueError:
         pass
 
@@ -4258,12 +4253,12 @@ Thi = dcpy.ts.xfilter(nrl5.ctd.T.sel(depth2=depth, method='nearest'), 5*86400,
 ζ = Thi/Tzlo
 
 # KE spectrum
-f, axx = plt.subplots(4, 2, constrained_layout=True, sharex=True, sharey=True)
+f, axx = plt.subplots(4, 2, constrained_layout=True, sharex='col', sharey='col')
 ax = dict()
 ax['KE'] = dict(zip(bay.seasons, axx[:, 0]))
 ax['ζ'] = dict(zip(bay.seasons, axx[:, 1]))
 
-KEgroups = nrl5.vel.KE.groupby(nrl5.vel.time.monsoon.labels)
+KEgroups = nrl5.vel.u.groupby(nrl5.vel.time.monsoon.labels)
 ζgroups = ζ.groupby(ζ.time.monsoon.labels)
 
 for ((label, kgrp), (_, zgrp)) in zip(KEgroups, ζgroups):
@@ -4283,8 +4278,8 @@ for ((label, kgrp), (_, zgrp)) in zip(KEgroups, ζgroups):
                 .where(argo.N2.time.monsoon.labels == label)
                 .mean('time'))
 
-    g = gm81(N=N, f0=dcpy.oceans.coriolis(30), b=1300)
-    gmKE = g.KE('ω')
+    g = gm81(N=N, f0=dcpy.oceans.coriolis(8), b=1300)
+    gmKE = g.KE('ω')/2
     gmKE['ω'] = gmKE['ω'] / 2 / np.pi
     gmKE['ω'].attrs['units'] = 'cps'
     gmKE.plot(ax=ax['KE'][label])
@@ -4297,7 +4292,7 @@ for ((label, kgrp), (_, zgrp)) in zip(KEgroups, ζgroups):
 [aa.set_title('') for aa in axx.flat]
 # [aa.set_xlabel('') for aa in axx.flat[:-1]]
 
-axx[0, 0].set_xlim((0.8 * g.f0/2/np.pi, 1/600/2))
+axx[0, 0].set_xlim((0.6 * dcpy.oceans.coriolis(8)/2/np.pi, 1/600/2))
 
 ax['KE']['NE'].set_title('KE spectra')
 ax['ζ']['NE'].set_title('Displacement spectra')
@@ -4532,13 +4527,22 @@ if 'sss' not in locals():
 
 if 'wind_input' not in locals():
     wind_input = xr.open_dataset('~/bay/estimates/merra2-wind-power-input-2014.nc')
-    niw = wind_input.groupby(wind_input.time.monsoon.splitlabels).mean('time')
+    mean_niw = (wind_input.groupby(wind_input.time.monsoon.splitlabels).mean('time'))
+    niw = (wind_input.wind_input
+           .sel(time=slice('2013-12-01', '2014-11-30'))
+           .groupby(wind_input.time.monsoon.splitlabels)
+           .apply(xrsp.integrate.trapz, coord='time'))
 
-if 'true_input' not in locals():
-    true_input = xr.open_dataset('~/bay/estimates/mooring-near-inertial-input.nc')
-    true_input = (true_input.true_flux
-                  .groupby(true_input.time.monsoon.splitlabels)
-                  .mean('time'))
+# if 'true_input' not in locals():
+#     true_input = (xr.open_dataset('~/bay/estimates/mooring-near-inertial-input.nc')
+#                   .sel(time=slice('2014-01-01', '2014-11-30'))
+#                   .true_flux)
+#     true_input.values[np.isnan(true_input.values)] = 0
+#     grp = true_input.groupby(true_input.time.monsoon.splitlabels)
+#     true_input = (true_input
+#                   .groupby(true_input.time.monsoon.splitlabels)
+#                   .apply(xrsp.integrate.trapz, coord='time'))
+#     true_input = true_input.where(np.abs(true_input) > 0)
 
 osc = oscar.sel(latitude=slice(None, None, 2),
                 longitude=slice(None, None, 2))
@@ -4586,26 +4590,26 @@ for season in bay.splitseasons:
     # hlab = axes['oce'][season].clabel(hsss, fontsize='smaller', fmt='%2.0f')
     # [hh.set_backgroundcolor('lightgray') for hh in hlab]
 
-    kwargs = dict(cmap=mpl.cm.GnBu, vmin=0, vmax=1.2)
-    hniw = ((niw.wind_input*1000).sel(monsoon=season)
+    kwargs = dict(cmap=mpl.cm.GnBu, vmin=0, vmax=10)
+    hniw = ((niw/1000).sel(monsoon=season)
             .plot.contourf(ax=axes['atm'][season], levels=40,
                            add_colorbar=False, **kwargs))
 
     _, lon, lat = xr.broadcast(true_input.sel(monsoon=season),
                                true_input.lon, true_input.lat)
-    htrue = axes['atm'][season].scatter(
-        lon.values.ravel(), lat.values.ravel(),
-        c=(true_input*1000).sel(monsoon=season).values.ravel(),
-        edgecolor='darkgray', linewidths=1, **kwargs)
+    # htrue = axes['atm'][season].scatter(
+    #     lon.values.ravel(), lat.values.ravel(),
+    #     c=(true_input/1000).sel(monsoon=season).values.ravel(),
+    #     edgecolor='darkgray', linewidths=1, **kwargs)
 
     htau = axes['atm'][season].quiver(niw.lon[::2], niw.lat[::2],
-                                      niw.taux.sel(monsoon=season)[::2, ::2],
-                                      niw.tauy.sel(monsoon=season)[::2, ::2],
+                                      mean_niw.taux.sel(monsoon=season)[::2, ::2],
+                                      mean_niw.tauy.sel(monsoon=season)[::2, ::2],
                                       scale=0.4, width=0.006)
 
     if season == 'NE':
         keykwargs = dict(coordinates='axes', labelpos='S',
-                      fontproperties=dict(size=8))
+                         fontproperties=dict(size=8))
         axes['oce']['NE'].quiverkey(hoscar, 0.2, 0.96, 0.5, '0.5 m/s',
                                     ,**keykwargs)
 
@@ -4617,7 +4621,7 @@ for season in bay.splitseasons:
     # [axes[row][season].text(0.05, 0.875, season,
     #                         transform=axes[row][season].transAxes,
     #                         color='k', zorder=10)
-     # for row in axes]
+    # for row in axes]
 
 
 
@@ -4633,10 +4637,10 @@ def clean_axis(ax):
 hcb1 = plt.colorbar(heke, ax=ax[0, :3], orientation='horizontal',
                     label='EKE [m²/s²]', shrink=0.7, anchor=(0.3, 1.0))
 hcb2 = plt.colorbar(hniw, ax=ax[0, 2:], orientation='horizontal',
-                    label='Near-inertial wind input [mW/m²]',
+                    label='Near-inertial wind input [kJ/m²]',
                     shrink=0.7, anchor=(0.8, 1.0))
 hcb1.set_ticks(np.arange(0, 0.31, 0.05))
-hcb2.set_ticks(np.arange(0, 1.21, 0.2))
+hcb2.set_ticks(np.arange(0, 11, 2))
 
 f.set_size_inches(6, 5)
 plt.subplots_adjust(left=0.080, right=0.99, bottom=0.1, wspace=0.05,
@@ -5992,3 +5996,43 @@ samples = population[:1000]
 :RESULTS:
 # Out[570]:
 :END:
+
+* test slab model
+#+BEGIN_SRC ipython :session
+from dcpy.oceans import coriolis, calc_wind_power_input
+
+ρ0 = 1025
+time = pd.date_range('01-01-2014', '06-01-2014', freq='H')
+H = 50
+f0 = coriolis(15)
+r = 0.15 * f0
+τx = xr.DataArray(0.1 * np.cos(
+    -f0 * (time-time[0]).astype('timedelta64[s]') .astype('float32')),
+                  dims=['time'], coords={'time': time})
+τy = xr.DataArray(0.1 * np.sin(
+    -f0 * (time-time[0]).astype('timedelta64[s]') .astype('float32')),
+                  dims=['time'], coords={'time': time})
+T = (τx + 1j * τy)
+
+σ = np.fft.fftshift(np.fft.fftfreq(len(T)))
+That = xr.DataArray(np.fft.fftshift(np.fft.fft(T)),
+                    dims=['σ'], coords={'σ': σ})
+
+Zhat = -1j * σ/(r + 1j * f0)/(1j*σ + (r + 1j*f0)) * That/H/ρ0
+
+expected = xr.DataArray(np.fft.ifft(np.fft.ifftshift(Zhat)),
+                        dims=['time'], coords={'time': time})
+
+_, actual = calc_wind_power_input(T, H, f0)
+
+f, ax = plt.subplots(2, 1, constrained_layout=True)
+expected.pipe(np.real).plot(ax=ax[0])
+actual.pipe(np.real).plot(ax=ax[0])
+
+expected.pipe(np.imag).plot(ax=ax[1])
+actual.pipe(np.imag).plot(ax=ax[1])
+
+# f.savefig('images/test-slab-model.png')
+#+END_SRC
+#+CAPTION:
+[[file:images/test-slab-model.png]]
