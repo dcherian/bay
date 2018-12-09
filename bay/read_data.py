@@ -3,6 +3,9 @@ import importlib
 import moor
 import chipy
 import numpy as np
+import tqdm
+
+from .adcp import process_adcp
 
 moor = importlib.reload(moor)
 chipy = importlib.reload(chipy)
@@ -217,3 +220,9 @@ def _filter_wda_rama(mooring):
             ~((np.abs(tzm) < 1e-3) & (jq0 < 0)))
 
     return mooring
+
+
+def process_adcps():
+    for ff in tqdm.tqdm([read_nrl1, read_nrl2, read_nrl3, read_nrl4, read_nrl5]):
+        mooring = ff()
+        process_adcp(mooring)
