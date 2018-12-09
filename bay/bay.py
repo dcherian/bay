@@ -18,7 +18,7 @@ moor_names = {'ra12': 'RAMA 12N',
               'nrl3': 'NRL 3',
               'nrl4': 'NRL 4',
               'nrl5': 'NRL 5'}
-monsoon_cycler = ((cycler.cycler(color=['r', 'r', 'b', 'b']))
+monsoon_cycler = ((cycler.cycler(color=['darkorange', 'darkorange', 'teal', 'teal']))
                   + (cycler.cycler(linestyle=['-', '--', '-', '--'])))
 
 
