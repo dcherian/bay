@@ -669,8 +669,9 @@ def plot_moor(moor, idepth, axx, time_range='2014'):
     else:
         hmet = (moor.tropflux.tau
                 .sel(time=time_range).plot(ax=axes['met'], color='k', lw=1.2))
-        hmet[0].set_clip_on(False)
-        hmet[0].set_in_layout(False)
+
+    hmet[0].set_clip_on(False)
+    hmet[0].set_in_layout(False)
 
     hkt = (moor.KT.isel(depth=idepth).sel(time=time_range)
            .resample(time='D').mean('time')
@@ -678,23 +679,22 @@ def plot_moor(moor, idepth, axx, time_range='2014'):
 
     hjq = (moor.Jq.isel(depth=idepth).sel(time=time_range)
            .resample(time='D').mean('time')
-           .plot(ax=axes['jq'], _labels=False, lw=1.2,
-                 color='k'))
+           .plot(ax=axes['jq'], _labels=False, lw=1.2, color='k'))
 
     hjs = ((moor.Js/1e-2).isel(depth=idepth).sel(time=time_range)
            .resample(time='D').mean('time')
-           .plot(ax=axes['js'], _labels=False, lw=1.2, color='gray'))
+           .plot(ax=axes['js'], _labels=False, lw=1.2, color='C0'))
 
     fraction = (moor.KT.sel(time=time_range).isel(depth=idepth)
                 .groupby(moor.KT.sel(time=time_range).time.dt.floor('D'))
                 .count()/144)
-    fraction.where(fraction > 0).plot(ax=axes['coverage'], color='gray')
+    fraction.where(fraction > 0).plot(ax=axes['coverage'], color='C0')
 
     for hh in [hjq, hjs]:
         hh[0].set_clip_on(False)
         hh[0].set_in_layout(False)
 
-    axes['js'].set_zorder(-1)
+    # axes['js'].set_zorder(-1)
     axes['js'].spines['right'].set_visible(True)
 
     # labels
@@ -718,7 +718,7 @@ def plot_moor(moor, idepth, axx, time_range='2014'):
 
     axes['jq'].set_ylabel('$J_q^t$ [W/m²]')
     axes['js'].set_ylabel('$J_s^t$ \n [$10^{-2}$ g/m²/s]')
-    [dcpy.plots.set_axes_color(axes[aa], 'gray', 'right')
+    [dcpy.plots.set_axes_color(axes[aa], 'C0', 'right')
      for aa in ['js', 'coverage']]
 
     axes['coverage'].set_ylabel('Fraction\ndaily coverage')
