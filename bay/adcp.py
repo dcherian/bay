@@ -82,8 +82,15 @@ def process_adcp(mooring, argo_superset=None, nsmooth_shear=4):
     argo['N2'] = argo.ρmean.differentiate('pres') * 9.81/1025
     argo['N'] = np.sqrt(argo.N2)
 
-    vel = (mooring.vel[['u', 'v']].copy()
-           .interpolate_na('depth')
+    # truncate to valid range
+    if mooring.name == 'NRL4':
+        vel = (mooring.vel[['u', 'v']]
+               .sel(time=slice(None, '2015-03-01'))
+               .copy())
+    else:
+        vel = mooring.vel[['u', 'v']].copy()
+
+    vel = (vel.interpolate_na('depth')
            .interpolate_na('time')
            .dropna('depth', how='any')
            .dropna('time', how='any'))
@@ -92,10 +99,6 @@ def process_adcp(mooring, argo_superset=None, nsmooth_shear=4):
 
     vel['uz'] = smooth_shear(vel.u.differentiate('depth'), nsmooth_shear)
     vel['vz'] = smooth_shear(vel.v.differentiate('depth'), nsmooth_shear)
-
-    # truncate to valid range
-    if mooring.name == 'NRL4':
-        vel = vel.sel(time=slice(None, '2015-03-01'))
 
     # map temperature to ADCP grid
     vel['T'] = (mooring.ctd.T.rename({'depth2': 'depth'})
@@ -164,10 +167,8 @@ def process_adcp(mooring, argo_superset=None, nsmooth_shear=4):
                            freq=[0.8, 1.2] * mooring.inertial.values,
                            cycles_per='D'))
 
-    filtered = (filtered.dropna('depth', how='all')
-                .sel(time=slice('2013-12', '2014-11')))
-    iso_filtered = (iso_filtered.dropna('T', how='all')
-                    .sel(time=slice('2013-12', '2014-11')))
+    filtered = filtered.dropna('depth', how='all')
+    iso_filtered = iso_filtered.dropna('T', how='all')
 
     filtered['wkbKE'] = 0.5 * np.hypot(filtered.wkbu, filtered.wkbv)
     filtered.wkbKE.attrs['long_name'] = 'Near-inertial WKB scaled KE'
@@ -182,6 +183,10 @@ def process_adcp(mooring, argo_superset=None, nsmooth_shear=4):
     vel['inertial'] = mooring.inertial
     filtered['inertial'] = mooring.inertial
     isoT['inertial'] = mooring.inertial
+
+    vel['zχpod'] = mooring.zχpod.interp(time=vel.time)
+    filtered['zχpod'] = vel['zχpod']
+    # isoT['zχpod'] = vel['zχpod']
 
     vel.to_netcdf('../estimates/ebob-adcp/'
                   + mooring.name.lower() + '-vel.nc')

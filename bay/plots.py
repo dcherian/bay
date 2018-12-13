@@ -388,7 +388,7 @@ def mark_moors(color='w',
                colortext='k',
                markersize=14,
                fontsize=10,
-               ax=None):
+               ax=None, **kwargs):
     lons = [85.5, 85.5, 87, 88.5, 90, 90]
     lats = [5, 8, 8, 8, 12, 15]
     names = ['1', '3', '4', '5', '12', '15']
@@ -396,7 +396,7 @@ def mark_moors(color='w',
     if ax is None:
         ax = plt.gca()
 
-    ax.plot(lons, lats, 'o', color=color, ms=markersize)
+    ax.plot(lons, lats, 'o', color=color, ms=markersize, **kwargs)
 
     if labels:
         for lon, lat, name in zip(lons, lats, names):

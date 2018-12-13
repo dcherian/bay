@@ -20,6 +20,18 @@ moor_names = {'ra12': 'RAMA 12N',
               'nrl5': 'NRL 5'}
 monsoon_cycler = ((cycler.cycler(color=['darkorange', 'darkorange', 'teal', 'teal']))
                   + (cycler.cycler(linestyle=['-', '--', '-', '--'])))
+loc = {
+    'NRL1': dict(lat=5, lon=85.5),
+    'nrl1': dict(lat=5, lon=85.5),
+    'NRL2': dict(lat=6.5, lon=85.5),
+    'nrl2': dict(lat=6.5, lon=85.5),
+    'NRL3': dict(lat=8, lon=85.5),
+    'nrl3': dict(lat=8, lon=85.5),
+    'NRL4': dict(lat=8, lon=87.0),
+    'nrl4': dict(lat=8, lon=87.0),
+    'NRL5': dict(lat=8, lon=88.5),
+    'nrl5': dict(lat=8, lon=88.5)
+}
 
 
 def make_merged_nc(moorings):
