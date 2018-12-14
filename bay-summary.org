@@ -1980,6 +1980,14 @@ I think citep:Alford2017 has the ideal procedure:
 1. First WKB scale using time-mean stratification profile
 2. Then interpolate to isopycnal frame
 3. Then calculate spectra
+4. Separate into up, down components by calculating FFT along depth at each time; use +ve wavenumber = up, -ve wavenumber=down; set appropriate region to zero and then ifft.
+
+citep:Alford2012 calculates 2D spectrum of WKB-scaled velocity and depth!
+
+cite:Alford2012 corrects for sinc⁴(m) response apparently.
+#+BEGIN_QUOTE
+The large bin size of the instrument introduces a sinc⁴(m) rolloff of its vertical wavenumber response beginning near scales of 100 m (Alford and Gregg 2001; Polzin et al. 2002). The plotted spectra are corrected for this response.
+#+END_QUOTE
 
 *** WKB scaling
 cite:Alford2007
@@ -2034,6 +2042,7 @@ Since c_p c_g = (ω/m) (∂ω/∂m) < 0
 |------------------+------------------|
 | -m, -ω, c_p, -c_g  | -m, +ω, -c_p, +c_g |
 
+This agrees with one of the Pinkel papers.
 ** Caveats:
 
 1. Here, because temperature sensors are all basically below longranger; I lose a lot of data by mapping to temperature space. So I am restricted to doing things in depth space _to get values at χpod depths_. I can do isothermal space stuff to make general statements about the "thermocline" ≈ 130m and below.
@@ -2057,10 +2066,11 @@ ranges = dict(vmin=-0.05, vmax=0.05)
 common_kwargs = dict(x='time', yincrease=False, **ranges,
                      add_colorbar=False, cmap=mpl.cm.RdBu_r)
 iso_kwargs = dict(y='mean_depth', levels=20)
+
 f, ax = plt.subplots(2, 2, constrained_layout=True, sharex=True, sharey=True)
 filtered.wkbu.plot(ax=ax[0, 0], **common_kwargs)
 filtered.wkbv.plot(ax=ax[1, 0], **common_kwargs)
-np.real(filtered.uz_back).plot.contour(ax=ax[0, 0], levels=20, colors='k')
+np.real(vel.uz_back).plot.contour(ax=ax[0, 0], levels=20, colors='k')
 
 iso_filtered.wkbu.plot.contourf(ax=ax[0, 1], **iso_kwargs, **common_kwargs)
 hdl = iso_filtered.wkbv.plot.contourf(ax=ax[1, 1], **iso_kwargs, **common_kwargs)
@@ -2119,6 +2129,7 @@ np.log10(spec).plot(robust=True)
 
 
 **** 2D seasonal shear spectra
+
 #+BEGIN_SRC ipython :session
 # up- to down-going energy
 def plot_2dspectrum(spec, **kwargs):
@@ -2223,6 +2234,8 @@ for m in range(5):
 [[file:images/seasonal-shear-2d-spectra-nrl4.png]]
 
 
+**** Up- & down-filtered data with mixing
+
 #+BEGIN_SRC ipython :session
 import xrft
 
@@ -2309,45 +2322,72 @@ plt.savefig('images/up-down-niw-shear-nrl5.png', bbox_inches='tight')
 #+CAPTION:
 [[file:images/up-down-niw-shear-nrl5.png]]
 
-* checking inter-mooring variability
-#+BEGIN_SRC ipython :session :ipyfile images/temp/imgBRHfA4.png
-turb = xr.open_dataset('bay_merged_hourly.nc')
 
-ra = (turb.KT.sel(lon=90)
-      .dropna(dim='lat', how='all')
-      .dropna(dim='depth', how='all')
-      .resample(time='D').mean(dim='time'))
+**** Low-pass + NIW shear + mixing
 
-ra.plot.line(x='time', hue='depth', row='lat', yscale='log')
-#+END_SRC
+#+BEGIN_SRC ipython :session
+turb = xr.open_dataset('../estimates/bay_merged_hourly.nc')
 
-#+BEGIN_SRC ipython :session :ipyfile images/ra12-ra15-compare-15m.png
-d15 = ra.sel(depth=15)
+for m in ['nrl4', 'nrl5']:
+    adcp = bay.read_adcp(m)
 
-plt.figure()
-for da in [d15.sel(lat=12, time='2014'),
-           d15.sel(lat=12, time='2015'),
-           d15.sel(lat=15)]:
-    plt.plot(da.time.dt.dayofyear, da.values)
+    lowpass = adcp['vel'][['uz', 'vz', 'u', 'v']].apply(
+        xfilter.lowpass, coord='time', freq=0.5*adcp['vel'].inertial,
+        cycles_per='D', order=3)
+    lowpass['Uz'] = np.hypot(lowpass.uz, lowpass.vz)
+    lowpass.Uz.dc.set_name_units('Lowpass shear', '1/s')
+    lowpass['KE'] = np.hypot(lowpass.u, lowpass.v)**2
+    lowpass.KE.dc.set_name_units('Lowpass KE', 'm²/s²')
 
-plt.gca().set_yscale('log')
-plt.legend(['12N, 2014', '12N, 2015', '15N, 2015'])
-plt.title('15m χpod')
-plt.gcf().set_size_inches((8, 5))
-#+END_SRC
+    niw_shear = np.hypot(adcp['niw'].uz, adcp['niw'].vz)
+    niw_shear.dc.set_name_units('NIW shear', '1/s')
+    niw_ke = np.hypot(adcp['niw'].u, adcp['niw'].v)**2
+    niw_ke.dc.set_name_units('NIW KE', 'm²/s²')
 
-#+RESULTS:
-:RESULTS:
-# Out[124]:
-[[file:images/ra12-ra15-compare-15m.png]]
-:END:
+    f = plt.figure(constrained_layout=True)
+    gs = f.add_gridspec(4, 1, height_ratios=(2, 2, 2, 1))
+    axx = []
+    axx.append(f.add_subplot(gs[0]))
+    axx.append(f.add_subplot(gs[1], sharex=axx[0], sharey=axx[0]))
+    axx.append(f.add_subplot(gs[2], sharex=axx[0], sharey=axx[0]))
+    axx.append(f.add_subplot(gs[3], sharex=axx[0]))
 
-15N, 2015 and 12N, 2014 are quite similar. 12N, 2015 is different mostly because of stratification.
-- in 2014, there are a lot of temperature inversions during SW monsoon at 15m; χpod is frequently in barrier layer.
-- in 2015, χpod sees basically single-signed gradient nearly all the time.
+    ax = dict(zip(['full', 'lo', 'niw', 'turb'], axx))
 
-#+BEGIN_SRC ipython :session :ipyfile images/temp/imgFx1nQF.png
+    kwargs = dict(yincrease=False, robust=True,
+                  ylim=[300, 0], cmap=mpl.cm.YlOrBr)
 
+    # lowpass.KE.plot(ax=ax['full'], **kwargs)
+    hdl = (adcp['vel']['u']
+           .rolling(time=6, center=True).mean()
+           .plot.contourf(ax=ax['full'], levels=25, robust=True, yincrease=False))
+    niw_ke.plot.contour(ax=ax['niw'], levels=[0, 0.005, 0.01, 0.03],
+                        colors='b', yincrease=False)
+    hdl = lowpass.Uz.plot(ax=ax['lo'], **kwargs)
+    niw_shear.plot(ax=ax['niw'], **kwargs)
+
+    # for aa in axx[:-1]:
+    #     (adcp['vel'].zχpod.resample(time='D').mean('time')
+    #      .plot.line(x='time', color='k', lw=2, ax=aa))
+
+    (turb.KT.sel(**bay.loc[m.upper()]).dropna(dim='depth', how='all')
+     .resample(time='6H').mean('time')
+     .plot.line(x='time', ax=ax['turb'], yscale='log'))
+
+    [aa.set_title('') for aa in axx]
+    [aa.set_xlabel('') for aa in axx]
+    [aa.set_title('') for aa in axx]
+    [[tt.set_visible(False) for tt in aa.get_xticklabels()] for aa in axx[:-1]]
+
+    tlim = (turb.KT.sel(**bay.loc[m.upper()])
+            .dropna('depth', how='all')
+            .dropna('time', how='all')
+            .time[[0, -1]])
+
+    axx[-1].set_xlim(tlim.values)
+    f.set_size_inches((8, 8))
+    axx[0].set_title(m)
+    # f.savefig('images/ke-shear-' + m + '.png', bbox_inches='tight')
 #+END_SRC
 
 * Heat flux divergence @ 8N
@@ -3152,8 +3192,6 @@ ax = ra12.Plotχpods(region={'time': slice('2014-02-20', '2014-03-20')},
 _ = ax['T'].set_ylim([60,0])
 #+END_SRC
 #+CAPTION: Here, both χpods see frequent changes in the sign of T_z and heat fluxes are large and change sign often. |T_z| stays decently big (0.01-0.1) for chunks of time --- these are associated with large fluxes. Maybe using internal T_z might make sense here.
-#+RESULTS: barrier-rama12-2014
-[[file:images/barrier-layer-rama12-2014-feb.png]]
 
 #+NAME: barrier-rama12-2015
 #+BEGIN_SRC ipython :session :ipyfile images/barrier-layer-rama12-2015-apr.png :results raw
