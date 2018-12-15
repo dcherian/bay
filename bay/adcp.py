@@ -69,7 +69,13 @@ def backrotate(ds, f0):
     return br
 
 
-def process_adcp(mooring, argo_superset=None, nsmooth_shear=4):
+def process_adcp(mooring, argo_superset=None, nsmooth_shear=4,
+                 isothermal=False):
+
+    filter_kwargs = dict(
+        coord='time', cycles_per='D', order=3,
+        freq=[0.7, 1.5] * mooring.inertial.values
+    )
 
     # estimate climatological N
     if not argo_superset:
@@ -144,32 +150,10 @@ def process_adcp(mooring, argo_superset=None, nsmooth_shear=4):
     else:
         z0 = 0
 
-    # isothermal frame
-    isotherms = (mooring.ctd.T.mean('time')
-                 .rename({'depth2': 'depth'})
-                 .sel(depth=slice(z0, None, 1))
-                 .dropna('depth', how='all'))
-    isotherms.values = np.flip(np.sort(isotherms.values))
-
-    isoT = to_isothermal_space(vel, ['wkbu', 'wkbv', 'uz', 'vz',
-                                     'uz_back_real', 'uz_back_imag'],
-                               isotherms)
-
     # near-inertial bandpass filtering
     filtered = vel[['u', 'v', 'wkbu', 'wkbv', 'uz', 'vz']].apply(
-        xfilter.bandpass, coord='time',
-        freq=[0.8, 1.2]*mooring.inertial.values,
-        cycles_per='D')
-
-    iso_filtered = (isoT[['wkbu', 'wkbv']]
-                    .interpolate_na('time', limit=12)
-                    .apply(xfilter.bandpass, coord='time',
-                           freq=[0.8, 1.2] * mooring.inertial.values,
-                           cycles_per='D'))
-
+        xfilter.bandpass, **filter_kwargs)
     filtered = filtered.dropna('depth', how='all')
-    iso_filtered = iso_filtered.dropna('T', how='all')
-
     filtered['wkbKE'] = 0.5 * np.hypot(filtered.wkbu, filtered.wkbv)
     filtered.wkbKE.attrs['long_name'] = 'Near-inertial WKB scaled KE'
     filtered.wkbKE.attrs['units'] = 'm²/s²'
@@ -182,18 +166,37 @@ def process_adcp(mooring, argo_superset=None, nsmooth_shear=4):
 
     vel['inertial'] = mooring.inertial
     filtered['inertial'] = mooring.inertial
-    isoT['inertial'] = mooring.inertial
 
     vel['zχpod'] = mooring.zχpod.interp(time=vel.time)
     filtered['zχpod'] = vel['zχpod']
-    # isoT['zχpod'] = vel['zχpod']
 
     vel.to_netcdf('../estimates/ebob-adcp/'
                   + mooring.name.lower() + '-vel.nc')
     filtered.to_netcdf('../estimates/ebob-adcp/'
                        + mooring.name.lower() + '-vel-niw-filtered.nc')
-    isoT.to_netcdf('../estimates/ebob-adcp/'
-                   + mooring.name.lower() + '-vel-isoT.nc')
+
+    # isothermal frame
+    if isothermal:
+        isotherms = (mooring.ctd.T.mean('time')
+                     .rename({'depth2': 'depth'})
+                     .sel(depth=slice(z0, None, 1))
+                     .dropna('depth', how='all'))
+        isotherms.values = np.flip(np.sort(isotherms.values))
+
+        isoT = to_isothermal_space(vel, ['wkbu', 'wkbv', 'uz', 'vz',
+                                         'uz_back_real', 'uz_back_imag'],
+                                   isotherms)
+
+        iso_filtered = (isoT[['wkbu', 'wkbv']]
+                        .interpolate_na('time', limit=12)
+                        .apply(xfilter.bandpass, **filter_kwargs))
+
+        iso_filtered = iso_filtered.dropna('T', how='all')
+
+        isoT['inertial'] = mooring.inertial
+
+        isoT.to_netcdf('../estimates/ebob-adcp/'
+                       + mooring.name.lower() + '-vel-isoT.nc')
 
 
 def read_adcp(name):
