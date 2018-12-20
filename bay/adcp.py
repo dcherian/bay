@@ -72,9 +72,10 @@ def backrotate(ds, f0):
 def process_adcp(mooring, argo_superset=None, nsmooth_shear=4,
                  isothermal=False):
 
+    freq_factor = [0.6, 2.1]
     filter_kwargs = dict(
         coord='time', cycles_per='D', order=3,
-        freq=[0.7, 1.5] * mooring.inertial.values
+        freq=freq_factor * mooring.inertial.values
     )
 
     # estimate climatological N
@@ -169,6 +170,12 @@ def process_adcp(mooring, argo_superset=None, nsmooth_shear=4,
 
     vel['zχpod'] = mooring.zχpod.interp(time=vel.time)
     filtered['zχpod'] = vel['zχpod']
+
+    filtered.attrs['niw_lo'] = freq_factor[0]
+    filtered.attrs['niw_hi'] = freq_factor[1]
+    filtered.attrs['description'] = ('bandpass filtered in ' +
+                                     str(freq_factor) + 'f_0 = ' +
+                                     str(filter_kwargs['freq']) + ' cpd.')
 
     vel.to_netcdf('../estimates/ebob-adcp/'
                   + mooring.name.lower() + '-vel.nc')
