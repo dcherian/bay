@@ -4,6 +4,7 @@ import seawater as sw
 import tqdm
 import xarray as xr
 import xfilter
+import xrft
 import xrscipy as xrsp
 
 
@@ -223,7 +224,70 @@ def read_adcp(name):
                                + 1j * vel[var].uz_back_imag)
         vel[var] = vel[var].drop(['uz_back_real', 'uz_back_imag'])
 
+    vel['low'] = (vel['vel'][['u', 'v', 'uz', 'vz']]
+                  .apply(xfilter.lowpass, coord='time', freq=0.1,
+                         cycles_per='D'))
+
+    for var in vel:
+        vel[var]['shear'] = vel[var].uz + 1j * vel[var].vz
+        if var is not 'vel' and var is not 'iso':
+            vel[var]['good_data'] = vel['vel'].good_data
+        if 'u' in vel[var]:
+            vel[var]['w'] = vel[var].u + 1j * vel[var].v
+        if 'wkbu' in vel[var]:
+            vel[var]['wkbw'] = vel[var].wkbu + 1j * vel[var].wkbv
+
+    vel['niw']['shear'].dc.set_name_units('NIW shear', '1/s')
+    vel['vel']['shear'].dc.set_name_units('shear', '1/s')
+    vel['iso']['shear'].dc.set_name_units('isothermal shear', '1/s')
+
+    vel['niw']['w'].dc.set_name_units('NIW velocity', 'm/s')
+    vel['vel']['w'].dc.set_name_units('velocity', 'm/s')
+    # vel['iso']['w'].dc.set_name_units('isothermal velocity', 'm/s')
+
     for vv in vel:
         vel[vv].attrs['name'] = name.upper()
+        vel[vv].attrs['mooring'] = name.upper()
+        for dd in vel[vv]:
+            vel[vv][dd].attrs['mooring'] = name.upper()
 
     return vel
+
+
+def partition_niw_up_down(data):
+    '''
+    Runs fft along depth, zeros out positive or negative wavenumber
+    and then runs ifft to filter out up and down near-inertial motions.
+    '''
+
+    dim = list(data.dims)
+    dim.remove('time')
+    fft = xrft.dft(data, dim=dim, shift=False, window=False,
+                   detrend='constant')
+    axis = fft.get_axis_num('freq_' + dim[0])
+    # ifft = np.fft.ifft(np.fft.ifftshift(fft, axes=axis), axis=axis)
+
+    upkernel = (1 + np.tanh(fft.freq_depth/0.005))/2
+    downkernel = (1 + np.tanh(-fft.freq_depth/0.005))/2
+
+    up = xr.DataArray(np.fft.ifft(fft * upkernel, axis=axis),
+                      dims=data.dims, coords=data.coords,
+                      attrs={'long_name': 'up ' + data.attrs['long_name']},
+                      name='up')
+
+    down = xr.DataArray(np.fft.ifft(fft * downkernel, axis=axis),
+                        dims=data.dims, coords=data.coords,
+                        attrs={'long_name': 'down ' + data.attrs['long_name']},
+                        name='down')
+
+    # remove edge effects
+    down[0, :] = np.nan
+    down[-1, :] = np.nan
+    up[0, :] = np.nan
+    up[-1, :] = np.nan
+
+    updown = xr.merge([up, down])
+
+    updown.attrs = data.attrs
+
+    return updown

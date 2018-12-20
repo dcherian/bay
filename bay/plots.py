@@ -736,3 +736,47 @@ def plot_moor(moor, idepth, axx, time_range='2014'):
     # axx[-1].xaxis.set_major_formatter(mpl.dates.DateFormatter('%Y-%b'))
 
     return axes
+
+
+def mark_seasons(ax=None, zorder=-10):
+
+    dates = dict()
+
+    dates[2014] = {
+        'NE': ('2013-Dec-01', '2014-Mar-01'),
+        'NESW': ('2014-Mar-01', '2014-May-01'),
+        'SW': ('2014-May-01', '2014-Oct-01'),
+        'SWNE': ('2014-Oct-01', '2014-Dec-01')
+    }
+
+    dates[2015] = {
+        'NE': ('2014-Dec-01', '2015-Mar-01'),
+        'NESW': ('2015-Mar-01', '2015-Apr-30'),
+        'SW': ('2015-Apr-30', '2015-Sep-30'),
+        'SWNE': ('2015-Oct-1', '2015-Nov-30')
+    }
+
+    if ax is None:
+        ax = plt.gca()
+
+    xlim = ax.get_xlim()
+    ylim = ax.get_ylim()
+
+    seasonColor = {
+        'NE': 'beige',  # 'beige',
+        'NESW': 'lemonchiffon',  # lemonchiffon
+        'SW': 'wheat',  # wheat
+        'SWNE': 'honeydew'  # honeydew
+    }
+
+    for pp in dates:
+        for ss in dates[pp]:
+            clr = seasonColor[ss]
+            xx = pd.to_datetime(dates[pp][ss])
+            ax.fill_between(xx, 0, 1,
+                            transform=ax.get_xaxis_transform('grid'),
+                            facecolor=clr, alpha=0.9,
+                            zorder=zorder, edgecolor=None)
+
+    ax.set_xlim(xlim)
+    ax.set_ylim(ylim)

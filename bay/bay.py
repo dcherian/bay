@@ -345,3 +345,33 @@ def bin_and_to_dataframe(KTm, ρbins=None, Sbins=None):
         dict(zip(moornames.values(), moornames.keys())))
                     .astype('category'))
     return KTdf
+
+
+def seasonal_rms(data, split=False):
+    def rms(data):
+        calc = np.sqrt((np.abs(data)**2).mean('time'))
+        count = data.count('time')/len(data.time)
+
+        return calc.where(count > 0.8)
+
+    if split:
+        labels = data.time.monsoon.splitlabels
+    else:
+        labels = data.time.monsoon.labels
+
+    return data.groupby(labels).apply(rms)
+
+
+def seasonal_mean(data, split=False):
+    def mean(data):
+        calc = data.mean('time')
+        count = data.count('time')/len(data.time)
+
+        return calc.where(count > 0.8)
+
+    if split:
+        labels = data.time.monsoon.splitlabels
+    else:
+        labels = data.time.monsoon.labels
+
+    return (data.groupby(labels).apply(mean))
