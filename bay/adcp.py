@@ -73,22 +73,11 @@ def backrotate(ds, f0):
 def process_adcp(mooring, argo_superset=None, nsmooth_shear=4,
                  isothermal=False):
 
-    freq_factor = [0.6, 2.1]
+    freq_factor = [0.7, 1.5]
     filter_kwargs = dict(
         coord='time', cycles_per='D', order=3,
         freq=freq_factor * mooring.inertial.values
     )
-
-    # estimate climatological N
-    if not argo_superset:
-        argo_superset = dcpy.oceans.read_argo_clim()[['Tmean', 'Smean']]
-
-    argo = (argo_superset
-            .sel(lat=mooring.lat, lon=mooring.lon, method='nearest'))
-    argo['ρmean'] = xr.DataArray(sw.pden(argo.Smean, argo.Tmean, argo.pres),
-                                 dims=['pres'], coords={'pres': argo.pres})
-    argo['N2'] = argo.ρmean.differentiate('pres') * 9.81/1025
-    argo['N'] = np.sqrt(argo.N2)
 
     # truncate to valid range
     if mooring.name == 'NRL4':
@@ -97,6 +86,20 @@ def process_adcp(mooring, argo_superset=None, nsmooth_shear=4,
                .copy())
     else:
         vel = mooring.vel[['u', 'v']].copy()
+
+    # estimate climatological N
+    if not argo_superset:
+        argo_superset = dcpy.oceans.read_argo_clim()[['Tmean', 'Smean', 'T', 'S']]
+
+    argo = (argo_superset
+            .sel(lat=mooring.lat, lon=mooring.lon, method='nearest')
+            .sel(time=slice(vel.time[0], vel.time[-1])))
+    argo['ρ'] = xr.DataArray(sw.pden(argo.S, argo.T, argo.pres),
+                             dims=['time', 'pres'],
+                             coords={'time': argo.time,
+                                     'pres': argo.pres})
+    argo['N2'] = argo.ρ.differentiate('pres') * 9.81/1025
+    argo['N'] = np.sqrt(argo.N2)
 
     vel = (vel.interpolate_na('depth')
            .interpolate_na('time')
@@ -119,8 +122,12 @@ def process_adcp(mooring, argo_superset=None, nsmooth_shear=4,
     # WKB scale velocities
     vel['Nmean'] = (argo.N.interp(pres=vel.depth.values)
                     .rename({'pres': 'depth'}))
-    vel['wkb_factor'] = vel.Nmean/vel.Nmean.mean('depth')
+    vel['wkb_factor'] = vel.Nmean.mean('time')/vel.Nmean.mean()
     vel['wkb_factor'].attrs['long_name'] = 'N(z) / Nmean'
+    vel['wkb_factor'].attrs['description'] = 'Using annual mean N'
+    vel['wkb_factor_monthly'] = vel.Nmean/vel.Nmean.mean()
+    vel['wkb_factor_monthly'].attrs['long_name'] = 'N(z, t) / Nmean'
+    vel['wkb_factor_monthly'].attrs['description'] = 'Using monthly mean N'
     wkbz = xrsp.integrate.cumtrapz(vel.wkb_factor, 'depth').values
     vel['wkbz'] = xr.DataArray(wkbz, dims=['wkbz'], coords={'wkbz': wkbz},
                                attrs={'long_name': 'WKB scaled depth',
@@ -212,11 +219,11 @@ def read_adcp(name):
     vel = dict()
 
     vel['vel'] = xr.open_dataset('../estimates/ebob-adcp/'
-                                 + name.lower() + '-vel.nc')
+                                 + name.lower() + '-vel.nc').load()
     vel['niw'] = xr.open_dataset('../estimates/ebob-adcp/'
-                                 + name.lower() + '-vel-niw-filtered.nc')
+                                 + name.lower() + '-vel-niw-filtered.nc').load()
     vel['iso'] = xr.open_dataset('../estimates/ebob-adcp/'
-                                 + name.lower() + '-vel-isoT.nc')
+                                 + name.lower() + '-vel-isoT.nc').load()
 
     # backrotation
     for var in ['vel', 'iso']:
@@ -226,7 +233,7 @@ def read_adcp(name):
 
     vel['low'] = (vel['vel'][['u', 'v', 'uz', 'vz']]
                   .apply(xfilter.lowpass, coord='time', freq=0.1,
-                         cycles_per='D'))
+                         cycles_per='D', order=3))
 
     for var in vel:
         vel[var]['shear'] = vel[var].uz + 1j * vel[var].vz
@@ -250,6 +257,9 @@ def read_adcp(name):
         vel[vv].attrs['mooring'] = name.upper()
         for dd in vel[vv]:
             vel[vv][dd].attrs['mooring'] = name.upper()
+
+        if vv is not 'low':
+            vel[vv].close()
 
     return vel
 

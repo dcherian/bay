@@ -738,7 +738,7 @@ def plot_moor(moor, idepth, axx, time_range='2014'):
     return axes
 
 
-def mark_seasons(ax=None, zorder=-10):
+def mark_seasons(ax=None, zorder=-20):
 
     dates = dict()
 
