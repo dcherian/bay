@@ -1736,7 +1736,7 @@ for nn in ['NRL1', 'NRL3', 'NRL4', 'NRL5']:
 
 
 #+END_SRC
-** Diffusivity correlations
+** Diffusivity scatter plots
 Looks like there's some work on scattering $ε$ against $N$ : cite:Gargett1984.
 
 #+BEGIN_SRC ipython :session
@@ -2153,6 +2153,110 @@ f.savefig('images/nrl5-kt-ri-correlation.png')
 #+CAPTION:
 [[file:images/nrl5-kt-ri-correlation.png
 ]]
+
+*** by NRL mooring
+#+BEGIN_SRC ipython :session
+turb = xr.open_dataset('../estimates/bay_merged_hourly.nc')
+
+mooring = nrl3
+
+filter_kwargs = dict(cycles_per='D', coord='time', order=3)
+
+zpod = (mooring.zχpod.sel(num=2, drop=True)
+        .interp(time=mooring.vel.time).dropna('time'))
+
+iz0 = np.digitize(zpod.values, mooring.vel.depth-4) - 1
+zbin = xr.DataArray(np.stack([iz0-1, iz0, iz0+1]),
+                    dims=['iz', 'time'],
+                    coords={'time': zpod.time, 'iz': [-8, 0, 8]})
+subset = (mooring.vel[['u', 'v']]
+          .sel(depth=mooring.vel.depth[zbin], time=zbin.time)
+          .interpolate_na('time'))
+subsetz = (subset.differentiate('iz').isel(iz=1, drop=True)
+           .rename({'u': 'uz', 'v': 'vz'}))
+subsetz['u'] = subset.u.isel(iz=1)
+subsetz['v'] = subset.v.isel(iz=1)
+subsetz['shear'] = subsetz.uz + 1j * subsetz.vz
+
+uzi = subsetz
+
+# uzi = (mooring.vel[['u', 'v', 'uz', 'vz']]
+#        .sel(depth=120, method='nearest'))
+
+full = xr.Dataset()
+full['shear'] = uzi.uz.interpolate_na('time') + 1j*uzi.vz.interpolate_na('time')
+full['u'] = uzi.u
+full['v'] = uzi.v
+full['N2'] = ((mooring.turb.N2).isel(depth=1)
+              .interp(time=zpod.time))
+full['Tz'] = (mooring.turb.Tz.isel(depth=1)
+              .interp(time=zpod.time))
+full = full.interpolate_na('time')
+
+low = full.apply(xfilter.lowpass, freq=0.15, **filter_kwargs)
+loni = full.apply(xfilter.lowpass, freq=4, **filter_kwargs)
+high = full.apply(xfilter.bandpass, freq=[0.15, 4], **filter_kwargs)
+niw = full.apply(xfilter.bandpass, freq=[0.15, 2.1], **filter_kwargs)
+
+timescale= 'M'
+mix = (turb.sel(**bay.loc[mooring.name])
+       .dropna('depth', how='all')
+       .isel(depth=1))
+KTr = mix.KT.dropna('time').resample(time=timescale).mean('time')
+
+epsr = xr.Dataset()
+epsr['mean'] = mix.ε.dropna('time').resample(time=timescale).mean('time')
+epsr['std'] = mix.ε.dropna('time').resample(time=timescale).std('time')
+
+highr = high.shear.resample(time=timescale).apply(dcpy.util.rms).interp(time=KTr.time)
+lowr = low.shear.resample(time=timescale).apply(dcpy.util.rms).interp(time=KTr.time)
+lonir = loni.shear.resample(time=timescale).apply(dcpy.util.rms).interp(time=KTr.time)
+
+f, axx = plt.subplots(1, 3, constrained_layout=True, sharey=True)
+ax = dict(zip(['loni', 'low', 'high'], axx))
+
+
+def _plot(ax, e, s):
+    months = pd.Series(e.time.values).dt.strftime('%b-%y').values
+    ax.errorbar(e['mean'], s**2, xerr=e['std'].values/np.sqrt(30*24),
+                fmt='ko')
+    for ee, ss, tt in zip(e['mean'], s, months):
+        ax.text(ee, ss**2, '   '+tt, va='center', ha='left', fontsize=8)
+
+
+_plot(ax['low'], epsr, lowr)
+_plot(ax['high'], epsr, highr)
+_plot(ax['loni'], epsr, lonir)
+
+axx[0].set_ylabel('mean squared shear')
+ax['loni'].set_title('(< 0.25d)')
+ax['high'].set_title('High pass (> 7d)')
+ax['low'].set_title('Low pass (< 7d)')
+[aa.set_xscale('log') for aa in axx]
+[aa.set_yscale('log') for aa in axx]
+[aa.set_xlabel('ε') for aa in axx]
+
+f.suptitle(mooring.name)
+
+f.set_size_inches((12, 6))
+
+f.savefig('images/shear-scatter-' + mooring.name.lower() + '.png')
+
+# f, ax = plt.subplots(1, 2, sharex=False, sharey=True, constrained_layout=True)
+# [aa.set_prop_cycle(bay.monsoon_cycler) for aa in ax]
+
+# for season in bay.seasons:
+#     dcpy.ts.PlotSpectrum(full.shear.sel(time='2014')
+#                          .where(full.time.monsoon.labels == season)
+#                          .dropna('time'),
+#                          preserve_area=True, twoside=True, ax=ax)
+
+# ax[0].legend(bay.seasons)
+#+END_SRC
+
+file:images/shear-scatter-nrl4.png
+[[file:images/shear-scatter-nrl5.png]]
+
 
 ** Wavelets vs spectrograms
 Wavelets need a good understanding of wavelet choice.
