@@ -2452,8 +2452,8 @@ This agrees with one of the Pinkel papers.
 if 'vel4' not in locals():
     vel4 = bay.adcp.read_adcp('nrl4')
 
-seasonal = (filtered
-            .groupby(filtered.time.monsoon.labels)
+seasonal = (vel4['niw']
+            .groupby(vel4['niw'].time.monsoon.labels)
             .mean('time'))
 
 # full near-inertial field
@@ -2474,18 +2474,6 @@ plt.colorbar(hdl, ax=ax[1, :], orientation='horizontal', shrink=0.5,
              extend='both', label='WKB scaled velocities [m/s]')
 
 f.savefig('images/nrl4-near-inertial.png')
-
-# seasonal KE profiles
-f, ax = plt.subplots(1, 2, constrained_layout=True, sharey=True, sharex=True)
-line_kwargs = dict(hue='monsoon', yincrease=False, add_legend=False)
-[aa.set_prop_cycle(bay.monsoon_cycler) for aa in ax]
-seasonal.wkbKE.plot.line(ax=ax[0], y='wkbz', **line_kwargs)
-hdl = seasonal.KE.plot.line(ax=ax[1], y='depth', **line_kwargs)
-[aa.set_title('') for aa in ax]
-ax[1].legend(handles=hdl, labels=bay.seasons, loc='lower right', ncol=2,
-             title='Seasonal means')
-f.suptitle(mooring.name)
-f.savefig('images/seasonal-mean-KE-profiles-nrl4.png')
 
 # compare backrotated full / filtered shear
 f, ax = plt.subplots(2, 1, sharex=True, sharey=True, constrained_layout=True)
@@ -2523,7 +2511,51 @@ np.log10(spec).plot(robust=True)
 [[file:images/nrl4-near-inertial.png]]
 
 
+*** Seasonal KE profiles
+
+#+BEGIN_SRC ipython :session
+for mm in range(1, 6):
+    m = 'nrl' + str(mm)
+    vel = bay.adcp.read_adcp(m)
+
+    subset = vel['niw'][['KE', 'wkbKE']].where(vel['niw'].good_data.values)
+    grouped = (subset.groupby(vel['niw'].time.monsoon.labels))
+    count = grouped.count('time').KE
+    mask = count/count.groupby('monsoon').max('depth') > 0.7
+    niw = grouped.mean('time').where(mask.values)
+
+    subset = vel['low'][['KE', 'wkbKE']].where(vel['low'].good_data.values)
+    grouped = (subset.groupby(vel['low'].time.monsoon.labels))
+    count = grouped.count('time').KE
+    mask = count/count.groupby('monsoon').max('depth') > 0.7
+    low = grouped.mean('time').where(mask.values)
+
+    f, ax = plt.subplots(1, 4, constrained_layout=True, sharey=True)
+    line_kwargs = dict(hue='monsoon', yincrease=False, add_legend=False)
+    [aa.set_prop_cycle(bay.monsoon_cycler) for aa in ax]
+
+    low.KE.plot.line(ax=ax[0], y='depth', **line_kwargs)
+    hdl = niw.KE.plot.line(ax=ax[1], y='depth', **line_kwargs)
+
+    low.wkbKE.plot.line(ax=ax[2], y='wkbz', **line_kwargs)
+    niw.wkbKE.plot.line(ax=ax[3], y='wkbz', **line_kwargs)
+
+    [aa.set_title('') for aa in ax]
+    ax[1].legend(handles=hdl, labels=bay.seasons, loc='lower right', ncol=2,
+                 title='Seasonal means')
+    f.suptitle(niw.name)
+
+    [aa.set_xlim([0, 0.08]) for aa in ax[[1, 3]]]
+    [aa.set_xlim([0, 0.3]) for aa in ax[[0, 2]]]
+
+    f.savefig('images/seasonal-mean-KE-profiles-' + m + '.png')
+  #+END_SRC
+#+CAPTION:
+[[file:images/seasonal-mean-KE-profiles-nrl4.png]]
+
+
 *** NIW input
+
 #+BEGIN_SRC ipython :session
 ninput = xr.open_dataset('../estimates/mooring-near-inertial-input.nc')
 slab = xr.open_dataset('../estimates/merra2-wind-power-input-2014.nc')
@@ -2615,6 +2647,39 @@ f.savefig('images/slab-model-magnitude-vs-rotation.png')
 
 
 *** 2D seasonal shear spectra
+
+#+BEGIN_SRC ipython :session
+adcp = bay.read_adcp('nrl5')
+
+vel = (adcp['vel'].dropna('time', how='all').dropna('depth', how='all')
+       .interpolate_na('depth'))
+
+def plot_2dspectrum(da, ax=None, linthreshx=0.1, linscalex=0.05,
+                    linthreshy=1e-3, linscaley=0.01, diff=None, **kwargs):
+
+    if ax is None:
+        ax = plt.gca()
+
+    spec = xrft.power_spectrum(da, detrend='constant', window=True, )
+
+    if diff:
+        spec = spec * (2*np.pi * spec[diff])**2
+
+    spec.plot(norm=mpl.colors.LogNorm(), ax=ax, robust=True, **kwargs)
+
+    ax.set_yscale('symlog', linthreshy=linthreshy, linscaley=linscaley)
+    ax.set_xscale('symlog', linthreshx=linthreshx, linscalex=linscalex)
+
+
+f, ax = plt.subplots(1, 2, constrained_layout=True, sharex=True, sharey=True)
+plot_2dspectrum(vel.shear.dropna('depth', how='all'), ax=ax[0])
+plot_2dspectrum((vel.u+1j*vel.v).dropna('depth', how='all'),
+                ax=ax[1], diff='freq_depth')
+
+f.savefig('images/shear-vs-vel-times-m-spectrum.png')
+#+END_SRC
+#+CAPTION:
+[[file:images/shear-vs-vel-times-m-spectrum.png]]
 
 #+BEGIN_SRC ipython :session
 # up- to down-going energy
@@ -2750,7 +2815,7 @@ def plot_seasonal_spectrum(w, nsmooth=5):
 
 import xrft
 
-for m in [4]:
+for m in range(5):
     adcp = bay.read_adcp('nrl' + str(m+1))
     vel = adcp['vel'].load()
     zi = np.arange(vel.wkbz.min(), vel.wkbz.max(), 8)
@@ -2966,6 +3031,8 @@ for mooring in ['nrl4', 'nrl5']:
     axx[0, 1].set_xlim([0, 1])
     axx[0, 3].set_xlim([0, 1])
 
+    axke['value']['NE'].set_xscale('log')
+
     if wkb_scale:
         axx[0, 0].set_xlabel('WKB Shear [1/s]')
         axx[0, 2].set_xlabel('WKB KE [m²/s²]')
@@ -3067,12 +3134,49 @@ for m in ['nrl1', 'nrl2', 'nrl3', 'nrl4', 'nrl5']:
     f.savefig('images/ke-shear-' + m + '.png', bbox_inches='tight')
 #+END_SRC
 
+[[file:~/bay/images/ke-shear-nrl1.png]]
+[[file:~/bay/images/ke-shear-nrl3.png]]
+[[file:~/bay/images/ke-shear-nrl4.png]]
+[[file:~/bay/images/ke-shear-nrl5.png]]
+
+
+*** NI summary
+#+BEGIN_SRC ipython :session
+ninput = xr.open_dataset('../estimates/mooring-near-inertial-input.nc').true_flux
+
+tropflux = dcpy.oceans.read_tropflux()
+
+m = 'NRL3'
+adcp = bay.read_adcp(m)
+
+f, axx = plt.subplots(6, 1, constrained_layout=True, sharex=True,
+                      gridspec_kw={'height_ratios': (0.5, 0.5, 2, 2, 2, 0.5)})
+ax = dict(zip(['tau', 'input', 'KEin', 'shear_total', 'shear_in', 'KT'],
+              axx))
+
+(tropflux.tau.sel(**bay.loc[m], method='nearest')
+ .plot(ax=ax['tau'], color='k', _labels=False))
+
+ninput.sel(**bay.loc[m]).plot(ax=ax['input'], color='k', _labels=False)
+
+(adcp['niw'].KE.where(adcp['niw'].good_data)
+ .plot(robust=True, vmin=0, cmap=mpl.cm.YlOrRd, yincrease=False, ax=ax['KEin']))
+
+for aa in axx:
+    aa.set_title('')
+    aa.set_xlabel('')
+
+
+# f.savefig('images/ni-summary-nrl3.png')
+#+END_SRC
+#+CAPTION:
+[[file:images/ni-summary-nrl3.png]]
 * Shear tests
 1. For both NRL4, NRL5, near-inertial shear is dominant except for occasional events when the SMC meanders by.
 2. Since magnitude of KT and magnitude of shear aren't expected to be proportional, maybe I should look at frequency of turbulent events.
 
 #+BEGIN_SRC ipython :session
-mooring = nrl4
+mooring = nrl5
 
 # uzi = mooring.interp_shear()
 
@@ -3109,7 +3213,7 @@ full['Tz'] = (mooring.turb.Tz.isel(depth=1)
               .interp(time=zpod.time))
 full = full.interpolate_na('time')
 
-low = full.apply(xfilter.lowpass, freq=0.10, **filter_kwargs)
+low = full.apply(xfilter.lowpass, freq=0.15, **filter_kwargs)
 loni = full.apply(xfilter.lowpass, freq=2.1, **filter_kwargs)
 high = full.apply(xfilter.bandpass, freq=[0.15, 4], **filter_kwargs)
 niw = full.apply(xfilter.bandpass, freq=[0.15, 2.1], **filter_kwargs)
@@ -3144,7 +3248,7 @@ var = 'shear'
 ((np.abs(full[var])**2)
  .plot(color='k', alpha=0.2, lw=1, ax=ax['shear'], label='Full'))
 (np.abs(low[var]).rolling(**rs).reduce(rms)
- .plot(color='k', ax=ax['shear'], lw=2, zorder=10, label='RMS LF (< 10 days)'))
+ .plot(color='k', ax=ax['shear'], lw=2, zorder=10, label='RMS LF (< 7 days)'))
 (np.abs(loni[var]).rolling(**rs).reduce(rms)
  .plot(color='k', ax=ax['shear'], lw=2, zorder=4, ls='--',
        label='RMS LF (< $M_2$)'))

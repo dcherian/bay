@@ -111,6 +111,9 @@ def process_adcp(mooring, argo_superset=None, nsmooth_shear=4,
     vel['uz'] = smooth_shear(vel.u.differentiate('depth'), nsmooth_shear)
     vel['vz'] = smooth_shear(vel.v.differentiate('depth'), nsmooth_shear)
 
+    vel['u'].dc.set_name_units('u', 'm/s')
+    vel['v'].dc.set_name_units('v', 'm/s')
+
     # map temperature to ADCP grid
     vel['T'] = (mooring.ctd.T.rename({'depth2': 'depth'})
                 .interp(time=vel.time, depth=vel.depth)
@@ -231,9 +234,15 @@ def read_adcp(name):
                                + 1j * vel[var].uz_back_imag)
         vel[var] = vel[var].drop(['uz_back_real', 'uz_back_imag'])
 
-    vel['low'] = (vel['vel'][['u', 'v', 'uz', 'vz']]
+    vel['low'] = (vel['vel'][['u', 'v', 'uz', 'vz', 'KE', 'wkbKE',
+                              'wkbu', 'wkbv']]
                   .apply(xfilter.lowpass, coord='time', freq=0.1,
                          cycles_per='D', order=3))
+
+    for vv in vel['low']:
+        if 'long_name' in vel['low'][vv].attrs:
+            vel['low'][vv].attrs['long_name'] = (
+                'Low passed ' + vel['low'][vv].attrs['long_name'])
 
     for var in vel:
         vel[var]['shear'] = vel[var].uz + 1j * vel[var].vz

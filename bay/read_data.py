@@ -169,6 +169,11 @@ def read_nrl4(minimal=False):
 
     nrl4 = __common(nrl4, minimal)
 
+    nrl4.χpod[516].mixing_seasons = dict(
+        himix0=slice('2014-05-08', '2014-06-22'),
+        himix=slice('2014-07-23', '2014-10-08'),
+        himix1=slice('2014-03-01', '2014-05-01'))
+
     return nrl4
 
 
