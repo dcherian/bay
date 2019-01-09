@@ -1736,7 +1736,167 @@ for nn in ['NRL1', 'NRL3', 'NRL4', 'NRL5']:
 
 
 #+END_SRC
-** Diffusivity scatter plots
+** Wavelets vs spectrograms
+Wavelets need a good understanding of wavelet choice.
+
+variance-preserving spectrogram seems a good way to go.
+
+*** spectrogram to recover wijesekara et al (2016) wavelet
+
+#+BEGIN_SRC ipython :session :ipyfile images/temp/imgx9o72o.png
+# da = nrl3.vel.u.sel(depth=120, method='nearest')
+
+# spec = dcpy.ts.Spectrogram(da, nfft=24*60, shift=1*24,
+#                            dt=1/24, multitaper=True)
+
+plt.figure(constrained_layout=True)
+hdl = (spec*spec.freq).plot.contourf(yscale='log', x='time', robust=True,
+                                     levels=30, cmap=svc.cm.red_1)
+
+ax = plt.gca()
+ax2 = ax
+ax2.yaxis.set_tick_params(which='both', left=True, right=True,
+                          labelleft=True, labelright=True)
+ax2.spines['right'].set_visible(True)
+
+# ax2.xaxis.set_tick_params(top=False, bottom=False,
+#                           labeltop=False, labelbottom=False)
+
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+# Out[409]:
+:END:
+
+#+BEGIN_SRC ipython :session :ipyfile images/temp/imgw7sScw.png
+
+wz = (
+(nrl3.vel.uz + 1j * nrl3.vel.vz)
+      .sel(depth_shear=120, method='nearest'))
+
+spec = dcpy.ts.PlotSpectrogram(wz, nfft=60*24, shift=3*24, dt=1/24)
+#+END_SRC
+
+#+BEGIN_SRC ipython :session :ipyfile images/temp/imgz8e7q3.png
+import tfr
+
+frames = tfr.SignalFrames(da.values, sample_rate=1/24,
+                          frame_size=24*60, hop_size=1*24)
+spec = tfr.Spectrogram(frames)
+
+spec = tfr.reassigned_spectrogram(frames, magnitudes='power')
+
+
+#+END_SRC
+*** test jwavelet
+#+BEGIN_SRC ipython :session :ipyfile images/temp/imgJWY9H3.png
+time = np.arange(1000)
+a = np.sin(2*np.pi/20*time)
+
+da = xr.DataArray(a, dims=['time'], coords={'time': time})
+
+da = ra12.vel.u.squeeze().interpolate_na(dim='time').dropna(dim='time')
+wt = dcpy.ts.matlab_wavelet(da, dt=60/1440, kind='jlab', eng=eng, beta=10.0)
+
+plt.figure()
+np.log10(wt.power).plot.contourf(levels=20, x=dim, yincrease=False, yscale='log',
+                                 robust=True, cmap=svc.cm.blue_orange_div)
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+# Out[887]:
+: <matplotlib.contour.QuadContourSet at 0x7f178d87c470>
+:END:
+
+*** Seasonal cycle summary : wavelets
+
+#+BEGIN_SRC ipython :session :results none
+for m in [nrl1, nrl3, nrl4, nrl5]:
+    m.plot_turb_wavelet()
+    plt.savefig('images/wavelet-'+m.name+'.png')
+
+#+END_SRC
+
+** test complex demod
+I'm not sure this works for near-inertial frequencies. f_0 can change throughout the year and so there'll be phase differences and the near-inertial input won't look right. Probably makes more sense for M_2 and tidal lines.
+
+#+BEGIN_SRC ipython :session :ipyfile images/complex-demod-ewa-mine.png
+z = 100
+
+u = nrl5.vel.u.sel(depth=z, method='nearest').interpolate_na(dim='time')
+v = nrl5.vel.v.sel(depth=z, method='nearest').interpolate_na(dim='time')
+
+dm = dcpy.ts.complex_demodulate(u + 1j * v,
+                                dim='time',
+                                central_period=1/nrl5.inertial,
+                                cycles_per='D', bw=0.3, filt='butter',
+                                debug=True)
+
+ewa = (nrl5.niw.amp.sel(depth=z, method='nearest')
+       ,* np.exp(1j * nrl5.niw.pha.sel(depth=z, method='nearest')))
+
+f, ax = plt.subplots(2, 2)
+np.abs(dm.cw).plot(ax=ax[0, 0])
+nrl5.niw.amp.sel(depth=z, method='nearest').plot(ax=ax[0, 0])
+ax[0, 0].legend(['mine', 'ewa'])
+
+xr.DataArray((np.angle(dm.cw, deg=False)),
+             dims=dm.cw.dims, coords=dm.cw.coords,
+).plot(ax=ax[1, 0])
+nrl5.niw.pha.sel(depth=z, method='nearest').plot(ax=ax[1, 0])
+
+dm.cw.real.plot(ax=ax[0, 1])
+ewa.real.plot(ax=ax[0, 1])
+dm.cw.imag.plot(ax=ax[1, 1])
+ewa.imag.plot(ax=ax[1, 1])
+
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+# Out[214]:
+: [<matplotlib.lines.Line2D at 0x7f7c58aeb780>]
+:END:
+** Internal tides radiating out from the Andaman Sea :ebob:todo:
+Let's use the RAMA 8N mooring to see if there's some seasonality to the internal tide energy being radiated out. It would be good to do this with some NIOT buoy data.
+
+Emily says the best thing to look for is the $w$ field; this is what she did for her thesis stuff. I'm punting this to future work for the EBOB paper.
+
+#+BEGIN_SRC ipython :session :ipyfile images/rama-8n-2m2-3m2.png
+def read_pmel(file):
+    ds = xr.open_dataset(file, decode_cf=False)
+    for var in ds:
+        ds[var].attrs['missing_value'] = ds.attrs['missing_value']
+        ds[var].attrs['_FillValue'] = ds.attrs['_FillValue']
+
+    return xr.decode_cf(ds)
+
+r8 = (read_pmel('~/TaoTritonPirataRama/high_resolution/10m/t8n90e_10m.cdf')
+      .rename({'T_20': 'temp'})
+      .squeeze().load())
+
+T = r8.temp.sel(depth=slice(80, 200)).mean('depth')
+
+for ii in [2, 3]:
+    bp = dcpy.ts.BandPassButter(T, np.array([1/1.05, 1.05])*24/12.42*ii,
+                                dt=1/144, debug=False)
+    (bp**2).groupby('time.month').mean('time').plot(label=str(ii)+'$M_2$')
+plt.legend()
+
+# port blair sea level
+# sl = xr.open_dataset('~/datasets/sealevel/port-blair.nc')
+# sl.sea_level.squeeze().plot()
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+# Out[81]:
+: <matplotlib.legend.Legend at 0x7f1c620e2550>
+[[file:images/rama-8n-2m2-3m2.png]]
+:END:
+* Diffusivity scatter plots
 Looks like there's some work on scattering $ε$ against $N$ : cite:Gargett1984.
 
 #+BEGIN_SRC ipython :session
@@ -1803,7 +1963,8 @@ f.savefig('images/wind-KT-correlations.png')
 #+END_SRC
 #+CAPTION: Trying scatter plot / correlations. Good results for the 15m instrument @ RAMA 12N. 30m, 45m not so much.
 [[file:images/wind-KT-correlations.png]]
-*** all NRL
+
+** all NRL
 #+BEGIN_SRC ipython :session
 # slab_file = xr.open_dataset('../estimates/merra2-wind-power-input-2014.nc')
 
@@ -2035,6 +2196,7 @@ plot_shear_KT_avg('nrl5', time_interval='2W', mooring=nrl5, loffset='-15D')
 
 #+CAPTION: NRL4
 [[file:images/kt-shear-scatter-nrl4.png]]
+
 #+CAPTION: NRL5
 [[file:images/kt-shear-scatter-nrl5.png]]
 
@@ -2046,8 +2208,9 @@ plot_shear_KT_avg('nrl5', time_interval='2W', mooring=nrl5, loffset='-15D')
    1. Sep-08 - Oct8, high mixing but no shear
    2. Oct 13 - Nov 13 is again outlier: shear but not much mixing
 
-*** NRL5
-**** Wind stress
+
+** NRL5
+*** Wind stress
 
 wind stress → ML inertial oscillations → near-inertial wave propagates downward → mixes at χpod level
 
@@ -2137,7 +2300,7 @@ dcpy.ts.PlotCoherence
 [[file:images/nrl5-KT-wind.png]]
 
 
-**** Ri
+*** Ri
 #+BEGIN_SRC ipython :session
 Rifreq = (Ri.where(Ri < 100).resample(time='D').mean('time'))
 KT = (nrl5.KT.where(nrl5.KT > 1e-6).mean('depth')
@@ -2154,7 +2317,8 @@ f.savefig('images/nrl5-kt-ri-correlation.png')
 [[file:images/nrl5-kt-ri-correlation.png
 ]]
 
-*** by NRL mooring
+
+*** low- & high-pass shear variance
 #+BEGIN_SRC ipython :session
 turb = xr.open_dataset('../estimates/bay_merged_hourly.nc')
 
@@ -2257,167 +2421,6 @@ f.savefig('images/shear-scatter-' + mooring.name.lower() + '.png')
 file:images/shear-scatter-nrl4.png
 [[file:images/shear-scatter-nrl5.png]]
 
-
-** Wavelets vs spectrograms
-Wavelets need a good understanding of wavelet choice.
-
-variance-preserving spectrogram seems a good way to go.
-
-*** spectrogram to recover wijesekara et al (2016) wavelet
-
-#+BEGIN_SRC ipython :session :ipyfile images/temp/imgx9o72o.png
-# da = nrl3.vel.u.sel(depth=120, method='nearest')
-
-# spec = dcpy.ts.Spectrogram(da, nfft=24*60, shift=1*24,
-#                            dt=1/24, multitaper=True)
-
-plt.figure(constrained_layout=True)
-hdl = (spec*spec.freq).plot.contourf(yscale='log', x='time', robust=True,
-                                     levels=30, cmap=svc.cm.red_1)
-
-ax = plt.gca()
-ax2 = ax
-ax2.yaxis.set_tick_params(which='both', left=True, right=True,
-                          labelleft=True, labelright=True)
-ax2.spines['right'].set_visible(True)
-
-# ax2.xaxis.set_tick_params(top=False, bottom=False,
-#                           labeltop=False, labelbottom=False)
-
-#+END_SRC
-
-#+RESULTS:
-:RESULTS:
-# Out[409]:
-:END:
-
-#+BEGIN_SRC ipython :session :ipyfile images/temp/imgw7sScw.png
-
-wz = (
-(nrl3.vel.uz + 1j * nrl3.vel.vz)
-      .sel(depth_shear=120, method='nearest'))
-
-spec = dcpy.ts.PlotSpectrogram(wz, nfft=60*24, shift=3*24, dt=1/24)
-#+END_SRC
-
-#+BEGIN_SRC ipython :session :ipyfile images/temp/imgz8e7q3.png
-import tfr
-
-frames = tfr.SignalFrames(da.values, sample_rate=1/24,
-                          frame_size=24*60, hop_size=1*24)
-spec = tfr.Spectrogram(frames)
-
-spec = tfr.reassigned_spectrogram(frames, magnitudes='power')
-
-
-#+END_SRC
-*** test jwavelet
-#+BEGIN_SRC ipython :session :ipyfile images/temp/imgJWY9H3.png
-time = np.arange(1000)
-a = np.sin(2*np.pi/20*time)
-
-da = xr.DataArray(a, dims=['time'], coords={'time': time})
-
-da = ra12.vel.u.squeeze().interpolate_na(dim='time').dropna(dim='time')
-wt = dcpy.ts.matlab_wavelet(da, dt=60/1440, kind='jlab', eng=eng, beta=10.0)
-
-plt.figure()
-np.log10(wt.power).plot.contourf(levels=20, x=dim, yincrease=False, yscale='log',
-                                 robust=True, cmap=svc.cm.blue_orange_div)
-#+END_SRC
-
-#+RESULTS:
-:RESULTS:
-# Out[887]:
-: <matplotlib.contour.QuadContourSet at 0x7f178d87c470>
-:END:
-
-*** Seasonal cycle summary : wavelets
-
-#+BEGIN_SRC ipython :session :results none
-for m in [nrl1, nrl3, nrl4, nrl5]:
-    m.plot_turb_wavelet()
-    plt.savefig('images/wavelet-'+m.name+'.png')
-
-#+END_SRC
-
-** test complex demod
-I'm not sure this works for near-inertial frequencies. f_0 can change throughout the year and so there'll be phase differences and the near-inertial input won't look right. Probably makes more sense for M_2 and tidal lines.
-
-#+BEGIN_SRC ipython :session :ipyfile images/complex-demod-ewa-mine.png
-z = 100
-
-u = nrl5.vel.u.sel(depth=z, method='nearest').interpolate_na(dim='time')
-v = nrl5.vel.v.sel(depth=z, method='nearest').interpolate_na(dim='time')
-
-dm = dcpy.ts.complex_demodulate(u + 1j * v,
-                                dim='time',
-                                central_period=1/nrl5.inertial,
-                                cycles_per='D', bw=0.3, filt='butter',
-                                debug=True)
-
-ewa = (nrl5.niw.amp.sel(depth=z, method='nearest')
-       ,* np.exp(1j * nrl5.niw.pha.sel(depth=z, method='nearest')))
-
-f, ax = plt.subplots(2, 2)
-np.abs(dm.cw).plot(ax=ax[0, 0])
-nrl5.niw.amp.sel(depth=z, method='nearest').plot(ax=ax[0, 0])
-ax[0, 0].legend(['mine', 'ewa'])
-
-xr.DataArray((np.angle(dm.cw, deg=False)),
-             dims=dm.cw.dims, coords=dm.cw.coords,
-).plot(ax=ax[1, 0])
-nrl5.niw.pha.sel(depth=z, method='nearest').plot(ax=ax[1, 0])
-
-dm.cw.real.plot(ax=ax[0, 1])
-ewa.real.plot(ax=ax[0, 1])
-dm.cw.imag.plot(ax=ax[1, 1])
-ewa.imag.plot(ax=ax[1, 1])
-
-#+END_SRC
-
-#+RESULTS:
-:RESULTS:
-# Out[214]:
-: [<matplotlib.lines.Line2D at 0x7f7c58aeb780>]
-:END:
-** Internal tides radiating out from the Andaman Sea :ebob:todo:
-Let's use the RAMA 8N mooring to see if there's some seasonality to the internal tide energy being radiated out. It would be good to do this with some NIOT buoy data.
-
-Emily says the best thing to look for is the $w$ field; this is what she did for her thesis stuff. I'm punting this to future work for the EBOB paper.
-
-#+BEGIN_SRC ipython :session :ipyfile images/rama-8n-2m2-3m2.png
-def read_pmel(file):
-    ds = xr.open_dataset(file, decode_cf=False)
-    for var in ds:
-        ds[var].attrs['missing_value'] = ds.attrs['missing_value']
-        ds[var].attrs['_FillValue'] = ds.attrs['_FillValue']
-
-    return xr.decode_cf(ds)
-
-r8 = (read_pmel('~/TaoTritonPirataRama/high_resolution/10m/t8n90e_10m.cdf')
-      .rename({'T_20': 'temp'})
-      .squeeze().load())
-
-T = r8.temp.sel(depth=slice(80, 200)).mean('depth')
-
-for ii in [2, 3]:
-    bp = dcpy.ts.BandPassButter(T, np.array([1/1.05, 1.05])*24/12.42*ii,
-                                dt=1/144, debug=False)
-    (bp**2).groupby('time.month').mean('time').plot(label=str(ii)+'$M_2$')
-plt.legend()
-
-# port blair sea level
-# sl = xr.open_dataset('~/datasets/sealevel/port-blair.nc')
-# sl.sea_level.squeeze().plot()
-#+END_SRC
-
-#+RESULTS:
-:RESULTS:
-# Out[81]:
-: <matplotlib.legend.Legend at 0x7f1c620e2550>
-[[file:images/rama-8n-2m2-3m2.png]]
-:END:
 * checking inter-mooring variability
 #+BEGIN_SRC ipython :session :ipyfile images/temp/imgBRHfA4.png
 turb = xr.open_dataset('bay_merged_hourly.nc')
