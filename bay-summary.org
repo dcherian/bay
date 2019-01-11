@@ -6590,25 +6590,27 @@ f.savefig('images/paper1/rama12.pdf')
 if 'nrl5' not in locals():
     nrl5 = bay.read_nrl5()
 
-if 'shear_fit5' not in locals():
-    shear_fit5 = nrl5.linear_fit_shear(dict(depth=slice(110, 160), time='2014'))
+# if 'shear_fit5' not in locals():
+#     shear_fit5 = nrl5.linear_fit_shear(dict(depth=slice(110, 160), time='2014'))
+
+shear = nrl5.interp_shear('bins')
 
 from dcpy.plots import annotate_end, set_axes_color
 
 f5, axx5 = plt.subplots(4, 1, sharex=True, constrained_layout=True)
 f5.set_constrained_layout_pads(hspace=0.001, h_pad=0)
 
-niw_shear = dcpy.ts.BandPassButter(shear_fit5.shear,
+niw_shear = dcpy.ts.BandPassButter(shear.shear,
                                    freqs=np.array([1/2, 2])*nrl5.inertial.values,
                                    dt=1/24, debug=False)
 
-hshear = (((niw_shear).rolling(time=3*24).std() * 1e3)
+hshear = (((niw_shear).rolling(time=3*24).reduce(dcpy.util.ms) * 1e5)
           .plot(ax=axx5[-1], _labels=False, color='k'))
 hshear[0].set_clip_on(False)
 hshear[0].set_in_layout(False)
 nrl5.MarkSeasonsAndEvents(events=False, ax=axx5[-1])
-axx5[-1].set_ylabel('Near-inertial shear\nstd [$10^{-3}$ s$^{-2}$]')
-axx5[-1].set_ylim([0, 5])
+axx5[-1].set_ylabel('near-inertial shear²\n[$10^{-5}$ s$^{-2}$]')
+axx5[-1].set_ylim([0, 4])
 
 axnrl5 = bay.plots.plot_moor(nrl5, idepth=1, axx=axx5)
 axnrl5['jq'].set_ylim([-20, 0])
@@ -6641,7 +6643,6 @@ set_axes_color(axnrl5['input'], 'C0', spine='right')
 dcpy.plots.label_subplots(axx5, x=0.025, y=0.83)
 
 f5.savefig('images/paper1/nrl5.pdf')
-
 
 # shear_interp = (nrl5.vel.shear
 #                 .interp(time=zpod.time, depth=zpod.isel(num=1))
