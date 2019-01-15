@@ -174,8 +174,91 @@ ax = nrl3.Plotχpods()
 #+END_SRC
 #+ATTR_HTML: :class full-width
 #+RESULTS: nrl3-summary
-[[file:images/nrl3-summary.png]]
+[[file:images/summary-nrl3.png]]
 
+** jellyfish / biology contamination
+*important:* This really didn't change the distributions by much. Earlier I had no data; now I have some data but it approximately mirrors 505 data; so means, medians not that different.
+
+On both units 505, 511; T2 sensor reads quite low (at noise floor) for long periods of time (month[s]]) relative to T1. Johannes says he's seen this and it's some biology contamination. These periods are when T_z starts flipping sign about 0 i.e. I think we're in the mixed layer and presumably more chance of contamination.
+
+Low frequency response of the T sensor is relatively unaffected but it's high frequency response is attenuated so T is less affected than Tp.
+
+#+CAPTION: Unit 505
+[[file:images/505-jelly.png]]
+
+#+CAPTION: Unit 511
+[[file:images/511-jelly.png]]
+
+** 511 (deeper χpod) missing salinity
+
+*** Procedure
+- reconstruct N2 using T-S fits.
+- disagreement in the beginning of the record when we do have salinity. So I use that N2 then.
+- during later half of record, it looks like the unmodified N² is just offset from that estimated using T-S relation.
+- using MATLAB's polyfit vs. robustfit makes very little difference on average
+
+Changes I need to make:
+- add 3.6e-5 to unmodified N² till Mar-14
+- Use T-S fit between Mar-14 and Aug-28
+- Use unmodified N² after that
+
+Changes I make:
+- Start with deglitched salinity
+- add ΔS of 0.07 in till mar-14
+- Use ΔS estimated from dS/dz = ∂T/∂S dT/dz when I have no S
+- use observed S afterward.
+- re-estimate N²
+
+[[file:images/511-n2-merging.png]]
+
+
+
+*** Comparison
+
+#+BEGIN_SRC ipython :session
+import chipy
+
+new = chipy.chipod('/home/deepak/bay/ebob/data/', '511', 'Turb.mat', 'mm2', depth=56)
+old = chipy.chipod('/home/deepak/bay/ebob/data/', '511-sal-gap', 'Turb.mat', 'mm2',
+                   depth=56)
+
+f, ax = plt.subplots(1, 1, constrained_layout=True)
+
+new.chi['mm2'].chi.plot(yscale='log', label='new')
+old.chi['mm2'].chi.plot(yscale='log', label='old')
+title('NRL3 511 fill in sal gap N² with TS fit.')
+
+f.savefig('images/nrl5-compare-TSfit.png')
+#+END_SRC
+#+CAPTION:
+[[file:images/nrl5-compare-TSfit.png]]
+
+** high mixing during SWNE
+#+BEGIN_SRC ipython :session :ipyfile images/temp/imgJSeTJk.png
+f, ax = plt.subplots(4, 1, sharex=True, constrained_layout=True)
+
+nrl3.Jq.plot.line(x='time', ax=ax[0])
+nrl3.Js.plot.line(x='time', ax=ax[1])
+nrl3.Jq.ρ.plot.line(x='time', ax=ax[2])
+nrl3.zχpod.plot.line(x='time', ax=ax[3])
+
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+# Out[20]:
+#+BEGIN_EXAMPLE
+  [<matplotlib.lines.Line2D at 0x7f9ffbf7c438>,
+  <matplotlib.lines.Line2D at 0x7f9ff803fbe0>]
+#+END_EXAMPLE
+:END:
+
+#+BEGIN_SRC ipython :session :results none
+nrl3.plot_turb_fluxes(region={'time': '2014-10'})
+#+END_SRC
+
+#+CAPTION: Internal tides during first half of the month + near-inertial @ Oct-17? How do I attribute salt flux?
+[[file:images/nrl3-oct-turb-fluxes.png]]
 * NRL-4
 #+CALL: read-nrl4()
 #+NAME: nrl4-summary

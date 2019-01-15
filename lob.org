@@ -165,3 +165,11 @@ nrl4 = bay.read_nrl4()
 import bay
 nrl5 = bay.read_nrl5()
 #+END_SRC
+
+#+NAME: read-nrl345
+#+BEGIN_SRC ipython :session :results none
+import bay
+nrl3 = bay.read_nrl3()
+nrl4 = bay.read_nrl4()
+nrl5 = bay.read_nrl5()
+#+END_SRC

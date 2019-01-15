@@ -146,6 +146,8 @@ def read_nrl3(minimal=False):
     nrl3.AddChipod(505, 28, 'mm', 'Turb.mat')
     nrl3.AddChipod(511, 48, 'mm', 'Turb.mat')
     nrl3.AddEvents('SLD', '2014-06-01', '2014-09-01')
+    # this period has salinity gap that I filled in using TS fits.
+    nrl3.AddEvents('Sal gap', '2014-03-14', '2014-09-29')
     if not minimal:
         nrl3.ReadVel('NRL3', FileType='ebob')
         nrl3.ReadNIW()
@@ -160,7 +162,7 @@ def read_nrl4(minimal=False):
     nrl4 = moor.moor(87, 8, 'NRL4', 'nrl4', 'ebob', '../ebob/')
     nrl4.ReadCTD('NRL4', FileType='ebob')
     nrl4.AddChipod(514, 55, 'mm1', 'Turb.mat')
-    nrl4.AddChipod(516, 75, 'mm2', 'Turb.mat')
+    nrl4.AddChipod(516, 75, 'mm', 'Turb.mat')
     nrl4.AddEvents('SLD', '2014-06-01', '2014-09-01')
 
     if not minimal:
