@@ -144,7 +144,7 @@ def read_nrl3(minimal=False):
     nrl3 = moor.moor(85.5, 8, 'NRL3', 'nrl3', 'ebob', '../ebob/')
     nrl3.ReadCTD('NRL3', FileType='ebob')
     nrl3.AddChipod(505, 28, 'mm', 'Turb.mat')
-    nrl3.AddChipod(511, 48, 'mm2', 'Turb.mat')
+    nrl3.AddChipod(511, 48, 'mm', 'Turb.mat')
     nrl3.AddEvents('SLD', '2014-06-01', '2014-09-01')
     if not minimal:
         nrl3.ReadVel('NRL3', FileType='ebob')
@@ -181,8 +181,9 @@ def read_nrl5(minimal=False):
 
     nrl5 = moor.moor(88.5, 8, 'NRL5', 'nrl5', 'ebob', '../ebob/')
     nrl5.ReadCTD('NRL5', FileType='ebob')
-    nrl5.AddChipod(518, depth=84, best='mm2', fname='Turb.mat')
+    nrl5.AddChipod(518, depth=84, best='mm', fname='Turb.mat')
     nrl5.AddChipod(519, depth=104, best='mm1', fname='Turb.mat')
+    # 519 mm2 reads low frequently
     nrl5.AddEvents('Storm+IW', '2014-07-17', '2014-08-07')
     nrl5.AddEvents("nomix", '2014-03-17', '2014-05-06')
 
