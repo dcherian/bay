@@ -270,7 +270,7 @@ def vert_distrib(df, bins, varname='KT', kind='distribution',
         xlines = kwargs.pop('xlines', [])
 
     months = {'NE': 'Dec-Feb', 'NESW': 'Mar-Apr',
-              'SW': 'Jun-Sep', 'SWNE': 'Oct-Nov'}
+              'SW': 'May-Sep', 'SWNE': 'Oct-Nov'}
 
     for seas in ax:
         aa = ax[seas]
