@@ -9,6 +9,7 @@
 \renewcommand{\contentsname}{}
 \renewcommand{\bibsection}{}
 \newcommand{\ML}{_\text{ML}}
+\newcommand{\niw}{^\text{in}}
 
 % \vspace{-5em}
 % \tableofcontents*
@@ -322,3 +323,606 @@ bibliographystyle:ametsoc2014
 # Local variables:
 # eval: (add-hook 'after-save-hook 'org-latex-export-to-latex t t)
 # end:
+* Figures :noexport:
+** Figure 1: map + depths on argo climatology
+
+#+BEGIN_SRC ipython :session
+import cartopy.crs as ccrs
+
+with plt.rc_context({'font.size': 11,
+                     'axes.facecolor': 'white',
+                     'savefig.transparent': False}):
+
+    f = plt.figure(constrained_layout=True)
+
+    n=3
+    n0=2
+    # gs = mpl.gridspec.GridSpec(2, n, figure=f)
+    # ax1 = f.add_subplot(gs[:, :n0], projection=ccrs.PlateCarree())
+    # ax2 = f.add_subplot(gs[0, n0:])
+    # ax3 = f.add_subplot(gs[1, n0:])
+
+    gs = mpl.gridspec.GridSpec(n, 2, figure=f)
+    ax1 = f.add_subplot(gs[:n0, :], projection=ccrs.PlateCarree())
+    ax2 = f.add_subplot(gs[n0:, 0])
+    ax3 = f.add_subplot(gs[n0:, 1])
+
+    f.set_size_inches((4.75, 8))
+
+    bay.make_labeled_map(ax=ax1)
+    bay.mark_χpod_depths_on_clim(ax=[ax2, ax3])
+
+    for label, ax in zip(['a', 'b', 'c'], [ax1, ax2, ax3]):
+        ax.text(0.025, 0.05, label+')', transform=ax.transAxes,
+                fontsize='medium')
+
+    [tt.set_rotation(30) for tt in ax1.get_xticklabels()]
+    ax3.set_ylabel('')
+    ax3.set_yticklabels([])
+
+    plt.savefig('images/paper1/map.pdf', bbox_inches='tight')
+#+END_SRC
+[[file:images/paper1/map.pdf]]
+
+** Figure 2: Seasonal patterns of EKE, surface currents, wind & NIW input
+
+#+BEGIN_SRC ipython :session :results none
+import cartopy.crs as ccrs
+
+if 'oscar' not in locals():
+    oscar = (xr.open_mfdataset('/home/deepak/work/datasets/oscar/oscar_vel*.nc',
+                               concat_dim='time')
+             .sel(latitude=slice(bay.region['lat'].stop,
+                                 bay.region['lat'].start),
+                  longitude=bay.region['lon'],
+                  time=slice('2013-12-01', '2014-11-30')))
+    oscar = (oscar
+             .groupby(oscar.time.monsoon.splitlabels).mean('time')
+             .load().squeeze()
+             .sortby('latitude'))
+
+if 'ssha' not in locals():
+    ssha = (xr.open_dataset('../datasets/ssh/'
+                            + 'dataset-duacs-rep-global-merged-allsat'
+                            + '-phy-l4-v3_1522711420825.nc')
+            .sel(time=slice('2013-12-01', '2014-11-30'))
+            .load())
+    ssha['EKE'] = 0.5 * (ssha.ugosa**2 + ssha.vgosa**2)
+    eke = (ssha.EKE.groupby(ssha.EKE.time.monsoon.splitlabels)
+           .mean(dim='time'))
+
+if 'tropflux' not in locals():
+    tropflux = (xr.open_mfdataset('../datasets/tropflux/tau*_tropflux_1d_*.nc')
+                .drop('tau')
+                .sel(time=slice('2013-12-01', '2014-11-30'),
+                     latitude=slice(2, 25),
+                     longitude=slice(78, 96))
+                .load())
+    tropflux = (tropflux.groupby(tropflux.time.monsoon.splitlabels)
+                .mean(dim='time'))
+
+if 'sss' not in locals():
+    aq = dcpy.oceans.read_aquarius()
+    sss = aq.sss.sel(latitude=slice(2, 25),
+                     longitude=slice(78, 96))
+    sss = (sss.groupby(sss.time.monsoon.splitlabels)
+           .mean(dim='time')
+           .load())
+
+if 'wind_input' not in locals():
+    wind_input = xr.open_dataset('~/bay/estimates/merra2-wind-power-input-2014.nc')
+    mean_niw = (wind_input.groupby(wind_input.time.monsoon.splitlabels).mean('time'))
+    niw = (wind_input.wind_input
+           .sel(time=slice('2013-12-01', '2014-11-30'))
+           .groupby(wind_input.time.monsoon.splitlabels)
+           .mean('time'))
+    # .apply(xrsp.integrate.trapz, coord='time')
+
+# if 'true_input' not in locals():
+#     true_input = (xr.open_dataset('~/bay/estimates/mooring-near-inertial-input.nc')
+#                   .sel(time=slice('2014-01-01', '2014-11-30'))
+#                   .true_flux)
+#     true_input.values[np.isnan(true_input.values)] = 0
+#     grp = true_input.groupby(true_input.time.monsoon.splitlabels)
+#     true_input = (true_input
+#                   .groupby(true_input.time.monsoon.splitlabels)
+#                   .apply(xrsp.integrate.trapz, coord='time'))
+#     true_input = true_input.where(np.abs(true_input) > 0)
+
+osc = oscar.sel(latitude=slice(None, None, 2),
+                longitude=slice(None, None, 3))
+
+def common(ax):
+    ax.set_xticks(range(80, 96, 4))
+    ax.set_yticks(range(4, 24, 4))
+    bay.plot_coastline(ax)
+    ax.set_extent([80, 94, 4, 24])
+    # bay.mark_moors(ax=ax, color='black', colortext='white',
+    #                fontsize=7, markersize=8)
+
+f, ax = plt.subplots(2, 5, sharex=True, sharey=True,
+                     subplot_kw=dict(projection=ccrs.PlateCarree()),
+                     constrained_layout=False)
+[common(aa) for aa in ax.flat]
+
+axes = dict()
+if ax.shape[0] > ax.shape[1]:
+    axes['oce'] = dict(zip(bay.splitseasons, ax[:, 0]))
+    axes['atm'] = dict(zip(bay.splitseasons, ax[:, 1]))
+else:
+    axes['oce'] = dict(zip(bay.splitseasons, ax[0, :]))
+    axes['atm'] = dict(zip(bay.splitseasons, ax[1, :]))
+
+for season in bay.splitseasons:
+    heke = (eke.sel(monsoon=season)
+            .plot.contourf(ax=axes['oce'][season],
+                           x='longitude', y='latitude',
+                           cmap=mpl.cm.gist_heat_r,
+                           levels=np.linspace(0, 0.30, 20),
+                           add_colorbar=False))
+
+    hoscar = axes['oce'][season].quiver(osc.longitude, osc.latitude,
+                                        osc.u.sel(monsoon=season),
+                                        osc.v.sel(monsoon=season),
+                                        width=0.008, scale=2.5)
+
+    # hsss = (sss.sel(monsoon=season)
+    #         .plot.contour(ax=axes['oce'][season],
+    #                       x='longitude', y='latitude',
+    #                       levels=[29, 30, 31, 32, 33, 34],
+    #                       colors='k', linewidths=1))
+    # hlab = axes['oce'][season].clabel(hsss, fontsize='smaller', fmt='%2.0f')
+    # [hh.set_backgroundcolor('lightgray') for hh in hlab]
+
+    kwargs = dict(cmap=mpl.cm.GnBu, vmin=0, vmax=1.2)
+    hniw = ((niw*1000).sel(monsoon=season)
+            .plot.contourf(ax=axes['atm'][season], levels=40,
+                           add_colorbar=False, **kwargs))
+    ((niw*1000).sel(monsoon=season)
+     .plot.contour(ax=axes['atm'][season], levels=[2.0, 4, 8],
+                   colors='w', add_colorbar=False, linewidths=0.7))
+
+    # _, lon, lat = xr.broadcast(true_input.sel(monsoon=season),
+    #                            true_input.lon, true_input.lat)
+    # htrue = axes['atm'][season].scatter(
+    #     lon.values.ravel(), lat.values.ravel(),
+    #     c=(true_input/1000).sel(monsoon=season).values.ravel(),
+    #     edgecolor='darkgray', linewidths=1, **kwargs)
+
+    htau = axes['atm'][season].quiver(niw.lon[::2], niw.lat[::2],
+                                      mean_niw.taux.sel(monsoon=season)[::2, ::2],
+                                      mean_niw.tauy.sel(monsoon=season)[::2, ::2],
+                                      scale=0.4, width=0.006)
+
+    if season == 'NE':
+        keykwargs = dict(coordinates='axes', labelpos='S',
+                         fontproperties=dict(size=8))
+        axes['oce']['NE'].quiverkey(hoscar, 0.2, 0.96, 0.5, '0.5 m/s',
+                                    ,**keykwargs)
+
+        axes['atm']['NE'].quiverkey(htau, 0.25, 0.96, 0.1, '0.1 N/m²',
+                                    ,**keykwargs)
+
+    axes['oce'][season].set_title(season)
+
+    # [axes[row][season].text(0.05, 0.875, season,
+    #                         transform=axes[row][season].transAxes,
+    #                         color='k', zorder=10)
+    # for row in axes]
+
+
+def clean_axis(ax):
+    bay.mark_moors(ax=ax, markersize=4.5, fontsize=6, color='k',
+                   colortext='w', labels=False)
+    bay.mark_moors(ax=ax, markersize=3, fontsize=6, color='w',
+                   colortext='w', labels=False)
+    ax.set_xlabel('')
+    ax.set_ylabel('')
+
+[clean_axis(aa) for aa in ax.flat]
+[axes['atm'][aa].set_title('') for aa in axes['atm']]
+[aa.set_xlabel('Longitude') for aa in ax[1, :]]
+[aa.set_ylabel('Latitude') for aa in ax[:, 0]]
+
+hcb1 = plt.colorbar(heke, ax=ax[0, :3], orientation='horizontal',
+                    label='EKE [m²/s²]', shrink=0.7, anchor=(0.3, 1.0))
+hcb2 = plt.colorbar(hniw, ax=ax[0, 2:], orientation='horizontal',
+                    label='Near-inertial wind input $Π$ [mW/m²]',
+                    shrink=0.7, anchor=(0.8, 1.0))
+hcb1.set_ticks(np.arange(0, 0.31, 0.05))
+hcb2.set_ticks(np.arange(0, 1.21, 0.2))
+
+f.set_size_inches(6, 5)
+plt.subplots_adjust(left=0.080, right=0.99, bottom=0.1, wspace=0.05,
+                    hspace=0.4, top=0.99)
+
+plt.savefig('images/paper1/spatial-maps.pdf', transparent=False,
+            bbox_inches='tight')
+
+# clim = (aq.sss.sel(longitude=slice(75, 98),
+#                    latitude=slice(0, 24))
+#         .groupby('time.month').mean(dim='time'))
+# clim.plot(col='month', col_wrap=3, robust=True)
+# hc = clim.plot.contour(col='month', col_wrap=3, levels=np.arange(29, 36), Colors='k')
+# plt.clabel(hc, fmt='%2.0f')
+# pptlevels=[600,  1200, 1800]
+# ppt = trmm.sel(monsoon=season).precipitation
+# hppt = (ppt.where(ppt > pptlevels[0]-2)
+#         .plot.contourf(ax=axes[season], x='lon', y='lat',
+#                        levels=pptlevels,
+#                        cmap=ppt_cmap, zorder=4,
+#                        add_colorbar=False))
+# (ppt.where(ppt > pptlevels[0]-2)
+#  .plot.contour(ax=axes[season], x='lon', y='lat',
+#                levels=pptlevels, zorder=4,
+#                colors=raincolor, linewidths=1))
+
+# cmap = (sns.blend_palette(
+#     [[0.988235, 0.988235, 0.992157],
+#      [0.811765, 0.831373, 0.886275],
+#      [0.627451, 0.678431, 0.788235],
+#      [0.521569, 0.615686, 0.729412],
+#      [0.584314, 0.698039, 0.749020],
+#      [0.690196, 0.803922, 0.772549],
+#      [0.847059, 0.905882, 0.796078],
+#      [1.000000, 0.980392, 0.756863],
+#      [0.996078, 0.839216, 0.447059],
+#      [0.996078, 0.670588, 0.286275],
+#      [0.992157, 0.501961, 0.219608],
+#      [0.968627, 0.270588, 0.152941],
+#      [0.835294, 0.070588, 0.125490],
+#      [0.674510, 0.000000, 0.149020],
+#      [0.509804, 0.000000, 0.149020]],
+#     n_colors=21, as_cmap=True))
+
+#+END_SRC
+
+** Figure 3: Vertical profile of K_T distributions
+
+#+BEGIN_SRC ipython :session :results none
+import bay
+bay = importlib.reload(bay)
+
+moors = ['RAMA12', 'RAMA15', 'NRL1', 'NRL2', 'NRL3', 'NRL4', 'NRL5']
+
+bay.make_vert_distrib_plot('KT', label_moorings=False)
+
+plt.savefig('images/vert-profile.svg', bbox_inches='tight')
+plt.savefig('images/paper1/bay-KT-vert-profile.pdf', bbox_inches='tight')
+plt.savefig('images/bay-KT-vert-profile.png', bbox_inches='tight')
+import subprocess
+subprocess.run('bash images/add-legend-vert-profile.bash')
+#+END_SRC
+[[file:images/paper1/bay-KT-vert-profile-label.png]]
+
+*** add in mean wind stress?
+#+BEGIN_SRC ipython :session :results none
+import bay
+bay = importlib.reload(bay)
+
+moors = ['RAMA12', 'RAMA15', 'NRL1', 'NRL2', 'NRL3', 'NRL4', 'NRL5']
+
+# bay.make_vert_distrib_plot('KT', label_moorings=False)
+
+if 'df' not in locals():
+    df = bay.nc_to_binned_df(bins=bay.default_density_bins, moor=None)
+    df['KT'] = np.log10(df['KT'])
+
+# f = plt.figure()
+# gs = mpl.gridspec.GridSpec(2, 4, figure=f, height_ratios=(1, 8))
+
+# axx1 = []
+# for ii in range(4):
+#     axx1.append(f.add_subplot(gs[0, ii]))
+
+# axx2 = []
+# for ii in range(4):
+#     axx2.append(f.add_subplot(gs[1, ii]))
+
+# f, axx = plt.subplots(2, 4, gridspec_kw={'height_ratios': (1, 12)},
+#                       sharey='row')
+# ax = dict(zip(bay.seasons, axx[1, :]))
+# bay.vert_distrib(df, df.bin,
+#                  f=f, ax=ax,
+#                  label_moorings=False,
+#                  percentile=True)
+
+# [aa.set_title('') for aa in axx[1, :]]
+
+# months = {'NE': 'Dec-Feb', 'NESW': 'Mar-Apr',
+#           'SW': 'Jun-Sep', 'SWNE': 'Oct-Nov'}
+# [axx[0, idx].set_title(list(months.keys())[idx] + '\n' + months[mm])
+#  for idx, mm in enumerate(ax)]
+
+# # read Tropflux here
+# if 'tropflux' not in locals():
+#     tropflux = (xr.open_mfdataset('../datasets/tropflux/tau*_tropflux_1d_*.nc')
+#                 .drop('tau')
+#                 .sel(time=slice('2013-12-01', '2014-11-30'),
+#                      latitude=slice(2, 25),
+#                      longitude=slice(78, 96))
+#                 .load())
+#     tropflux = (tropflux.groupby(tropflux.time.monsoon.labels)
+#                 .mean(dim='time'))
+
+# mean_winds = tropflux.mean(['latitude', 'longitude'])
+# std_winds = tropflux.std(['latitude', 'longitude'])
+# for ii, ss in enumerate(bay.seasons):
+#     hh = axx[0, ii].quiver(0, 0, mean_winds.sel(monsoon=ss).taux,
+#                            mean_winds.sel(monsoon=ss).tauy, scale=0.3)
+#     hh.set_clip_on(False)
+#     hh.set_in_layout(False)
+#     axx[0, ii].spines['left'].set_visible(False)
+#     axx[0, ii].spines['bottom'].set_visible(False)
+#     axx[0, ii].set_xticks([])
+#     axx[0, ii].set_yticks([])
+
+plt.subplots_adjust(wspace=-0.2)
+
+# plt.savefig('images/vert-profile.svg', bbox_inches='tight')
+# plt.savefig('images/paper1/bay-KT-vert-profile.pdf', bbox_inches='tight')
+# plt.savefig('images/bay-KT-vert-profile.png', bbox_inches='tight')
+#+END_SRC
+[[file:images/bay-KT-vert-profile.png]]
+** Figure 4: Binned salinity flux
+
+#+BEGIN_SRC ipython :session
+import cmocean
+
+if 'turb' not in locals():
+    turb = xr.open_dataset('../estimates/bay_merged_hourly.nc')
+
+nrl = (turb[['Js', 'Jq', 'KT', 'S', 'z']]
+       .sel(lat=8, drop=True)
+       .sel(time='2014')
+       .dropna('depth', how='all')
+       .dropna('lon', 'all'))
+
+time = xr.broadcast(nrl.time, nrl.S)[0]
+mask = (~np.isnan(nrl.Js)).values
+
+df = (nrl.where(np.abs(nrl.Jq) < 1000).to_dataframe().reset_index()
+      .drop(['depth', 'lon'], axis=1)
+      .dropna(how='any'))
+
+grouped = df.groupby([pd.cut(df.S, [34, 34.5, 35, 36]),
+                      df.time.dt.month])
+
+mean = grouped.mean()
+count = grouped.count()['Js']
+
+N = len(nrl.time)/12 # number of observations per month per instrument
+
+f2, ax = plt.subplots(1, 1, constrained_layout=True, squeeze=True)
+f2.set_size_inches(7, 2.6)
+sns.heatmap((mean['Js'] * 1000)
+            .where(count > N)
+            .reset_index().pivot('S', 'time', 'Js'),
+            cmap=cmocean.cm.matter, robust=True, vmax=1,
+            square=True, annot=True, cbar=False, linewidths=1, fmt='.2f')
+ax.set_title('$J_s^t$ [$10^{-3}$ g/m²/s]')
+ax.tick_params('both', length=0)
+ax.set_yticks([0.5, 1.5, 2.5])
+ax.set_ylim([3, 0])
+ax.set_yticklabels(['34.25', '34.75', '35.5'])
+ax.set_xticks(np.arange(1, 13) - 0.5)
+# [tt.set_ha('left') for tt in ax.get_yticklabels()]
+ax.set_xticklabels(['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul',
+                    'Aug', 'Sep', 'Oct', 'Nov', 'Dec'])
+ax.set_xlabel('2014')
+f2.savefig('images/paper1/8N-binned-avg-Js.pdf', bbox_to_inches='tight')
+#+END_SRC
+
+[[file:images/paper1/8N-binned-avg-Js.pdf]]
+
+** Figure 5: RAMA 12N time series
+
+#+BEGIN_SRC ipython :session
+if 'ra12' not in locals():
+    ra12 = bay.read_ra12()
+
+f, axx = plt.subplots(3, 1, sharex=True, constrained_layout=True)
+f.set_constrained_layout_pads(hspace=0.001, h_pad=0)
+
+ax12 = bay.plots.plot_moor(ra12, idepth=0, axx=axx)
+ax12['jq'].set_ylim([-50, 50])
+# ax12['js'].set_ylim([-1e-2, 2e-1])
+
+flux = ra12.flux.Jq0.sel(time='2014').resample(time='D').mean('time')
+ax12['flux'] = ax12['met'].twinx()
+ra12.PlotFlux(ax12['flux'], flux.time.values, flux)
+ax12['flux'].spines['right'].set_visible(True)
+ax12['flux'].set_ylabel('Daily avg. net surface\nheat flux [W/m²]')
+dcpy.plots.label_subplots(axx)
+
+f.set_size_inches((8, 4))
+
+f.savefig('images/paper1/rama12.pdf')
+#+END_SRC
+#+CAPTION:
+[[file:images/paper1/rama12.pdf]]
+
+** Figure 6: NRL time series
+
+#+BEGIN_SRC ipython :session :results noif 'nrl5' not in locals():
+if 'nrl5' not in locals():
+    nrl5 = bay.read_nrl5()
+
+shear = nrl5.interp_shear('bins')
+
+from dcpy.plots import annotate_end, set_axes_color
+
+f5, axx5 = plt.subplots(5, 1, sharex=True, constrained_layout=True)
+f5.set_constrained_layout_pads(hspace=0.001, h_pad=0)
+f5.set_size_inches((8, 7))
+
+niw_shear = xfilter.bandpass(shear.shear, 'time',
+                             freq=np.array([1/2, 2])*nrl5.inertial.values,
+                             order=3, cycles_per='D')
+low_shear = xfilter.lowpass(shear.shear, 'time',
+                            freq=0.1, cycles_per='D', order=3)
+
+hniw = (((niw_shear).rolling(time=7*24).reduce(dcpy.util.ms) * 1e5)
+        .sel(time='2014')
+        .plot(ax=axx5[-2], _labels=False, color='g', lw=1.2))
+hlow = ((np.abs(low_shear.sel(time='2014'))**2 * 1e5)
+        .plot(ax=axx5[-2], _labels=False, color='k', lw=1.2))
+annotate_end(hlow[0], 'Low pass')
+annotate_end(hniw[0], 'NIW')
+hniw[0].set_clip_on(False)
+hniw[0].set_in_layout(False)
+nrl5.MarkSeasonsAndEvents(events=False, ax=axx5[-2])
+axx5[-2].set_ylabel('Squared shear\n[$10^{-5}$ s$^{-2}$]')
+axx5[-2].set_ylim([0, 6])
+
+axnrl5 = bay.plots.plot_moor(nrl5, idepth=1, axx=axx5)
+axnrl5['jq'].set_ylim([-20, 0])
+axnrl5['js'].set_ylim([-1e-2, 2e-1])
+
+# fill in the 20m gap with linear interpolation
+# then interpolate velocity to CTD depths
+# then difference to get shear
+zinterp = nrl5.ctd.depth.isel(z=slice(1, 3))
+vel_interp = (nrl5.vel[['u', 'v']].interpolate_na('depth')
+              .interp(time=zinterp.time, depth=zinterp))
+shear_interp = (np.hypot(vel_interp.u.diff('z')/15, vel_interp.v.diff('z')/15)
+                .squeeze())
+
+N2 = ((9.81/1025 * nrl5.ctd.ρ.diff('z')/nrl5.ctd.depth.diff('z'))
+      .isel(z=1))
+Ri = (N2.where(N2 > 0)/shear_interp**2).sel(time='2014')
+
+axnrl5['ri'] = axx5[-1]
+(((Ri.where(Ri < 5)).resample(time='D').count()/144)
+ .plot(ax=axnrl5['ri'], label='< 10', _labels=False, color='k'))
+axnrl5['ri'].set_ylabel('Fraction of day\nwith Ri < 5')
+nrl5.MarkSeasonsAndEvents(events=False, ax=axnrl5['ri'])
+
+axnrl5['input'] = axnrl5['met'].twinx()
+axnrl5['input'].plot(nrl5.niw.time, nrl5.niw.true_flux*1000, color='C0')
+axnrl5['input'].set_ylabel('Near-inertial input\n$Π$[mW/m²]')
+# set_axes_color(axnrl5['input'], 'C0', spine='right')
+
+dcpy.plots.label_subplots(axx5, x=0.025, y=0.83)
+
+[tt.set_rotation(0) for tt in axx5[-1].get_xticklabels()]
+[tt.set_ha('center') for tt in axx5[-1].get_xticklabels()]
+
+f5.savefig('images/paper1/nrl5.pdf')
+
+# shear_interp = (nrl5.vel.shear
+#                 .interp(time=zpod.time, depth=zpod.isel(num=1))
+#                 .interpolate_na('time'))
+# axnrl5['depth'] = axx5[-1].twinx()
+
+# (nrl5.zχpod.isel(num=1).resample(time='D').mean('time')
+#  .plot.line(x='time', ax=axnrl5['depth'], color='C0'))
+# set_axes_color(axnrl5['depth'], 'C0', spine='right')
+# axnrl5['depth'].set_title('')
+
+# bpshear = mooring.calc_shear_bandpass(depth=120).to_array('band')
+# (bpshear.sel(time='2014').sel(band=['f0', 'M4'])
+#  .rolling(time=24*5).var()
+#  .plot.line(x='time', add_legend=True, ax=axx5[-1]))
+
+# bpshear2 = nrl5.calc_shear_bandpass(depth=50).to_array('band')
+# (bpshear2.sel(time='2014').sel(band='f0')
+#  .rolling(time=24*5).var()
+#  .plot.line(x='time', ax=axx5[-1]))
+
+# shear = (nrl5.calc_shear_bandpass(depth=120).sel(time='2014')
+#          .resample(time='D').var())
+
+# hm2 = (shear['M2']/1e-6).plot(ax=axnrl5['shear'])
+# hm4 = (shear['M4']/1e-6).plot(ax=axnrl5['shear'])
+# hf0 = (shear['f0']/1e-6).plot(ax=axnrl5['shear'])
+# for hh in [hm2, hm4, hf0]:
+#     hh[0].set_clip_on(False)
+#     hh[0].set_in_layout(False)
+# _, htm2 = annotate_end(hm2[0], '$M_2$')
+# _, htm4 = annotate_end(hm4[0], '$M_4$', va='top')
+# _, htf0 = annotate_end(hf0[0], '$f_0$')
+# # _, hiw0 = annotate_end(hiw[0], '$> f_0$', va='center')
+
+# axra12 = plot_moor(ra12, idepth=0)
+# jqd = jq0.resample(time='D').mean()
+# axes['jq0'] = axra12['met'].twinx()
+# ra12.PlotFlux(axra12['jq0'], jqd.time.values, jqd.values)
+
+# # axes['shear'].set_ylim([0, 2.5])
+#+END_SRC
+[[file:images/paper1/nrl5.pdf]]
+
+** Figure 7: NRL5 zoom-in
+
+#+BEGIN_SRC ipython :session :results none
+trange = slice('2014-07-25', '2014-08-07 11:59')
+
+f, ax = plt.subplots(3, 1, sharex=True, constrained_layout=True,
+                     gridspec_kw={'height_ratios': [1, 1, 2]})
+f.set_size_inches((6.5, 5))
+
+hjq = (nrl5.Jq.sel(time=trange).isel(depth=1)
+       .resample(time='2H', loffset='-1H').mean('time')
+       .plot.line(x='time', ax=ax[0], ylim=[-50, 0], add_legend=True, color='k'))
+# hjq[0].set_clip_on(False)
+# hjq[0].set_in_layout(False)
+
+(nrl5.ε.sel(time=trange).isel(depth=1)
+ .plot.line(x='time', ax=ax[1], yscale='log', ylim=[1e-11, 1e-6],
+            add_legend=False, color='k', lw=0.5))
+
+f0 = nrl5.inertial/86400
+shear = (nrl5.vel.uz.rolling(depth=3, center=True, min_periods=1).mean())
+shear.dc.set_name_units('Zonal shear', '1/s')
+
+(shear.sel(time=trange, depth=slice(90, 300))
+ .plot.contourf(yincrease=False, cmap=mpl.cm.RdYlBu_r, ax=ax[2],
+                levels=20, vmax=0.01,
+                cbar_kwargs={'orientation': 'horizontal', 'shrink': 0.7,
+                             'ticks': np.arange(-0.01, 0.011, 0.005)}))
+
+hT = (nrl5.ctd['T'].sel(time=trange)
+      .resample(time='H', loffset='-30min').mean('time')
+      .plot.contour(levels=np.arange(17, 20.1, 2.5),
+                    colors='k', yincrease=False, linewidths=0.8))
+dcpy.plots.contour_label_spines(hT, prefix='T=', fmt='%.1f')
+
+(nrl5.zχpod.sel(time=trange).isel(num=1)
+ .plot.line(x='time', ax=ax[2], color='w', lw=2.5,
+            add_legend=False, _labels=False))
+hz = (nrl5.zχpod.sel(time=trange).isel(num=1)
+      .plot.line(x='time', ax=ax[2], color='k', lw=1,
+                 add_legend=False, _labels=False))
+ax[2].set_xlim(trange.start, trange.stop)
+dcpy.plots.annotate_end(hz[0], 'χpod')
+
+[aa.set_title('') for aa in ax]
+[aa.set_xlabel('') for aa in ax]
+ax[-1].set_ylabel('depth [m]')
+[tt.set_rotation(0) for tt in ax[-1].get_xticklabels()]
+[tt.set_ha('center') for tt in ax[-1].get_xticklabels()]
+ax[-1].xaxis.set_major_formatter(mpl.dates.DateFormatter('%b-%d'))
+ax[2].set_ylim([250, 90])
+
+dcpy.plots.label_subplots(ax[:-1], x=0.03)
+ax[-1].text(0.03, 0.05, '(c)', transform=ax[-1].transAxes)
+
+harr = ax[-1].plot((np.datetime64('2014-08-01 05:00'),
+                    np.datetime64('2014-08-01 17:25')),
+                   (205, 205), color='k')
+
+harr = ax[-2].plot((np.datetime64('2014-08-01 05:00'),
+                    np.datetime64('2014-08-01 17:25')),
+                   (2e-10, 2e-10), color='k')
+
+ax[-2].text(np.datetime64('2014-08-01 11:00'), 1.5e-10, '$M_2$',
+            ha='center', va='top')
+
+ax[-1].text(np.datetime64('2014-08-01 11:00'), 208, '$M_2$',
+            ha='center', va='top')
+
+f.savefig('images/paper1/nrl5-aug-niw-mixing.pdf')
+#+END_SRC
+
+[[file:images/paper1/nrl5-aug-niw-mixing.pdf]]
