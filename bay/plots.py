@@ -412,6 +412,13 @@ def mark_moors(color='w',
                     transform=ax.transData)
 
 
+def mark_moors_clean(ax):
+    mark_moors(ax=ax, markersize=4.5, fontsize=6, color='k',
+               colortext='w', labels=False)
+    mark_moors(ax=ax, markersize=3, fontsize=6, color='w',
+               colortext='w', labels=False)
+
+
 def make_vert_distrib_plot(varname,
                            bins=default_density_bins,
                            moor=None,
@@ -741,6 +748,13 @@ def plot_moor(moor, idepth, axx, time_range='2014'):
 def mark_seasons(ax=None, zorder=-20):
 
     dates = dict()
+
+    dates[2013] = {
+        'NE': ('2012-Dec-01', '2013-Mar-01'),
+        'NESW': ('2013-Mar-01', '2013-May-01'),
+        'SW': ('2013-May-01', '2013-Oct-01'),
+        'SWNE': ('2013-Oct-01', '2013-Dec-01')
+    }
 
     dates[2014] = {
         'NE': ('2013-Dec-01', '2014-Mar-01'),
