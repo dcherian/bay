@@ -3387,7 +3387,7 @@ f.savefig('images/shear-above-below-gap-nrl4.png')
 #+CAPTION: Shear spectra above, below gap. So much noise in the upper ADCP?!
 [[file:images/shear-above-below-gap-nrl4.png]]
 
-* Heat flux divergence @ 8N
+* Salt fluxes @ 8N
 ** 8N sampling
 #+BEGIN_SRC ipython :session
 # f, ax = plt.subplots(3, 2, constrained_layout=True, sharex=True, sharey='row')
@@ -3409,7 +3409,7 @@ labels = []
 hdl = []
 f, ax = plt.subplots(2, 1, sharex=True, constrained_layout=True)
 for ii, mm in enumerate([nrl3, nrl4, nrl5]):
-    hh = (mm.turb.ρ.resample(time='12H').mean('time')
+    hh = (mm.turb.S.resample(time='12H').mean('time')
           .plot.line(x='time', color='C'+str(ii), ax=ax[0],
                      add_legend=False, yincrease=False))
     hdl.append(hh[0])
@@ -3419,13 +3419,414 @@ for ii, mm in enumerate([nrl3, nrl4, nrl5]):
      .plot.line(x='time', color='C'+str(ii), ax=ax[1],
                 add_legend=False, yincrease=False))
 
-dcpy.plots.liney(bay.default_density_bins[1:-1], ax=ax[0])
+# dcpy.plots.liney(bay.default_density_bins[1:-1], ax=ax[0])
 
 plt.gca().legend(handles=hdl, labels=labels)
 f.savefig('images/8N-sampling.png')
 #+END_SRC
 #+CAPTION:
 [[file:images/8N-sampling.png]]
+
+#+BEGIN_SRC ipython :session
+def xscatter(da, x, y, ax, **kwargs):
+
+    cmap_params = xr.plot.utils._determine_cmap_params(
+        da.values, cmap=mpl.cm.tab20c_r,
+        levels=[33, 33.25, 33.50, 33.75,
+                34, 34.1, 34.2, 34.3,
+                34.5, 34.6, 34.7, 34.9,
+                35.0, 35.25, 35.50, 35.75,
+                36.0, 36.25, 36.50, 36.75, 37])
+    cmap_params.pop('extend')
+    cmap_params.pop('levels')
+
+    xplt, yplt, daplt = xr.broadcast(da[x], da[y], da)
+    hdl = ax.scatter(xplt.values.ravel(),
+                     yplt.values.ravel(),
+                     c=daplt.values.ravel(),
+                     s=8, **cmap_params,**kwargs)
+
+    return hdl
+
+
+f, axx = plt.subplots(3, 1, sharex=True, sharey=True, constrained_layout=True)
+ax = dict(zip(['nrl3', 'nrl4', 'nrl5'], axx))
+
+
+for mm in ax:
+    mooring = locals()[mm]
+    da = mooring.ctd.S.resample(time='6H').mean('time')
+    da['depth'] = mooring.ctd.depth.resample(time='6H').mean('time')
+    hdl = xscatter(da.isel(z=slice(0, -1)), ax=ax[mm],
+                   x='time', y='depth')
+    mooring.PlotχpodDepth(ax=ax[mm], color='k')
+    ax[mm].set_title(mm.upper())
+
+
+hcbar = plt.colorbar(hdl, ax=axx)
+hcbar.set_ticks([33, 34, 34.5, 35, 36])
+axx[-1].set_ylim([200, 10])
+
+f.set_size_inches((11, 8))
+f.savefig('images/8N-scatter-S.png')
+#+END_SRC
+#+CAPTION:
+[[file:images/8N-scatter-S.png]]
+#+BEGIN_SRC ipython :session
+import cmocean
+
+if 'nrl' not in locals():
+    turb = xr.open_dataset('../estimates/bay_merged_hourly.nc')
+
+    nrl = (turb[['Js', 'Jq', 'KT', 'S', 'z']]
+           .sel(lat=8, drop=True)
+           .sel(time='2014')
+           .dropna('depth', how='all')
+           .dropna('lon', 'all'))
+
+time = xr.broadcast(nrl.time, nrl.S)[0]
+mask = (~np.isnan(nrl.Js)).values
+
+kwargs = dict(alpha=0.8,
+              s=6.0,
+              linewidths=0.15,
+              edgecolors='gray',
+              norm=mpl.colors.LogNorm(vmin=1e-4, vmax=1e-1),
+              cmap=cmocean.cm.matter)
+
+isort = np.argsort(nrl.Js.values[mask].ravel())
+
+f, ax = plt.subplots(2, 1, sharex=True, constrained_layout=True)
+hh = ax[0].scatter(time.values[mask].ravel()[isort],
+                   nrl.S.values[mask].ravel()[isort],
+                   c=nrl.Js.values[mask].ravel()[isort],
+                   ,**kwargs)
+ax[1].scatter(time.values[mask].ravel()[isort],
+             nrl.z.values[mask].ravel()[isort],
+             c=nrl.Js.values[mask].ravel()[isort],
+             ,**kwargs)
+
+[aa.invert_yaxis() for aa in ax]
+ax[0].set_ylabel('salinity')
+ax[1].set_ylabel('depth [m]')
+ax[1].set_ylim([150, 20])
+ax[0].grid(True, axis='y')
+f.colorbar(hh, ax=ax, extend='max', shrink=0.8, aspect=15,
+           orientation='horizontal', label=r'hourly mean salt flux $J_s^t$')
+
+f.savefig('images/8N-sal-flux.png')
+
+#+END_SRC
+#+CAPTION: All observations of salt flux.
+[[file:images/8N-sal-flux.png]]
+
+** binned J_s
+
+#+BEGIN_SRC ipython :session
+if 'nrl' not in locals():
+    turb = xr.open_dataset('../estimates/bay_merged_hourly.nc')
+
+    nrl = (turb[['Js', 'Jq', 'KT', 'S', 'z']]
+           .sel(lat=8, drop=True)
+           .sel(time='2014')
+           .dropna('depth', how='all')
+           .dropna('lon', 'all'))
+
+df = (nrl.where(np.abs(nrl.Jq) < 1000).to_dataframe().reset_index()
+      .drop(['depth', 'lon'], axis=1)
+      .dropna(how='any'))
+
+grouped = df.groupby([pd.cut(df.S, [33, 34, 34.5, 35, 36]),
+                      df.time.dt.month])
+
+mean = grouped.mean()
+
+def _heatmap(ax, mean, grouped, varname, scale, vmax):
+    count = grouped.count()[varname]
+
+    N = 30 * 24 # number of observations per month per instrument
+
+    sns.heatmap((mean[varname] * scale)
+                .where(count > N)
+                .reset_index()
+                .pivot('S', 'time', varname),
+                ax=ax, cmap=cmocean.cm.matter, robust=True, vmax=vmax,
+                square=True, annot=True, cbar=False, linewidths=1, fmt='.2f')
+
+f2, ax = plt.subplots(2, 1, sharex=True, constrained_layout=True, squeeze=True)
+f2.set_size_inches(7, 5.2)
+
+_heatmap(ax[0], mean, grouped, 'Js', 1000, 1)
+_heatmap(ax[1], mean, grouped, 'KT', 1e4, 1)
+
+dcpy.plots.label_subplots(ax, x=0.03, y=0.8,
+                          labels=['$J_s^t$ [$10^{-3}$ g/m²/s]',
+                                  '$K_T$ [$10^{-4}$ m²/s]'])
+
+def do_axes(ax):
+    ax.set_xlabel('')
+    ax.tick_params('both', length=0)
+    ax.set_yticks([1.5, 2.5, 3.5])
+    ax.set_yticklabels(['34.25', '34.75', '35.5'])
+    ax.set_xticks(np.arange(1, 13) - 0.5)
+    # [tt.set_ha('left') for tt in ax.get_yticklabels()]
+
+[do_axes(aa) for aa in ax]
+
+ax[0].set_xticklabels([])
+ax[-1].set_xticklabels(['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul',
+                        'Aug', 'Sep', 'Oct', 'Nov', 'Dec'])
+ax[-1].set_xlabel('2014')
+
+f2.savefig('images/paper1/8N-binned-avg-turb.png', bbox_to_inches='tight')
+#+END_SRC
+#+CAPTION: bin averaged flux through salinity surfaces. This isn't too sensitive to large values of J_q^t. I tested by adding masks for Jq < 1000, Jq < 500 etc. The most sensitive is the S=33 box; which is expected, the deeper ones change only at the 500 threshold. This is more sensitive to how many instruments I throw out. Assuming two instrument-months as threshold basically only leaves 34.75 +  a few at 35 (below).
+[[file:images/8N-binned-avg-turb.png]]
+
+** E-P
+
+cite:Pujiana2018 eqn for surface mixed layer salinity budget (this mirrors the form in cite:Weller2002):
+\begin{equation}
+\int_{-h}^0 \frac{∂S}{∂t} dz = -S_0(P-E) + J_s^{-h} + \text{residual}; \qquad J_s^{-h} = -K_T \frac{∂S}{∂z}
+\end{equation}
+
+In my notation, this would be
+\begin{equation}
+\int_{-h}^0 \frac{∂S}{∂t} dz = -S_0(P-E) + \frac{|J_s^{-h}|}{ρ_0} + \text{residual}; \qquad J_s^{-h} = ρ_0 K_T \frac{∂S}{∂z}
+\end{equation}
+I use $|J_s|$ because salt moves from high to low and my volume is the low salinity layer between surface and 34.5 psu.
+
+Other way to do this is to estimate changes in salinity. Let initial salinity
+\begin{align}
+S_0 &= \frac{\text{mass of salt}}{\text{mass of salt water}} \\
+   &= \frac{m_S}{ρ A H}
+\end{align}
+
+Change in salinity from E-P (m/s) adding height $h = (P-E)Δt$ [m] of fresh water:
+\begin{align}
+S &= \frac{m_S}{ρA(H + h)} = \frac{m_S}{ρAH} \left( 1 - h/H\right) \\
+   &= S_0 + S_0 \frac{(E-P)Δt}{H}
+\end{align}
+Change in salinity from turbulent flux of salt into volume: $ρK_T S_z$ [g/m²/s]
+\begin{align}
+S &= \frac{m_S + ρK_T S_z A Δt}{ρAH} \\
+   &= S_0 + K_T S_z \frac{Δt}{H}
+\end{align}
+
+Comparing the two changes:
+\begin{equation}
+\frac{S_0 (E-P)}{K_T S_z}
+\end{equation}
+
+#+BEGIN_SRC ipython :session
+if 'trmm' not in locals():
+    trmm = dcpy.oceans.read_trmm()
+    # convert from mm/day to m/s
+    P = (trmm.precipitation.sel(lon=slice(85, 89))
+         .sel(lat=8, method='nearest').drop('lat')
+         .mean('lon'))[1:-1].load() * 1e-3/86400
+    P.attrs['units'] = 'm/s'
+    P['time'] = P.time.dt.floor('D')
+
+if 'oaflux' not in locals():
+    oaflux = dcpy.oceans.read_oaflux()
+
+    # convert from cm/year to m/s
+    E = (oaflux.evapr.sel(lon=slice(85, 89))
+         .sel(lat=8, method='nearest').drop('lat')
+         .mean('lon')).load() * 0.01/365/86400
+    E.attrs['units'] = 'm/s'
+
+
+f, ax = plt.subplots(2, 1, sharex=True, constrained_layout=True)
+E.plot(ax=ax[0])
+P.plot(ax=ax[0])
+ax[0].legend(['OAFlux E [m/s]', 'TRMM P [m/s]'])
+ax[0].set_ylabel('')
+
+(32*(E-P.interp(time=E.time))).plot(ax=ax[1])
+((32*(E-P.interp(time=E.time))
+ .resample(time='M', loffset='-14D').mean('time'))
+ .plot(ax=ax[1]))
+ax[1].legend(['E-P', 'Monthly average E-P'])
+ax[1].set_ylabel('$S_0$ (E-P) [psu m/s] with $S_0$=32')
+dcpy.plots.liney(0)
+bay.mark_seasons(ax[1])
+
+ax[0].set_title('E-P along 8N between 85E and 89E')
+f.savefig('images/e-p.png')
+#+END_SRC
+#+CAPTION:
+[[file:images/e-p.png]]
+
+** Comparing J_s^t and E-P
+#+BEGIN_SRC ipython :session
+if 'trmm' not in locals():
+    trmm = dcpy.oceans.read_trmm()
+    # convert from mm/day to m/s
+    P = (trmm.precipitation.sel(lon=slice(85, 89))
+         .sel(lat=8, method='nearest').drop('lat')
+         .mean('lon'))[1:-1].load() * 1e-3/86400
+    P.attrs['units'] = 'm/s'
+    P['time'] = P.time.dt.floor('D')
+
+if 'oaflux' not in locals():
+    oaflux = dcpy.oceans.read_oaflux()
+
+    # convert from cm/year to m/s
+    E = (oaflux.evapr.sel(lon=slice(85, 89))
+         .sel(lat=8, method='nearest').drop('lat')
+         .mean('lon')).load() * 0.01/365/86400
+    E.attrs['units'] = 'm/s'
+
+if 'turb' not in locals():
+    turb = xr.open_dataset('../estimates/bay_merged_hourly.nc')
+
+    nrl = (turb[['Js', 'Jq', 'KT', 'S', 'z']]
+           .sel(lat=8, drop=True)
+           .sel(time='2014')
+           .dropna('depth', how='all')
+           .dropna('lon', 'all'))
+
+time = xr.broadcast(nrl.time, nrl.S)[0]
+mask = (~np.isnan(nrl.Js)).values
+
+df = (nrl.where(np.abs(nrl.Jq) < 1000).to_dataframe().reset_index()
+      .drop(['depth', 'lon'], axis=1)
+      .dropna(how='any'))
+
+grouped = df.groupby([pd.cut(df.S, [34.5, 35]),
+                      df.time.dt.month])
+
+mean = grouped.mean()
+count = grouped.count()['Js']
+N = len(nrl.time) / 12  # number of observations per month per instrument
+Js = ((mean['Js'] / 1025).where(count > N)
+      .reset_index()
+      .drop(['S', 'time'], axis=1)
+      .set_index(pd.date_range('2014-01-01', '2014-12-02', freq='MS')
+                 + np.timedelta64(14, 'D'),
+                 'time'))
+
+# bootstrap error on Js
+
+EP = 32*(E-P.interp(time=E.time))
+EPclim = EP.groupby('time.month').mean('time').rename({'month': 'time'})
+EPclim['time'].values = Js.index
+
+f, ax = plt.subplots(1, 1, constrained_layout=True)
+hep = ((EP.sel(time='2014')
+        .resample(time='M', loffset='-14D').mean('time'))
+       .plot(ax=ax))
+hjs = Js.plot(ax=ax)
+# hclim = EPclim.plot(ax=ax, color='gray', zorder=-1)
+ax.legend(['Monthly mean $S_0(E-P)$', 'Monthly mean $J_s^t$'])
+dcpy.plots.liney(0)
+ax.xaxis.set_major_formatter(mpl.dates.DateFormatter('%b'))
+for tt in ax.get_xticklabels():
+    tt.set_ha('center')
+    tt.set_rotation(0)
+ax.set_xlabel('2014')
+
+f.savefig('images/paper1/8n-js-e-p.pdf')
+f.savefig('images/8n-js-e-p.png')
+
+argo = dcpy.oceans.read_argo_clim()
+S = argo.S.sel(time='2014').sel(**bay.region).load()
+
+volume = (S.where(np.logical_and(S < 35, S > 34))
+          .count('pres').groupby('time.month').sum('time'))
+(volume.plot(x='lon', col='month', col_wrap=4, cmap=mpl.cm.gist_heat_r))
+
+g = (S.sel(lat=8, method='nearest').groupby('time.month').mean('time')
+     .plot.contour(x='lon', yincrease=False, col='month', col_wrap=4,
+                   cmap=mpl.cm.BuGn, levels=[32, 33, 34, 34.5, 34.75, 35, 35.2],
+                   ylim=[200, 0], robust=True))
+for mm in g._mappables:
+    if isinstance(mm, mpl.contour.QuadContourSet):
+        plt.clabel(mm)
+
+(S.sel(lat=8, method='nearest').groupby('time.month').mean('time')
+ .plot(x='lon', yincrease=False, col='month', col_wrap=4, cmap=mpl.cm.BuGn,
+       ylim=[200, 0], robust=True))
+#+END_SRC
+#+CAPTION:
+[[file:images/8n-js-e-p.png]]
+
+** Monthly mean precipitation
+
+#+BEGIN_SRC ipython :session
+import cartopy.crs as ccrs
+
+if 'trmm' not in locals():
+    trmm = dcpy.oceans.read_trmm()
+
+g = (trmm.precipitation.sel(**bay.region)
+      .sel(time='2014')
+      .groupby('time.month').mean('time')
+      .plot(col='month', col_wrap=4, robust=True,
+            subplot_kws={'projection': ccrs.PlateCarree()}))
+
+plt.gcf().suptitle('2014')
+
+[bay.plot_coastline(ax=aa) for aa in g.axes.flat]
+[bay.plots.mark_moors_clean(ax=aa) for aa in g.axes.flat]
+
+plt.gcf().savefig('images/8n-monthly-mean-ppt.png', bbox_inches='tight')
+#+END_SRC
+#+CAPTION: TRMM monthly mean precipitation. Seasonal cycles are different in northern & southern Bay! This is representative of 2013, 2015 too. I can see Hudhud in October and another cyclone track through EBoB in November.
+[[file:images/8n-monthly-mean-ppt.png]]
+
+** Monthly mean velocity in salinity bins
+#+BEGIN_SRC ipython :session
+f, axx = plt.subplots(3, 1, constrained_layout=True, sharex=True, sharey=True)
+ax = dict(zip(['nrl3', 'nrl4', 'nrl5'], axx))
+
+
+def _integrate(da):
+    return xfilter.lowpass(xrsp.integrate.trapz(da.sel(time='2014'), 'depth')
+                           .interpolate_na('time'),
+                           'time', freq=0.2, cycles_per='D')
+
+
+for mooring in [nrl3, nrl4, nrl5]:
+    # Si = mooring.ctd.S.interp(depth=mooring.vel.depth)
+
+    v = mooring.vel.v.interpolate_na('depth')
+    upper = _integrate(v.where(v.depth <= 50, drop=True))
+
+    lower = _integrate(v.where(np.logical_and(v.depth > 50, v.depth < 150),
+                               drop=True))
+
+    axis = ax[mooring.name.lower()]
+    upper.plot(ax=axis, label='Upper, z ≤ 50')
+    lower.plot(ax=axis, label='Lower, 150 ≤ z ≤ 50')
+    axis.set_title(mooring.name)
+    dcpy.plots.liney(0, ax=axis)
+    bay.mark_seasons(ax=axis)
+    axis.set_xlabel('')
+
+axx[0].legend(loc='lower right')
+f.suptitle('Integrate velocities in depth range + 5 day lowpass')
+f.savefig('images/8N-sal-layer-velocity.png')
+#+END_SRC
+#+CAPTION: Looks like velocity changes sign from northward to southward during Oct-Dec.... Hmmm...
+[[file:images/8N-sal-layer-velocity.png]]
+
+** Climatological S_z
+
+#+BEGIN_SRC ipython :session
+S8 = (argo.S.sel(lat=8, method='nearest').sel(lon=slice(85, 89))
+      .load()
+      .mean('lon')
+      .groupby(argo.S.time.monsoon.labels).mean('time'))
+
+f, ax = plt.subplots(1, 1, constrained_layout=True)
+
+f.savefig('images/8N-climatological-Sz.png')
+#+END_SRC
+#+CAPTION:
+[[file:images/8N-climatological-Sz.png]]
 
 * NRL4 details
 ** daily signal in shear?
