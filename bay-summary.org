@@ -103,7 +103,7 @@ plt.savefig('../images/map-misobob.png', bbox_inches='tight')
 #+ATTR_HTML: :class full-width
 [[file:images/summary-NRL5.png]]
 
-* vertical distribution of $K_T$
+* Vertical profile of $K_T$
 ** Make plot
 *** Merge together
 #+CALL: read-all-moorings()
@@ -2046,6 +2046,157 @@ f.savefig('images/wind-KT-correlations.png')
 [[file:images/wind-KT-correlations.png]]
 
 ** all NRL
+*** low- & high-pass shear variance
+
+#+BEGIN_SRC ipython :session
+turb = xr.open_dataset("../estimates/bay_merged_hourly.nc")
+
+mooring = nrl4
+timescale = "M"
+
+filter_kwargs = dict(cycles_per="D", coord="time", order=3)
+
+uzi = mooring.interp_shear("bins")
+
+color = dict()
+color["full"] = "gray"
+color["niw"] = "g"
+color["loni"] = "C0"
+color["low"] = "k"
+color["high"] = "C1"
+
+# uzi = (mooring.vel[['u', 'v', 'uz', 'vz']]
+#        .sel(depth=120, method='nearest'))
+
+full = xr.Dataset()
+full["shear"] = uzi.uz.interpolate_na("time") + 1j * uzi.vz.interpolate_na("time")
+full["u"] = uzi.u
+full["v"] = uzi.v
+full["N2"] = (mooring.turb.N2).isel(depth=1).interp(time=uzi.time)
+full["Tz"] = mooring.turb.Tz.isel(depth=1).interp(time=uzi.time)
+full = full.interpolate_na("time")
+full.attrs['name'] = 'Full'
+
+low = full.shear.pipe(xfilter.lowpass, freq=0.15, **filter_kwargs)
+low.attrs['name'] = 'LF (< 6.6d)'
+high = full.shear.pipe(xfilter.bandpass, freq=[0.15, 4], **filter_kwargs)
+high.attrs['name'] = 'HF (> 6.6d)'
+fM2 = full.shear.pipe(xfilter.bandpass,
+                      freq=[0.95*(1.93-mooring.inertial.values),
+                            1.05*(1.93 + mooring.inertial.values)],
+                      ,**filter_kwargs)
+niw = full.shear.pipe(xfilter.bandpass, freq=[0.15, 0.5], **filter_kwargs) + fM2
+niw.attrs['name'] = 'NIW (6.6d - 2d) + fM2'
+loni = full.shear.pipe(xfilter.bandpass, freq=[0.5, 4], **filter_kwargs) - fM2
+loni.attrs['name'] = 'HF (> 2d) - fM2'
+
+mix = turb.sel(**bay.loc[mooring.name]).dropna("depth", how="all").isel(depth=1)
+KTr = mix.KT.dropna("time").resample(time=timescale).mean("time")
+
+epsr = xr.Dataset()
+count = mix.ε.dropna("time").resample(time=timescale).count("time")
+mask = count / (24 * 30) > 0.7
+epsr["mean"] = mix.ε.dropna("time").resample(time=timescale).mean("time").where(mask)
+epsr["std"] = mix.ε.dropna("time").resample(time=timescale).std("time").where(mask)
+
+
+def _plot(ax, e, s, color, timescale=timescale):
+    ax.set_title(s.attrs['name'])
+    count = s.resample(time=timescale).count()
+    s = (s.resample(time=timescale).apply(dcpy.util.rms)
+         .where(count/24/30 > 0.7)
+         .interp(time=KTr.time))
+    months = pd.Series(e.time.values).dt.strftime("%b-%y").values
+    ax.errorbar(e["mean"], s ** 2, xerr=e["std"].values / np.sqrt(30 * 24),
+                fmt="o", color=color)
+    ax.set_xlabel('$ε$ [W/kg]')
+    ax.set_xscale('log')
+    ax.set_yscale('log')
+
+    for ee, ss, tt in zip(e["mean"], s, months):
+        ax.text(ee, ss ** 2, "   " + tt, va="center", ha="left", fontsize=8)
+
+
+f = plt.figure(constrained_layout=True)
+gs = f.add_gridspec(3, 4, height_ratios=(2, 1, 1))
+axx = []
+axx.append(f.add_subplot(gs[0, 0]))
+for ii in range(1, 4):
+    axx.append(f.add_subplot(gs[0, ii], sharex=axx[0]))
+
+ax = dict(zip(["low", "high", "niw", "loni"], axx))
+ax["shear"] = f.add_subplot(gs[1, :])
+ax["KT"] = f.add_subplot(gs[2, :], sharex=ax["shear"])
+
+_plot(ax["low"], epsr, low, color=color["low"])
+_plot(ax["high"], epsr, high, color=color["high"])
+_plot(ax["loni"], epsr, loni, color=color["loni"])
+_plot(ax["niw"], epsr, niw, color=color["niw"])
+
+axx[0].set_ylabel("mean squared shear")
+
+rs = dict(time=7 * 24, center=True)
+
+(np.abs(full['shear'])**2).plot(ax=ax['shear'], label='Full',
+                                color='lightgray')
+for ss in ['low', 'high', 'loni', 'niw']:
+    ((np.abs(locals()[ss]))
+     .rolling(**rs).reduce(dcpy.util.ms)
+     .plot(color=color[ss],
+           ax=ax['shear'],
+           label=locals()[ss].attrs['name'],
+           lw=1.5))
+
+ax["shear"].legend(loc="upper right")
+ax["shear"].set_xlabel("")
+ax["shear"].set_title("")
+ax["shear"].set_ylim([0, 0.0001])
+ax["shear"].set_ylabel("$S²$")
+
+[tt.set_visible(False) for tt in ax["shear"].xaxis.get_ticklabels()]
+
+(
+    mooring.ε.isel(depth=1)
+    .resample(time="D")
+    .mean("time")
+    .plot(ax=ax["KT"], _labels=False, yscale="log", lw=1.5, color='k')
+)
+dcpy.plots.set_axes_color(ax['KT'], 'k')
+ax["KT"].set_ylabel("$ε$ [W/kg]")
+
+ax['depth'] = ax['KT'].twinx()
+(mooring.zχpod.isel(num=1).rolling(time=6*24, center=True).mean()[::144]
+ .plot(ax=ax['depth'], color='gray', yincrease=False, _labels=False, lw=1.5))
+dcpy.plots.set_axes_color(ax['depth'], 'gray', 'right')
+ax['depth'].set_ylabel('χpod depth [m]')
+
+ax["KT"].xaxis.set_major_locator(mpl.dates.MonthLocator())
+
+f.suptitle(mooring.name)
+
+f.set_size_inches((15, 8))
+
+f.savefig("images/shear-scatter-" + mooring.name.lower() + ".png")
+
+# f, ax = plt.subplots(1, 2, sharex=False, sharey=True, constrained_layout=True)
+# [aa.set_prop_cycle(bay.monsoon_cycler) for aa in ax]
+
+# for season in bay.seasons:
+#     dcpy.ts.PlotSpectrum(full.shear.sel(time='2014')
+#                          .where(full.time.monsoon.labels == season)
+#                          .dropna('time'),
+#                          preserve_area=True, twoside=True, ax=ax)
+
+# ax[0].legend(bay.seasons)
+#+END_SRC
+#+CAPTION: NRL3
+file:images/shear-scatter-nrl3.png
+#+CAPTION: NRL4
+file:images/shear-scatter-nrl4.png
+#+CAPTION: NRL5
+[[file:images/shear-scatter-nrl5.png]]
+
+*** older stuff
 #+BEGIN_SRC ipython :session
 # slab_file = xr.open_dataset('../estimates/merra2-wind-power-input-2014.nc')
 
@@ -2288,6 +2439,8 @@ plot_shear_KT_avg('nrl5', time_interval='2W', mooring=nrl5, loffset='-15D')
 3. NRL5:
    1. Sep-08 - Oct8, high mixing but no shear
    2. Oct 13 - Nov 13 is again outlier: shear but not much mixing
+
+
 ** NRL5
 *** Wind stress
 
@@ -2395,156 +2548,6 @@ f.savefig('images/nrl5-kt-ri-correlation.png')
 #+CAPTION:
 [[file:images/nrl5-kt-ri-correlation.png
 ]]
-
-
-*** low- & high-pass shear variance
-
-#+BEGIN_SRC ipython :session
-turb = xr.open_dataset("../estimates/bay_merged_hourly.nc")
-
-mooring = nrl4
-timescale = "M"
-
-filter_kwargs = dict(cycles_per="D", coord="time", order=3)
-
-uzi = mooring.interp_shear("bins")
-
-color = dict()
-color["full"] = "gray"
-color["niw"] = "g"
-color["loni"] = "C0"
-color["low"] = "k"
-color["high"] = "C1"
-
-# uzi = (mooring.vel[['u', 'v', 'uz', 'vz']]
-#        .sel(depth=120, method='nearest'))
-
-full = xr.Dataset()
-full["shear"] = uzi.uz.interpolate_na("time") + 1j * uzi.vz.interpolate_na("time")
-full["u"] = uzi.u
-full["v"] = uzi.v
-full["N2"] = (mooring.turb.N2).isel(depth=1).interp(time=uzi.time)
-full["Tz"] = mooring.turb.Tz.isel(depth=1).interp(time=uzi.time)
-full = full.interpolate_na("time")
-full.attrs['name'] = 'Full'
-
-low = full.shear.pipe(xfilter.lowpass, freq=0.15, **filter_kwargs)
-low.attrs['name'] = 'LF (< 6.6d)'
-high = full.shear.pipe(xfilter.bandpass, freq=[0.15, 4], **filter_kwargs)
-high.attrs['name'] = 'HF (> 6.6d)'
-fM2 = full.shear.pipe(xfilter.bandpass,
-                      freq=[0.95*(1.93-mooring.inertial.values),
-                            1.05*(1.93 + mooring.inertial.values)],
-                      ,**filter_kwargs)
-niw = full.shear.pipe(xfilter.bandpass, freq=[0.15, 0.5], **filter_kwargs) + fM2
-niw.attrs['name'] = 'NIW (6.6d - 2d) + fM2'
-loni = full.shear.pipe(xfilter.bandpass, freq=[0.5, 4], **filter_kwargs) - fM2
-loni.attrs['name'] = 'HF (> 2d) - fM2'
-
-mix = turb.sel(**bay.loc[mooring.name]).dropna("depth", how="all").isel(depth=1)
-KTr = mix.KT.dropna("time").resample(time=timescale).mean("time")
-
-epsr = xr.Dataset()
-count = mix.ε.dropna("time").resample(time=timescale).count("time")
-mask = count / (24 * 30) > 0.7
-epsr["mean"] = mix.ε.dropna("time").resample(time=timescale).mean("time").where(mask)
-epsr["std"] = mix.ε.dropna("time").resample(time=timescale).std("time").where(mask)
-
-
-def _plot(ax, e, s, color, timescale=timescale):
-    ax.set_title(s.attrs['name'])
-    count = s.resample(time=timescale).count()
-    s = (s.resample(time=timescale).apply(dcpy.util.rms)
-         .where(count/24/30 > 0.7)
-         .interp(time=KTr.time))
-    months = pd.Series(e.time.values).dt.strftime("%b-%y").values
-    ax.errorbar(e["mean"], s ** 2, xerr=e["std"].values / np.sqrt(30 * 24),
-                fmt="o", color=color)
-    ax.set_xlabel('$ε$ [W/kg]')
-    ax.set_xscale('log')
-    ax.set_yscale('log')
-
-    for ee, ss, tt in zip(e["mean"], s, months):
-        ax.text(ee, ss ** 2, "   " + tt, va="center", ha="left", fontsize=8)
-
-
-f = plt.figure(constrained_layout=True)
-gs = f.add_gridspec(3, 4, height_ratios=(2, 1, 1))
-axx = []
-axx.append(f.add_subplot(gs[0, 0]))
-for ii in range(1, 4):
-    axx.append(f.add_subplot(gs[0, ii], sharex=axx[0]))
-
-ax = dict(zip(["low", "high", "niw", "loni"], axx))
-ax["shear"] = f.add_subplot(gs[1, :])
-ax["KT"] = f.add_subplot(gs[2, :], sharex=ax["shear"])
-
-_plot(ax["low"], epsr, low, color=color["low"])
-_plot(ax["high"], epsr, high, color=color["high"])
-_plot(ax["loni"], epsr, loni, color=color["loni"])
-_plot(ax["niw"], epsr, niw, color=color["niw"])
-
-axx[0].set_ylabel("mean squared shear")
-
-rs = dict(time=7 * 24, center=True)
-
-(np.abs(full['shear'])**2).plot(ax=ax['shear'], label='Full',
-                                color='lightgray')
-for ss in ['low', 'high', 'loni', 'niw']:
-    ((np.abs(locals()[ss]))
-     .rolling(**rs).reduce(dcpy.util.ms)
-     .plot(color=color[ss],
-           ax=ax['shear'],
-           label=locals()[ss].attrs['name'],
-           lw=1.5))
-
-ax["shear"].legend(loc="upper right")
-ax["shear"].set_xlabel("")
-ax["shear"].set_title("")
-ax["shear"].set_ylim([0, 0.0001])
-ax["shear"].set_ylabel("$S²$")
-
-[tt.set_visible(False) for tt in ax["shear"].xaxis.get_ticklabels()]
-
-(
-    mooring.ε.isel(depth=1)
-    .resample(time="D")
-    .mean("time")
-    .plot(ax=ax["KT"], _labels=False, yscale="log", lw=1.5, color='k')
-)
-dcpy.plots.set_axes_color(ax['KT'], 'k')
-ax["KT"].set_ylabel("$ε$ [W/kg]")
-
-ax['depth'] = ax['KT'].twinx()
-(mooring.zχpod.isel(num=1).rolling(time=6*24, center=True).mean()[::144]
- .plot(ax=ax['depth'], color='gray', yincrease=False, _labels=False, lw=1.5))
-dcpy.plots.set_axes_color(ax['depth'], 'gray', 'right')
-ax['depth'].set_ylabel('χpod depth [m]')
-
-ax["KT"].xaxis.set_major_locator(mpl.dates.MonthLocator())
-
-f.suptitle(mooring.name)
-
-f.set_size_inches((15, 8))
-
-f.savefig("images/shear-scatter-" + mooring.name.lower() + ".png")
-
-# f, ax = plt.subplots(1, 2, sharex=False, sharey=True, constrained_layout=True)
-# [aa.set_prop_cycle(bay.monsoon_cycler) for aa in ax]
-
-# for season in bay.seasons:
-#     dcpy.ts.PlotSpectrum(full.shear.sel(time='2014')
-#                          .where(full.time.monsoon.labels == season)
-#                          .dropna('time'),
-#                          preserve_area=True, twoside=True, ax=ax)
-
-# ax[0].legend(bay.seasons)
-#+END_SRC
-file:images/shear-scatter-nrl3.png
-file:images/shear-scatter-nrl4.png
-
-[[file:images/shear-scatter-nrl5.png]]
-
 * checking inter-mooring variability
 #+BEGIN_SRC ipython :session :ipyfile images/temp/imgBRHfA4.png
 turb = xr.open_dataset('bay_merged_hourly.nc')
@@ -3365,10 +3368,10 @@ for m in ['nrl1', 'nrl2', 'nrl3', 'nrl4', 'nrl5']:
     f.savefig('images/ke-shear-' + m + '.png', bbox_inches='tight')
 #+END_SRC
 
-[[file:~/bay/images/ke-shear-nrl1.png]]
-[[file:~/bay/images/ke-shear-nrl3.png]]
-[[file:~/bay/images/ke-shear-nrl4.png]]
-[[file:~/bay/images/ke-shear-nrl5.png]]
+[[file:images/ke-shear-nrl1.png]]
+[[file:images/ke-shear-nrl3.png]]
+[[file:images/ke-shear-nrl4.png]]
+[[file:images/ke-shear-nrl5.png]]
 
 
 *** NI summary
@@ -3402,7 +3405,7 @@ for aa in axx:
 #+END_SRC
 #+CAPTION:
 [[file:images/ni-summary-nrl3.png]]
-* Shear tests
+* Shear & mixing time-series @ 8N
 1. For both NRL4, NRL5, near-inertial shear is dominant except for occasional events when the SMC meanders by.
 2. Since magnitude of KT and magnitude of shear aren't expected to be proportional, maybe I should look at frequency of turbulent events.
 
@@ -6323,9 +6326,9 @@ As of now, it looks like the Smyth approach is to use a single value for a patch
 2. Use sign of hourly moving median (6 points).
 3. For |dT/dz| < 1e-3; use sign of two hourly median
 
-[[file:~/work/bay/images/wda-tz-sign.png]]
+[[file:images/wda-tz-sign.png]]
 
-[[file:~/work/bay/images/wda-tz-sign-2.png]]
+[[file:images/wda-tz-sign-2.png]]
 
 *** noise levels
 The differentiator uses the /analog/ signal as input; so it never differentaties bit-noise in T. i.e. the noise floor in Tp and T are _different._
