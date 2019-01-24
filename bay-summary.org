@@ -739,39 +739,120 @@ plt.tight_layout()
 * Seasonal patterns
 ** depth of salinity surfaces
 
-#+BEGIN_SRC ipython :session :ipyfile images/temp/imgzHFIIB.png
-(clim.SALT.isel(TIME=3).sel(DEPTH=50, method='nearest')
- .plot.contourf(cmap=mpl.cm.Reds, levels=20, robust=True))
-hdl = (clim.SALT.isel(TIME=3).sel(DEPTH=50, method='nearest')
- .plot.contour(colors='k', levels=[32, 33, 34, 35], robust=True))
-plt.gca().set_aspect('equal')
-plt.gca().clabel(hdl, hdl.levels)
+#+BEGIN_SRC ipython :session
+def calc_iso_surface(my_array, my_value, zs, interp_order=3, power_parameter=0.5):
+    ''' '''
 
+    if interp_order < 1: interp_order = 1
+    from numpy import argsort, take, clip, zeros
+    dist = (my_array - my_value)**2
+    arg = argsort(dist,axis=2)
+    dist.sort(axis=2)
+    w_total = 0.
+    z = zeros(my_array.shape[:2], dtype=float)
+    for i in range(int(interp_order)):
+        zi = take(zs, arg[:,:,i])
+        valuei = dist[:,:,i]
+        wi = 1/valuei
+        clip(wi, 0, 1.e6, out=wi) # avoiding overflows
+        w_total += wi**power_parameter
+        z += zi*wi**power_parameter
+    z /= w_total
+    return z
+
+def calc_S0_depth(dataset, S0):
+    isodepth = dataset.S.isel(depth=1).drop('depth').copy()
+    isodepth.attrs['long_name'] = 'Depth of ' + str(S0) + ' isohaline'
+    isodepth.attrs['units'] = 'm'
+    for tt in range(4):
+        isodepth.values[:, :, tt] = calc_iso_surface(dataset.S.values[:,:,:,tt],
+                                                     S0,
+                                                     zmat.values[:, :, :, tt])
+
+    # isodepth = (zmat.where(np.logical_and(nio.S > S0-0.1,
+    #                                       nio.S < S0+0.1))
+    #             .mean(dim='depth')
+    #             .sel(**bay.region))
+
+    return isodepth
+
+
+import cartopy.crs as ccrs
+
+argo = (dcpy.oceans.read_argo_clim()
+        [['S']]
+        .sel(**bay.region, pres=slice(0, 400))
+        .load()
+        .rename({'pres': 'depth'}))
+argo = (argo.groupby(argo.time.monsoon.labels).mean('time')
+        .transpose('lon', 'lat', 'depth', 'monsoon'))
+
+argo2014 = (dcpy.oceans.read_argo_clim()
+            [['S']]
+            .sel(**bay.region,
+                 pres=slice(0, 400),
+                 time=slice('2013-12-01', '2014-12-01'))
+            .load()
+            .rename({'pres': 'depth'}))
+argo2014 = (argo2014.groupby(argo2014.time.monsoon.labels).mean('time')
+            .transpose('lon', 'lat', 'depth', 'monsoon'))
+
+nio = (dcpy.oceans.read_nio()
+       .transpose('lon', 'lat', 'depth', 'time')
+       .rename({'time': 'monsoon'})
+       .sel(**bay.region, depth=slice(0, 400)))
+_, zmat = xr.broadcast(nio.S, nio.depth)
+
+base = argo
+
+argo['iso'] = calc_S0_depth(argo, 34.75)
+argo2014['iso'] = calc_S0_depth(argo2014, 34.75)
+nio['iso'] = calc_S0_depth(nio, 34.75)
+
+isos = (xr.concat([argo.iso, nio.iso, argo2014.iso])
+        .rename({'concat_dims': 'dataset'}))
+isos['dataset'] = ['argo', 'NIO', 'argo 2014']
+
+g = xr.plot.FacetGrid(isos, col='monsoon', row='dataset',
+                      subplot_kws={'projection': ccrs.PlateCarree()})
+
+g.map_dataarray(xr.plot.contour, x='lon', y='lat',
+                levels=[10, 50, 75, 100, 150, 200],
+                colors='k', robust=True, add_colorbar=False,
+                transform=ccrs.PlateCarree())
+
+[plt.clabel(mm, fmt='%d') for mm in g._mappables]
+[bay.plot_coastline(ax=aa) for aa in g.axes.ravel()]
+[bay.plots.mark_moors(ax=aa, labels=False, color='g', markersize=5)
+ for aa in g.axes.ravel()]
+
+g.fig.set_size_inches((10, 10))
+g.fig.suptitle(argo.iso.attrs['long_name'])
+g.fig.savefig('images/isosurface-depth.png', bbox_inches='tight')
 #+END_SRC
+#+CAPTION: Depth of salinity surface in Argo and NIO climatologies. Factor of 2 difference!
+[[file:images/isosurface-depth.png]]
 
-#+RESULTS:
-:RESULTS:
-# Out[14]:
-: <a list of 2 text.Text objects>
-:END:
 
-#+BEGIN_SRC ipython :session :ipyfile images/temp/imgzT2m1u.png :results drawer
-clim = xr.open_dataset('~/work/datasets/nio-atlas/nioa_climatology_seasonal_temp_salt_monsoon_season.nc', decode_times=False)
+#+BEGIN_SRC ipython :session
+S0 = 34.75
 
-_, zmat = xr.broadcast(clim.SALT, clim.DEPTH)
+f, ax = plt.subplots(1, 1, constrained_layout=True)
 
-S0 = 33
-isodepth = zmat.where(np.logical_and(clim.SALT > S0-0.1, clim.SALT < S0+0.1)).mean(dim='DEPTH')
+for mooring in [nrl3, nrl4, nrl5]:
+    (mooring.ctd.depth.where(np.logical_and(mooring.ctd.S > S0-0.05,
+                                            mooring.ctd.S < S0+0.05))
+     .min('z')
+     .plot(x='time', label=mooring.name))
 
-isodepth.plot(x='LONGITUDE', col='TIME', col_wrap=2, levels=np.arange(10, 500, 30))
+ax.legend()
+ax.set_ylabel('Depth of 34.75 isohaline from NRL data [m]')
+
+f.savefig('images/isosurface-depth-nrl.png')
 #+END_SRC
+#+CAPTION: Estimate depth of S=34.75 from data? This is nonsensical. I don't have upper water column coverage... so we're implicitly assuming that the 34.75 isohaline is beneath the first instrument always.
+[[file:images/isosurface-depth-nrl.png]]
 
-#+RESULTS:
-:RESULTS:
-# Out[138]:
-: <xarray.plot.facetgrid.FacetGrid at 0x7f23fd4b7630>
-[[file:images/temp/imgzT2m1u.png]]
-:END:
 ** "pycnocline uplift"
 It is quite hard to see if there is a semi-regular period.
 
