@@ -15,6 +15,7 @@ from .bay import default_density_bins, nc_to_binned_df
 # colors = {'RAMA': '#0074D9', 'NRL': '#3D9970', 'OMM/WHOI': '#FF4136'}
 # colors = {'RAMA': '#1696A3', 'NRL': '#F89B1F', 'OMM/WHOI': '#EA4D5B'}
 colors = {'RAMA': '#1696A3', 'NRL': '#F89B1F', 'OMM/WHOI': '#EA4D5B'}
+# colors = {'RAMA': '#1c666e', 'NRL': '#F89B1F', 'OMM/WHOI': '#EA4D5B'}
 # colors = {'RAMA': '#1696A3', 'NRL': '#F89B1F', 'OMM/WHOI': 'gray'}
 
 
@@ -36,12 +37,12 @@ def plot_coastline(ax=None, facecolor="#FEF9E4"):
     # ax.coastlines('10m', color='slategray', facecolor='slategray', lw=1)
 
 
-def make_map(pods, DX=0.6, DY=0.55, add_year=True, highlight=[],
+def make_map(pods, DX=0.6, DY=0.7, add_year=True, highlight=[],
              ax=None, topo=True):
 
     labelargs = {'fontsize': 'small',
                  'bbox': {
-                     'alpha': 0.25,
+                     'alpha': 0.85,
                      'edgecolor': 'none',
                      'boxstyle': 'round'}}
 
@@ -59,7 +60,7 @@ def make_map(pods, DX=0.6, DY=0.55, add_year=True, highlight=[],
     plot_coastline(ax)
 
     if topo:
-        etopo = xr.open_dataset('~/datasets/ETOPO2v2g_f4.nc4', autoclose=True)
+        etopo = xr.open_dataset('~/datasets/ETOPO2v2g_f4.nc4')
         extract = {'x': slice(60, 96), 'y': slice(-5, 25)}
 
         etopo.z.sel(**extract).plot.contour(
@@ -83,9 +84,13 @@ def make_map(pods, DX=0.6, DY=0.55, add_year=True, highlight=[],
         text = ''
         if add_year:
             if pod['label'] == 'RAMA' and pod['lat'] == 15:
-                text += '2015\n\n'
+                text += 'RAMA 15 / 2015\n'
+            if pod['label'] == 'RAMA' and pod['lat'] == 12:
+                text += 'RAMA 12\n'
             if pod['label'] == 'OMM/WHOI':
-                text += '2014-15\n\n'
+                text += '2014-15\n'
+            if 'NRL' in name:
+                text += name + '\n'
 
         for z in pod['depths']:
             text += z
@@ -106,9 +111,15 @@ def make_map(pods, DX=0.6, DY=0.55, add_year=True, highlight=[],
             dy = DY
         elif pod['va'] is 'top':
             dy = - DY
+        if 'RAMA' in name:
+            dy += 0.75 * DY
 
         if name == 'NRL3':
-            dx += 0.6
+            dx += 0.1
+        if name == 'NRL5':
+            dx -= 0.1
+        if name in ['NRL3', 'NRL5']:
+            dy += 0.3
 
         if pod['label'] == 'OMM/WHOI':
             dy += 2
@@ -117,7 +128,7 @@ def make_map(pods, DX=0.6, DY=0.55, add_year=True, highlight=[],
 
         ax.text(pod['lon']+dx, pod['lat']+dy, text,
                 transform=ccrs.PlateCarree(),
-                ha=pod['ha'], va=pod['va'],
+                ha=pod['ha'], va=pod['va'], color='w',
                 multialignment='center', **labelargs)
 
         ax.set_facecolor(None)
@@ -465,31 +476,30 @@ def make_labeled_map(ax=None):
             {'lon': 85.5, 'lat': 5, 'label': 'NRL',
              'ha': 'center', 'va': 'top',
              'depths': {
-                 '60 m (55-100)': '2015',
-                 '80 m (75-115)': '2015'}},
+                 '60 m (55-100)': '2014',
+                 '80 m (75-115)': '2014'}},
         'NRL3':
             {'lon': 85.5, 'lat': 8, 'label': 'NRL',
              'ha': 'right', 'va': 'top',
              'depths': {
-                 '32 m (28-78)': '2015',
-                 '52 m (48-100)': '2015'}},
+                 '32 m (28-78)': '2014',
+                 '52 m (48-100)': '2014'}},
         'NRL4':
             {'lon': 87, 'lat': 8, 'label': 'NRL',
              'ha': 'center', 'va': 'bottom',
              'depths': {
-                 '63 m (60-85)': '2015',
-                 '83 m (80-105)': '2015'}},
+                 '63 m (60-85)': '2014',
+                 '83 m (80-105)': '2014'}},
         'NRL5':
             {'lon': 88.5, 'lat': 8, 'label': 'NRL',
              'ha': 'left', 'va': 'top',
              'depths': {
-                 '  85 m': '2015',
-                 '105 m': '2015'}},
+                 '  85 m': '2014',
+                 '105 m': '2014'}},
     }
 
-    ax, colors = make_map(pods, DX=0.6, DY=0.55,
-                          add_year=True, highlight=['RAMA', 'NRL', 'OMM/WHOI'],
-                          ax=ax)
+    ax, colors = make_map(pods, add_year=True,
+                          highlight=['RAMA', 'NRL', 'OMM/WHOI'], ax=ax)
 
     ax.text(87, 6.8, 'EBoB\n(2014)',
             color=colors['NRL'], ha='center', va='center')
