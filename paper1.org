@@ -319,52 +319,8 @@ bibliographystyle:ametsoc2014
 #+CAPTION: (a) Wind stress $τ$ and net surface heat flux $J_q^0$  at RAMA 12N. (b, d) Turbulent heat and salt fluxes $J_q^t, J_s^t$ at RAMA 12N, 15m and NRL5 8N, 105m respectively. (c) Turbulent diffusivity at RAMA 12N, 15m and NRL5 8N, 105m. (e) Wind stress $τ$ and near-inertial energy input $Π$ at NRL5 8N. (f) Fraction of day where we have good turbulence observations. (g, h) Daily average temperature stratification $∂T/∂z$ and salinity $S$ respectively. (i) Shear variance in near-inertial, $M_2$ and $M_4$ frequency bands at NRL5, 8N.
 [[file:images/paper1/rama12.pdf]]
 
-* Auto-export :noexport:
-# Local variables:
-# eval: (add-hook 'after-save-hook 'org-latex-export-to-latex t t)
-# end:
 * Figures :noexport:
-** Figure 1: map + depths on argo climatology
-
-#+BEGIN_SRC ipython :session
-import cartopy.crs as ccrs
-
-with plt.rc_context({'font.size': 11,
-                     'axes.facecolor': 'white',
-                     'savefig.transparent': False}):
-
-    f = plt.figure(constrained_layout=True)
-
-    n=3
-    n0=2
-    # gs = mpl.gridspec.GridSpec(2, n, figure=f)
-    # ax1 = f.add_subplot(gs[:, :n0], projection=ccrs.PlateCarree())
-    # ax2 = f.add_subplot(gs[0, n0:])
-    # ax3 = f.add_subplot(gs[1, n0:])
-
-    gs = mpl.gridspec.GridSpec(n, 2, figure=f)
-    ax1 = f.add_subplot(gs[:n0, :], projection=ccrs.PlateCarree())
-    ax2 = f.add_subplot(gs[n0:, 0])
-    ax3 = f.add_subplot(gs[n0:, 1])
-
-    f.set_size_inches((4.75, 8))
-
-    bay.make_labeled_map(ax=ax1)
-    bay.mark_χpod_depths_on_clim(ax=[ax2, ax3])
-
-    for label, ax in zip(['a', 'b', 'c'], [ax1, ax2, ax3]):
-        ax.text(0.025, 0.05, label+')', transform=ax.transAxes,
-                fontsize='medium')
-
-    [tt.set_rotation(30) for tt in ax1.get_xticklabels()]
-    ax3.set_ylabel('')
-    ax3.set_yticklabels([])
-
-    plt.savefig('images/paper1/map.pdf', bbox_inches='tight')
-#+END_SRC
-[[file:images/paper1/map.pdf]]
-
-** Figure 2: Seasonal patterns of EKE, surface currents, wind & NIW input
+** Figure 1: Seasonal patterns of EKE, surface currents, wind & NIW input
 
 #+BEGIN_SRC ipython :session :results none
 import cartopy.crs as ccrs
@@ -512,10 +468,7 @@ for season in bay.splitseasons:
 
 
 def clean_axis(ax):
-    bay.mark_moors(ax=ax, markersize=4.5, fontsize=6, color='k',
-                   colortext='w', labels=False)
-    bay.mark_moors(ax=ax, markersize=3, fontsize=6, color='w',
-                   colortext='w', labels=False)
+    bay.plots.mark_moors_clean(ax=ax)
     ax.set_xlabel('')
     ax.set_ylabel('')
 
@@ -576,6 +529,44 @@ plt.savefig('images/paper1/spatial-maps.pdf', transparent=False,
 #     n_colors=21, as_cmap=True))
 
 #+END_SRC
+
+** Figure 2: map + depths on argo climatology
+
+#+BEGIN_SRC ipython :session
+import cartopy.crs as ccrs
+
+with plt.rc_context({'font.size': 11,
+                     'axes.facecolor': 'white',
+                     'savefig.transparent': False}):
+
+    f = plt.figure(constrained_layout=True)
+    f.set_size_inches((4.75, 8))
+
+    n=3
+    n0=2
+    # gs = mpl.gridspec.GridSpec(2, n, figure=f)
+    # ax1 = f.add_subplot(gs[:, :n0], projection=ccrs.PlateCarree())
+    # ax2 = f.add_subplot(gs[0, n0:])
+    # ax3 = f.add_subplot(gs[1, n0:])
+
+    gs = mpl.gridspec.GridSpec(n, 2, figure=f)
+    ax1 = f.add_subplot(gs[:n0, :], projection=ccrs.PlateCarree())
+    ax2 = f.add_subplot(gs[n0:, 0])
+    ax3 = f.add_subplot(gs[n0:, 1])
+
+    bay.make_labeled_map(ax=ax1)
+    bay.mark_χpod_depths_on_clim(ax=[ax2, ax3])
+
+    dcpy.plots.label_subplots([ax1, ax2, ax3], x=0.025, y=0.05,
+                              labels=['', 'RAMA', 'EBoB'])
+
+    [tt.set_rotation(30) for tt in ax1.get_xticklabels()]
+    ax3.set_ylabel('')
+    ax3.set_yticklabels([])
+
+    f.savefig('images/paper1/map.pdf', bbox_inches='tight')
+#+END_SRC
+[[file:images/paper1/map.pdf]]
 
 ** Figure 3: Vertical profile of K_T distributions
 
@@ -664,58 +655,7 @@ plt.subplots_adjust(wspace=-0.2)
 # plt.savefig('images/bay-KT-vert-profile.png', bbox_inches='tight')
 #+END_SRC
 [[file:images/bay-KT-vert-profile.png]]
-** Figure 4: Binned salinity flux
-
-#+BEGIN_SRC ipython :session
-import cmocean
-
-if 'turb' not in locals():
-    turb = xr.open_dataset('../estimates/bay_merged_hourly.nc')
-
-nrl = (turb[['Js', 'Jq', 'KT', 'S', 'z']]
-       .sel(lat=8, drop=True)
-       .sel(time='2014')
-       .dropna('depth', how='all')
-       .dropna('lon', 'all'))
-
-time = xr.broadcast(nrl.time, nrl.S)[0]
-mask = (~np.isnan(nrl.Js)).values
-
-df = (nrl.where(np.abs(nrl.Jq) < 1000).to_dataframe().reset_index()
-      .drop(['depth', 'lon'], axis=1)
-      .dropna(how='any'))
-
-grouped = df.groupby([pd.cut(df.S, [34, 34.5, 35, 36]),
-                      df.time.dt.month])
-
-mean = grouped.mean()
-count = grouped.count()['Js']
-
-N = len(nrl.time)/12 # number of observations per month per instrument
-
-f2, ax = plt.subplots(1, 1, constrained_layout=True, squeeze=True)
-f2.set_size_inches(7, 2.6)
-sns.heatmap((mean['Js'] * 1000)
-            .where(count > N)
-            .reset_index().pivot('S', 'time', 'Js'),
-            cmap=cmocean.cm.matter, robust=True, vmax=1,
-            square=True, annot=True, cbar=False, linewidths=1, fmt='.2f')
-ax.set_title('$J_s^t$ [$10^{-3}$ g/m²/s]')
-ax.tick_params('both', length=0)
-ax.set_yticks([0.5, 1.5, 2.5])
-ax.set_ylim([3, 0])
-ax.set_yticklabels(['34.25', '34.75', '35.5'])
-ax.set_xticks(np.arange(1, 13) - 0.5)
-# [tt.set_ha('left') for tt in ax.get_yticklabels()]
-ax.set_xticklabels(['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul',
-                    'Aug', 'Sep', 'Oct', 'Nov', 'Dec'])
-ax.set_xlabel('2014')
-f2.savefig('images/paper1/8N-binned-avg-Js.pdf', bbox_to_inches='tight')
-#+END_SRC
-
-[[file:images/paper1/8N-binned-avg-Js.pdf]]
-
-** Figure 5: RAMA 12N time series
+** Figure 4: RAMA 12N time series
 
 #+BEGIN_SRC ipython :session
 if 'ra12' not in locals():
@@ -742,7 +682,7 @@ f.savefig('images/paper1/rama12.pdf')
 #+CAPTION:
 [[file:images/paper1/rama12.pdf]]
 
-** Figure 6: NRL time series
+** Figure 5: NRL time series
 
 #+BEGIN_SRC ipython :session :results noif 'nrl5' not in locals():
 if 'nrl5' not in locals():
@@ -853,24 +793,32 @@ f5.savefig('images/paper1/nrl5.pdf')
 #+END_SRC
 [[file:images/paper1/nrl5.pdf]]
 
-** Figure 7: NRL5 zoom-in
+** Figure 6: NRL5 zoom-in
 
 #+BEGIN_SRC ipython :session :results none
 trange = slice('2014-07-25', '2014-08-07 11:59')
 
 f, ax = plt.subplots(3, 1, sharex=True, constrained_layout=True,
-                     gridspec_kw={'height_ratios': [1, 1, 2]})
+                     gridspec_kw={'height_ratios': [1.5, 1, 2]})
 f.set_size_inches((6.5, 5))
 
-hjq = (nrl5.Jq.sel(time=trange).isel(depth=1)
-       .resample(time='2H', loffset='-1H').mean('time')
-       .plot.line(x='time', ax=ax[0], ylim=[-50, 0], add_legend=True, color='k'))
+color = 'C0'
+Jqi = (nrl5.Jq.sel(time=trange).isel(depth=1)
+       .interpolate_na('time'))
+Jqi[Jqi < -200] = -200
+Jqi = Jqi.resample(time='30min').mean('time')
+ax[0].fill_between(Jqi.time.values, Jqi.values, color=color, alpha=0.2)
+hjq = (Jqi.plot.line(x='time', ax=ax[0], ylim=[-200, 0],
+                  add_legend=True, color=color, lw=1))
+ax[0].set_ylabel('$J_q^t$ [W/m²]')
 # hjq[0].set_clip_on(False)
 # hjq[0].set_in_layout(False)
 
-(nrl5.ε.sel(time=trange).isel(depth=1)
+(nrl5.ε.sel(time=trange).isel(depth=1).interpolate_na('time')
+ .resample(time='30min').mean('time')
  .plot.line(x='time', ax=ax[1], yscale='log', ylim=[1e-11, 1e-6],
-            add_legend=False, color='k', lw=0.5))
+            add_legend=False, color=color, lw=1))
+ax[1].set_ylabel('$ε$ [W/kg]')
 
 f0 = nrl5.inertial/86400
 shear = (nrl5.vel.uz.rolling(depth=3, center=True, min_periods=1).mean())
@@ -924,5 +872,270 @@ ax[-1].text(np.datetime64('2014-08-01 11:00'), 208, '$M_2$',
 
 f.savefig('images/paper1/nrl5-aug-niw-mixing.pdf')
 #+END_SRC
-
 [[file:images/paper1/nrl5-aug-niw-mixing.pdf]]
+
+** Figure 7: NRL scatter plots
+#+BEGIN_SRC ipython :session
+import cycler
+from statsmodels.regression.linear_model import WLS, OLS
+from statsmodels.robust.robust_linear_model import RLM
+from statsmodels.sandbox.regression.predstd import wls_prediction_std
+
+timescale = "M"
+if timescale == 'M':
+    window = 30
+elif timescale == '3W':
+    window = 21
+elif timescale == '2W':
+    window = 15
+elif timescale == 'W':
+    window = 7
+
+def _mean(variable, meanfunc, stdfunc, timescale=timescale):
+    if timescale == 'M':
+        window = 30
+    elif timescale == '3W':
+        window = 21
+    elif timescale == '2W':
+        window = 15
+    elif timescale == 'W':
+        window = 7
+
+    resampler = variable.resample(time=timescale)
+    count = resampler.count()
+    out = xr.Dataset()
+    out['mean'] = (resampler.apply(meanfunc)
+                   .where(count/24/window > 0.7))
+
+    out['std'] = (resampler.apply(stdfunc)
+                  .where(count/24/window > 0.7))
+
+    return out
+
+turb = xr.open_dataset("../estimates/bay_merged_hourly.nc")
+
+with mpl.style.context({
+        'axes.prop_cycle': cycler.cycler(
+            'color', ['#4C72B0', '#55A868', '#C44E52',
+                      '#8172B2', '#CCB974', '#64B5CD']),
+        }):
+    f, axx = plt.subplots(1, 2, sharex=True, sharey=True,
+                          constrained_layout=True)
+
+ax = dict(zip(['full', 'niw'], axx))
+he = list()
+for estimate in ax:
+    e = list()
+    s = list()
+    eci = list()
+    labels = list()
+
+    for mooring in [nrl4, nrl5]:
+        labels.append(mooring.name)
+        [full, low, high, niw, loni] = mooring.filter_interp_shear()
+        full = full.shear  # TODO: fix this
+
+        mix = (turb.sel(**bay.loc[mooring.name])
+               .dropna("depth", how="all")
+               .isel(depth=1))
+
+        epsr = _mean(mix.ε, np.mean, np.std, timescale)
+        shear = _mean(locals()[estimate],
+                      dcpy.util.ms,
+                      (lambda da: (np.abs(da)**2).std('time')),
+                      timescale).interp(time=epsr.time)
+
+        he.append(ax[estimate].errorbar(
+            np.log10(shear['mean']),
+            np.log10(epsr["mean"]),
+            xerr=(np.log10(shear['mean'] + shear['std'].values/np.sqrt(window * 24))
+                  - np.log10(shear['mean'])),
+            yerr=(np.log10(epsr['std'].values / np.sqrt(window * 24))
+                  - np.log10(epsr['mean'])),
+            fmt='o', ms=3))
+
+        if estimate == 'niw':
+            if mooring.name == 'NRL3':
+                idx = [0]
+            if mooring.name == 'NRL4':
+                idx = [2]
+            if mooring.name == 'NRL5':
+                idx = [2, 3, 10]
+
+            ax[estimate].plot(np.log10(shear['mean'][idx]),
+                              np.log10(epsr['mean'][idx]), 'wo',
+                              ms=2, zorder=10)
+            epsr['mean'].values[idx] = np.nan
+
+
+        e.append(epsr['mean'].values)
+        eci.append(epsr['std'].values / np.sqrt(window * 24))
+        s.append(shear['mean'].values)
+
+        ax[estimate].set_xlabel(r"log (mean squared shear [$s^{-2}$])")
+
+    x = np.log10(np.hstack(s))
+    idx = np.argsort(x)
+    y = np.log10(np.hstack(e)[idx])
+    w = np.log10(np.hstack(eci)[idx])
+    x = x[idx]
+
+    mask = np.logical_and(~np.isnan(x), ~np.isnan(y))
+    p = np.polyfit(x[mask], y[mask], 1)
+    x_expanded = np.insert(x[mask], 0, 1.03*np.nanmin(x))
+    x_expanded = np.append(x_expanded, 0.98*np.nanmax(x[mask]))
+    hfit = ax[estimate].plot(x_expanded, p[0]*x_expanded+p[1],
+                             'k--', lw=2)
+
+axx[0].set_ylabel(r'log $ε$ [W/kg]')
+axx[0].set_ylim([-12, -5])
+# axx[0].set_xlim([1e-12, 1e-7])
+ax['niw'].legend(handles=he[len(labels):]+hfit,
+                 labels=labels+['linear fit'],
+                 loc='lower right')
+dcpy.plots.label_subplots(axx, labels=['total shear', 'near-inertial shear'])
+
+f.set_size_inches([6.5, 3])
+f.savefig('images/paper1/eps-scatter.pdf', transparent=False)
+#+END_SRC
+** Figure 8: 8N special
+#+BEGIN_SRC ipython :session
+if 'trmm' not in locals():
+    trmm = dcpy.oceans.read_trmm()
+    # convert from mm/day to m/s
+    P = (trmm.precipitation.sel(lon=slice(85, 89))
+         .sel(lat=8, method='nearest').drop('lat')
+         .mean('lon'))[1:-1].load() * 1e-3/86400
+    P.attrs['units'] = 'm/s'
+    P['time'] = P.time.dt.floor('D')
+
+if 'oaflux' not in locals():
+    oaflux = dcpy.oceans.read_oaflux()
+
+    # convert from cm/year to m/s
+    E = (oaflux.evapr.sel(lon=slice(85, 89))
+         .sel(lat=8, method='nearest').drop('lat')
+         .mean('lon')).load() * 0.01/365/86400
+    E.attrs['units'] = 'm/s'
+
+if 'nrl' not in locals():
+    turb = xr.open_dataset('../estimates/bay_merged_hourly.nc')
+
+    nrl = (turb[['Js', 'Jq', 'KT', 'S', 'z']]
+           .sel(lat=8, drop=True)
+           .sel(time='2014')
+           .dropna('depth', how='all')
+           .dropna('lon', 'all'))
+
+f = plt.figure(constrained_layout=True)
+f.set_constrained_layout_pads(h_pad=2/72, wspace=0.1)
+f.set_size_inches(7, 6.7)
+gs = f.add_gridspec(4, 1, height_ratios=[1, 1, 1, 0.5])
+ax = list()
+with mpl.style.context({'axes.facecolor': (0, 0, 0, 0.03),
+                        'axes.grid': True,
+                        'axes.axisbelow': False,
+                        'grid.color': 'w',
+                        'grid.alpha': 0.9,
+                        'grid.linewidth': 1.25}):
+    ax.append(f.add_subplot(gs[0, 0]))
+    ax.append(f.add_subplot(gs[1, 0], sharex=ax[0]))
+
+ax.append(f.add_subplot(gs[2, 0]))
+ax.append(f.add_subplot(gs[3, 0], sharex=ax[-1]))
+
+############
+# sampling #
+############
+
+time = xr.broadcast(nrl.time, nrl.S)[0]
+mask = (~np.isnan(nrl.Js)).values
+kwargs = dict(alpha=1,
+              s=8.0,
+              linewidths=0.1,
+              edgecolors='lightgray',
+              norm=mpl.colors.LogNorm(vmin=1e-4, vmax=1),
+              cmap=cmocean.cm.matter)
+
+# sort so that large Js values are easily visible
+isort = np.argsort(nrl.Js.values[mask].ravel())
+
+ax[0].scatter(time.values[mask].ravel()[isort],
+              nrl.z.values[mask].ravel()[isort],
+              c=nrl.Js.values[mask].ravel()[isort],
+              ,**kwargs)
+ax[0].set_ylabel('depth [m]')
+ax[0].set_ylim([150, 18])
+ax[0].grid(False, axis='y')
+
+hh = ax[1].scatter(time.values[mask].ravel()[isort],
+                   nrl.S.values[mask].ravel()[isort],
+                   c=nrl.Js.values[mask].ravel()[isort],
+                   ,**kwargs)
+ax[1].set_ylim((36, 33))
+ax[1].set_yticks([33, 34, 34.5, 35, 36])
+ax[1].set_ylabel('$S$')
+
+ax[1].xaxis.set_major_locator(mpl.dates.MonthLocator())
+ax[1].set_xticklabels([])
+# ax[1].xaxis.set_major_formatter(mpl.dates.DateFormatter('%b'))
+f.colorbar(hh, ax=ax[:2], extend='max', shrink=0.8, aspect=30, pad=0.0,
+           orientation='vertical', label=r'hourly mean salt flux $J_s^t$')
+
+####################
+# Labelled heatmap #
+####################
+heatmap_kwargs = dict(
+    center=0, annot=True, square=False, cbar=False, linewidths=1, fmt='.2f',
+    vmin=-1.6, vmax=1.6, cmap=mpl.cm.RdYlBu_r)
+
+df = (nrl.where(np.abs(nrl.Jq) < 1000).to_dataframe().reset_index()
+      .drop(['depth', 'lon'], axis=1)
+      .dropna(how='any'))
+
+grouped = df.groupby([pd.cut(df.S, [34, 34.5, 35, 36]),
+                      df.time.dt.month])
+mean = grouped.mean()
+count = grouped.count()['Js']
+N = 30 * 24 # number of observations per month per instrument
+
+sns.heatmap((mean['Js']/1025 * 1e6)
+            .where(count > N)
+            .reset_index()
+            .pivot('S', 'time', 'Js'),
+            ax=ax[-2], **heatmap_kwargs)
+ax[-2].set_xlabel('')
+ax[-2].set_ylim([3, -1])
+ax[-2].tick_params('both', length=0)
+ax[-2].set_yticks([0.5, 1.5, 2.5])
+ax[-2].set_yticklabels(['34.25', '34.75', '35.5'])
+ax[-2].set_xticks(np.arange(1, 13) - 0.5)
+ax[-2].set_ylabel('$S$')
+
+sns.heatmap(((E-P.interp(time=E.time)).sel(time='2014')
+             .groupby('time.month').mean('time')
+             .to_dataframe(name='E-P')
+             .transpose()) * 32 * 1e6,
+            ax=ax[-1], **heatmap_kwargs)
+ax[-1].xaxis.set_tick_params(length=0)
+ax[-1].yaxis.set_tick_params(length=0)
+ax[-1].set_yticks([])
+
+dcpy.plots.label_subplots(ax, x=0.03, y=0.8,
+                          labels=['', '',
+                                  '$ρ_0^{-1}$ $J_s^t$ [$10^{-6}$ m/s]',
+                                  '$S_0 (E-P)$ [$10^{-6}$ m/s]'])
+
+plt.setp(ax[0].xaxis.get_ticklabels(), visible=False)
+plt.setp(ax[2].xaxis.get_ticklabels(), visible=False)
+ax[0].set_xlim(['2014-01-01', '2015-01-01'])
+ax[2].set_xticklabels([])
+ax[-1].set_xticklabels(['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul',
+                        'Aug', 'Sep', 'Oct', 'Nov', 'Dec'])
+ax[-1].set_xlabel('2014')
+ax[-1].set_ylabel('')
+ax[-1].set_ylim([0, 2])
+
+f.savefig('images/paper1/8N-binned-avg-js-ep.png', bbox_to_inches='tight',
+          transparent=False)
+#+END_SRC
