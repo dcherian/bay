@@ -7470,7 +7470,8 @@ with plt.rc_context({'font.size': 14,
 #+END_SRC
 [[file:images/argo-clim-χpod-depths-vertical.png]]
 
-* test bootstrap
+* sandbox
+** test bootstrap
 #+BEGIN_SRC ipython :session :ipyfile images/temp/imgMFPMNy.png
 import numpy as np
 import bootstrapped.bootstrap as bs
@@ -7491,7 +7492,7 @@ samples = population[:1000]
 # Out[570]:
 :END:
 
-* test slab model
+** test slab model
 #+BEGIN_SRC ipython :session
 from dcpy.oceans import coriolis, calc_wind_power_input
 
@@ -7530,3 +7531,41 @@ actual.pipe(np.imag).plot(ax=ax[1])
 #+END_SRC
 #+CAPTION:
 [[file:images/test-slab-model.png]]
+** test statmodels
+
+#+BEGIN_SRC ipython :session
+import numpy as np
+import statsmodels.api as sm
+import matplotlib.pyplot as plt
+from statsmodels.sandbox.regression.predstd import wls_prediction_std
+
+nsample = 50
+x1 = np.linspace(0, 20, nsample)
+X = sm.add_constant(x1)
+sig = 0.3   # smaller error variance makes OLS<->RLM contrast bigger
+
+beta = [5, 0.5]
+y_true2 = np.dot(X, beta)
+
+y2 = y_true2 + sig*1. * np.random.normal(size=nsample)
+y2[[39,41,43,45,48]] -= 5   # add some outliers (10% of nsample)
+
+ols = sm.OLS(y2, X).fit()
+rlm = sm.RLM(y2, X).fit()
+wls = sm.WLS(y2, X, weights=rlm.weights).fit()
+
+f, ax = plt.subplots(1, 1, constrained_layout=True)
+
+ax.plot(x1, y2, 'k+')
+ax.plot(x1, ols.predict(), 'C0')
+prstd, iv_l, iv_u = wls_prediction_std(ols)
+ax.fill_between(x1, iv_l, iv_u, alpha=0.2, color='C0')
+
+ax.plot(x1, wls.predict(), 'C1')
+prstd, iv_l, iv_u = wls_prediction_std(wls)
+ax.fill_between(x1, iv_l, iv_u, alpha=0.2, color='C1')
+
+f.savefig('images/temp/imgIbTO7b.png')
+#+END_SRC
+#+CAPTION:
+[[file:images/temp/imgIbTO7b.png]]
