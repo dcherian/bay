@@ -396,9 +396,14 @@ def common(ax):
     # bay.mark_moors(ax=ax, color='black', colortext='white',
     #                fontsize=7, markersize=8)
 
-f, ax = plt.subplots(2, 5, sharex=True, sharey=True,
-                     subplot_kw=dict(projection=ccrs.PlateCarree()),
-                     constrained_layout=False)
+
+with mpl.style.context({'axes.titlesize': 9,
+                        'axes.labelsize': 9,
+                        'xtick.labelsize': 9,
+                        'ytick.labelsize': 9,}):
+    f, ax = plt.subplots(2, 5, sharex=True, sharey=True,
+                         subplot_kw=dict(projection=ccrs.PlateCarree()),
+                         constrained_layout=False)
 [common(aa) for aa in ax.flat]
 
 axes = dict()
@@ -536,6 +541,8 @@ plt.savefig('images/paper1/spatial-maps.pdf', transparent=False,
 import cartopy.crs as ccrs
 
 with plt.rc_context({'font.size': 11,
+                     'xtick.labelsize': 12,
+                     'ytick.labelsize': 12,
                      'axes.facecolor': 'white',
                      'savefig.transparent': False}):
 
@@ -843,7 +850,7 @@ hz = (nrl5.zχpod.sel(time=trange).isel(num=1)
       .plot.line(x='time', ax=ax[2], color='k', lw=1,
                  add_legend=False, _labels=False))
 ax[2].set_xlim(trange.start, trange.stop)
-dcpy.plots.annotate_end(hz[0], 'χpod')
+dcpy.plots.annotate_end(hz[0], r'$χ$pod')
 
 [aa.set_title('') for aa in ax]
 [aa.set_xlabel('') for aa in ax]
@@ -877,8 +884,7 @@ f.savefig('images/paper1/nrl5-aug-niw-mixing.pdf')
 ** Figure 7: NRL scatter plots
 #+BEGIN_SRC ipython :session
 import cycler
-from statsmodels.regression.linear_model import WLS, OLS
-from statsmodels.robust.robust_linear_model import RLM
+import statsmodels.api as sm
 from statsmodels.sandbox.regression.predstd import wls_prediction_std
 
 timescale = "M"
@@ -905,10 +911,10 @@ def _mean(variable, meanfunc, stdfunc, timescale=timescale):
     count = resampler.count()
     out = xr.Dataset()
     out['mean'] = (resampler.apply(meanfunc)
-                   .where(count/24/window > 0.7))
+                   .where(count/24/window > 0.5))
 
     out['std'] = (resampler.apply(stdfunc)
-                  .where(count/24/window > 0.7))
+                  .where(count/24/window > 0.5))
 
     return out
 
@@ -919,7 +925,7 @@ with mpl.style.context({
             'color', ['#4C72B0', '#55A868', '#C44E52',
                       '#8172B2', '#CCB974', '#64B5CD']),
         }):
-    f, axx = plt.subplots(1, 2, sharex=True, sharey=True,
+    f, axx = plt.subplots(2, 1, sharex=True, sharey=True,
                           constrained_layout=True)
 
 ax = dict(zip(['full', 'niw'], axx))
@@ -942,19 +948,31 @@ for estimate in ax:
         epsr = _mean(mix.ε, np.mean, np.std, timescale)
         shear = _mean(locals()[estimate],
                       dcpy.util.ms,
-                      (lambda da: (np.abs(da)**2).std('time')),
+                      (lambda da: (np.abs(da**2)).std('time')),
                       timescale).interp(time=epsr.time)
 
+        # he.append(ax[estimate].errorbar(
+        #     np.log10(shear['mean']),
+        #     np.log10(epsr["mean"]),
+        #     xerr=(np.log10(shear['mean'] + shear['std'].values/np.sqrt(window * 24))
+        #           - np.log10(shear['mean'])),
+        #     yerr=(np.log10(epsr['mean'] + epsr['std'].values / np.sqrt(window * 24))
+        #           - np.log10(epsr['mean'])),
+        #     fmt='o', ms=3))
+
         he.append(ax[estimate].errorbar(
-            np.log10(shear['mean']),
-            np.log10(epsr["mean"]),
-            xerr=(np.log10(shear['mean'] + shear['std'].values/np.sqrt(window * 24))
-                  - np.log10(shear['mean'])),
-            yerr=(np.log10(epsr['std'].values / np.sqrt(window * 24))
-                  - np.log10(epsr['mean'])),
+            shear['mean'],
+            epsr["mean"],
+            xerr=shear['std'].values/np.sqrt(window * 24),
+            yerr=epsr['std'].values / np.sqrt(window * 24),
             fmt='o', ms=3))
 
+        ax[estimate].set_xscale('log')
+        ax[estimate].set_yscale('log')
+
         if estimate == 'niw':
+            if mooring.name == 'NRL1':
+                idx = [-1]
             if mooring.name == 'NRL3':
                 idx = [0]
             if mooring.name == 'NRL4':
@@ -962,9 +980,9 @@ for estimate in ax:
             if mooring.name == 'NRL5':
                 idx = [2, 3, 10]
 
-            ax[estimate].plot(np.log10(shear['mean'][idx]),
-                              np.log10(epsr['mean'][idx]), 'wo',
-                              ms=2, zorder=10)
+            ax[estimate].plot(shear['mean'][idx],
+                              epsr['mean'][idx],
+                              'wo', ms=2, zorder=10)
             epsr['mean'].values[idx] = np.nan
 
 
@@ -972,7 +990,7 @@ for estimate in ax:
         eci.append(epsr['std'].values / np.sqrt(window * 24))
         s.append(shear['mean'].values)
 
-        ax[estimate].set_xlabel(r"log (mean squared shear [$s^{-2}$])")
+        ax[estimate].set_ylabel(r'$ε$ [W/kg]')
 
     x = np.log10(np.hstack(s))
     idx = np.argsort(x)
@@ -981,21 +999,40 @@ for estimate in ax:
     x = x[idx]
 
     mask = np.logical_and(~np.isnan(x), ~np.isnan(y))
-    p = np.polyfit(x[mask], y[mask], 1)
-    x_expanded = np.insert(x[mask], 0, 1.03*np.nanmin(x))
-    x_expanded = np.append(x_expanded, 0.98*np.nanmax(x[mask]))
-    hfit = ax[estimate].plot(x_expanded, p[0]*x_expanded+p[1],
-                             'k--', lw=2)
 
-axx[0].set_ylabel(r'log $ε$ [W/kg]')
-axx[0].set_ylim([-12, -5])
-# axx[0].set_xlim([1e-12, 1e-7])
-ax['niw'].legend(handles=he[len(labels):]+hfit,
-                 labels=labels+['linear fit'],
+    wls = sm.WLS(y[mask], sm.add_constant(x[mask]),
+                 weights=w[mask]**2).fit()
+
+    # p = np.polyfit(x[mask], y[mask], 1)
+    # prediction = p[0]*x_expanded + p[1]
+
+    x_expanded = np.insert(x[mask], 0, 1.03*np.nanmin(x))
+    x_expanded = np.append(x_expanded, 0.9*np.nanmax(x[mask]))
+    hfit = ax[estimate].plot(10**x_expanded,
+                             10**wls.predict(sm.add_constant(x_expanded)),
+                             '--', color='k', lw=1, zorder=-1)
+    ax[estimate].text(0.80, 0.90, '$r²$ = {0:.2f}'.format(wls.rsquared),
+                      transform=ax[estimate].transAxes)
+    herr = ax[estimate].fill_between(
+        10**x_expanded,
+        10**wls.predict(sm.add_constant(x_expanded))*3,
+        10**wls.predict(sm.add_constant(x_expanded))/3,
+        color='k', alpha=0.07, zorder=-1)
+
+    # prstd, iv_l, iv_u = wls_prediction_std(wls, exog=x_expanded)
+    # ax[estimate].fill_between(10**x_expanded, 10**iv_l, 10**iv_u,
+    #                           color='k', alpha=0.1, zorder=-1, edgecolor=None)
+
+axx[0].set_ylim([10**-12, 10**-6])
+axx[0].set_xlim([10**-5.25, 10**-3.9])
+axx[1].set_xlabel(r"mean squared shear [$s^{-2}$]")
+ax['niw'].legend(handles=he[len(labels):] + hfit + [herr],
+                 labels=labels+['linear fit', 'factor of 3 error in $ε$'],
                  loc='lower right')
 dcpy.plots.label_subplots(axx, labels=['total shear', 'near-inertial shear'])
 
-f.set_size_inches([6.5, 3])
+# f.set_size_inches([6.5, 3])
+f.set_size_inches(4, 6.5)
 f.savefig('images/paper1/eps-scatter.pdf', transparent=False)
 #+END_SRC
 ** Figure 8: 8N special
@@ -1028,16 +1065,16 @@ if 'nrl' not in locals():
            .dropna('lon', 'all'))
 
 f = plt.figure(constrained_layout=True)
-f.set_constrained_layout_pads(h_pad=2/72, wspace=0.1)
+f.set_constrained_layout_pads(h_pad=1/72, wspace=0.1)
 f.set_size_inches(7, 6.7)
 gs = f.add_gridspec(4, 1, height_ratios=[1, 1, 1, 0.5])
 ax = list()
-with mpl.style.context({'axes.facecolor': (0, 0, 0, 0.03),
+with mpl.style.context({'axes.facecolor': 'w',
                         'axes.grid': True,
                         'axes.axisbelow': False,
-                        'grid.color': 'w',
-                        'grid.alpha': 0.9,
-                        'grid.linewidth': 1.25}):
+                        'grid.color': 'gray',
+                        'grid.alpha': 1,
+                        'grid.linewidth': 0.3}):
     ax.append(f.add_subplot(gs[0, 0]))
     ax.append(f.add_subplot(gs[1, 0], sharex=ax[0]))
 
@@ -1052,10 +1089,10 @@ time = xr.broadcast(nrl.time, nrl.S)[0]
 mask = (~np.isnan(nrl.Js)).values
 kwargs = dict(alpha=1,
               s=8.0,
-              linewidths=0.1,
-              edgecolors='lightgray',
+              linewidths=0.05,
+              edgecolors='k',
               norm=mpl.colors.LogNorm(vmin=1e-4, vmax=1),
-              cmap=cmocean.cm.matter)
+              cmap=mpl.cm.gist_heat_r)
 
 # sort so that large Js values are easily visible
 isort = np.argsort(nrl.Js.values[mask].ravel())
@@ -1072,8 +1109,11 @@ hh = ax[1].scatter(time.values[mask].ravel()[isort],
                    nrl.S.values[mask].ravel()[isort],
                    c=nrl.Js.values[mask].ravel()[isort],
                    ,**kwargs)
-ax[1].set_ylim((36, 33))
-ax[1].set_yticks([33, 34, 34.5, 35, 36])
+
+hh.set_clip_on(False)
+hh.set_in_layout(False)
+ax[1].set_ylim((35.5, 33))
+ax[1].set_yticks([33, 34, 34.5, 35, 35.5])
 ax[1].set_ylabel('$S$')
 
 ax[1].xaxis.set_major_locator(mpl.dates.MonthLocator())
@@ -1093,7 +1133,7 @@ df = (nrl.where(np.abs(nrl.Jq) < 1000).to_dataframe().reset_index()
       .drop(['depth', 'lon'], axis=1)
       .dropna(how='any'))
 
-grouped = df.groupby([pd.cut(df.S, [34, 34.5, 35, 36]),
+grouped = df.groupby([pd.cut(df.S, [34, 34.5, 35, 35.5]),
                       df.time.dt.month])
 mean = grouped.mean()
 count = grouped.count()['Js']
@@ -1108,7 +1148,7 @@ ax[-2].set_xlabel('')
 ax[-2].set_ylim([3, -1])
 ax[-2].tick_params('both', length=0)
 ax[-2].set_yticks([0.5, 1.5, 2.5])
-ax[-2].set_yticklabels(['34.25', '34.75', '35.5'])
+ax[-2].set_yticklabels(['34.25', '34.75', '35.25'])
 ax[-2].set_xticks(np.arange(1, 13) - 0.5)
 ax[-2].set_ylabel('$S$')
 
@@ -1136,6 +1176,5 @@ ax[-1].set_xlabel('2014')
 ax[-1].set_ylabel('')
 ax[-1].set_ylim([0, 2])
 
-f.savefig('images/paper1/8N-binned-avg-js-ep.png', bbox_to_inches='tight',
-          transparent=False)
+f.savefig('images/paper1/8N-binned-avg-js-ep.png', bbox_to_inches='tight')
 #+END_SRC
