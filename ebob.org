@@ -39,7 +39,22 @@ Emily: /A lot of these χ-pods did not have pitots installed/
 |-----+------+-----------+------------+----------------+---------------+----------------+--------------------+--------------------|
 
 #+CAPTION: χpod locations for ASIRI/EBOB/MesoBOB
-[[file:~/ebob/MixingmapASIRIPiston.png]]
+[[file:~/ebob/MixingmapASIRIPiston.png]
+* all
+** shear spectra
+#+BEGIN_SRC ipython :session
+f, axx = plt.subplots(4, 1, constrained_layout=True, sharex=True, sharey=True)
+
+for mooring, ax in zip([nrl1, nrl3, nrl4, nrl5], axx):
+    s = mooring.filter_interp_shear(remove_noise=False)
+    dcpy.ts.PlotSpectrum(s[0].shear, preserve_area=True, ax=ax)
+
+dcpy.plots.label_subplots(axx, labels=['NRL1', 'NRL3', 'NRL4', 'NRL5'])
+f.set_size_inches(4, 7)
+f.savefig('images/nrl-shear-spectra.png')
+#+END_SRC
+#+CAPTION: Rotary shear spectra at χpod depth level. NRL1 is noisy!
+[[file:images/nrl-shear-spectra.png]]
 
 * NRL-1
 ** full mooring

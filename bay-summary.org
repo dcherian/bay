@@ -2051,12 +2051,12 @@ f.savefig('images/wind-KT-correlations.png')
 #+BEGIN_SRC ipython :session
 turb = xr.open_dataset("../estimates/bay_merged_hourly.nc")
 
-mooring = nrl4
-timescale = "M"
-
-filter_kwargs = dict(cycles_per="D", coord="time", order=3)
-
-uzi = mooring.interp_shear("bins")
+mooring = nrl1
+timescale = "2W"
+if timescale == 'M':
+    window = 30
+elif timescale == '2W':
+    window = 15
 
 color = dict()
 color["full"] = "gray"
@@ -2065,37 +2065,14 @@ color["loni"] = "C0"
 color["low"] = "k"
 color["high"] = "C1"
 
-# uzi = (mooring.vel[['u', 'v', 'uz', 'vz']]
-#        .sel(depth=120, method='nearest'))
-
-full = xr.Dataset()
-full["shear"] = uzi.uz.interpolate_na("time") + 1j * uzi.vz.interpolate_na("time")
-full["u"] = uzi.u
-full["v"] = uzi.v
-full["N2"] = (mooring.turb.N2).isel(depth=1).interp(time=uzi.time)
-full["Tz"] = mooring.turb.Tz.isel(depth=1).interp(time=uzi.time)
-full = full.interpolate_na("time")
-full.attrs['name'] = 'Full'
-
-low = full.shear.pipe(xfilter.lowpass, freq=0.15, **filter_kwargs)
-low.attrs['name'] = 'LF (< 6.6d)'
-high = full.shear.pipe(xfilter.bandpass, freq=[0.15, 4], **filter_kwargs)
-high.attrs['name'] = 'HF (> 6.6d)'
-fM2 = full.shear.pipe(xfilter.bandpass,
-                      freq=[0.95*(1.93-mooring.inertial.values),
-                            1.05*(1.93 + mooring.inertial.values)],
-                      ,**filter_kwargs)
-niw = full.shear.pipe(xfilter.bandpass, freq=[0.15, 0.5], **filter_kwargs) + fM2
-niw.attrs['name'] = 'NIW (6.6d - 2d) + fM2'
-loni = full.shear.pipe(xfilter.bandpass, freq=[0.5, 4], **filter_kwargs) - fM2
-loni.attrs['name'] = 'HF (> 2d) - fM2'
+[full, low, high, niw, loni] = mooring.filter_interp_shear()
 
 mix = turb.sel(**bay.loc[mooring.name]).dropna("depth", how="all").isel(depth=1)
 KTr = mix.KT.dropna("time").resample(time=timescale).mean("time")
 
 epsr = xr.Dataset()
 count = mix.ε.dropna("time").resample(time=timescale).count("time")
-mask = count / (24 * 30) > 0.7
+mask = count / (24 * window) > 0.7
 epsr["mean"] = mix.ε.dropna("time").resample(time=timescale).mean("time").where(mask)
 epsr["std"] = mix.ε.dropna("time").resample(time=timescale).std("time").where(mask)
 
@@ -2103,18 +2080,18 @@ epsr["std"] = mix.ε.dropna("time").resample(time=timescale).std("time").where(m
 def _plot(ax, e, s, color, timescale=timescale):
     ax.set_title(s.attrs['name'])
     count = s.resample(time=timescale).count()
-    s = (s.resample(time=timescale).apply(dcpy.util.rms)
-         .where(count/24/30 > 0.7)
-         .interp(time=KTr.time))
+    s = (s.resample(time=timescale).apply(dcpy.util.ms)
+         .where(count/24/window > 0.7)
+         .interp(time=e.time))
     months = pd.Series(e.time.values).dt.strftime("%b-%y").values
-    ax.errorbar(e["mean"], s ** 2, xerr=e["std"].values / np.sqrt(30 * 24),
+    ax.errorbar(e["mean"], s, xerr=e["std"].values / np.sqrt(30 * 24),
                 fmt="o", color=color)
     ax.set_xlabel('$ε$ [W/kg]')
     ax.set_xscale('log')
     ax.set_yscale('log')
 
     for ee, ss, tt in zip(e["mean"], s, months):
-        ax.text(ee, ss ** 2, "   " + tt, va="center", ha="left", fontsize=8)
+        ax.text(ee, ss, "   " + tt, va="center", ha="left", fontsize=8)
 
 
 f = plt.figure(constrained_layout=True)
@@ -2196,7 +2173,51 @@ file:images/shear-scatter-nrl4.png
 #+CAPTION: NRL5
 [[file:images/shear-scatter-nrl5.png]]
 
+*** Shear variance + N²
+#+BEGIN_SRC ipython :session
+f, axx = plt.subplots(2, 2, constrained_layout=True, sharex=True, sharey=True)
+
+for mooring, ax, gs in zip([nrl1, nrl3, nrl4, nrl5],
+                           axx.flat,
+                           [30, 50, 30, 30]):
+
+    [full, low, high, niw, loni] = mooring.filter_interp_shear()
+
+    s2 = np.abs(full.shear)**2
+    N2 = mooring.turb.N2.isel(depth=1).interp(time=s2.time)
+    ε = (mooring.ε.isel(depth=1)
+         .resample(time='H').mean('time')
+         .interp(time=s2.time))
+
+    idx = np.argsort(ε.values)
+    hdl = ax.hexbin(N2.values[idx],
+                    s2.values[idx],
+                    ε.where(ε > 0).values[idx],
+                    gridsize=gs,
+                    mincnt=5,
+                    ,**dcpy.plots.cmap_params(
+                        ε.where(ε > 0), levels=np.logspace(-9, -6, 9),
+                        cmap=mpl.cm.gist_heat_r))
+
+    ax.text(0.9, 0.9, mooring.name, transform=ax.transAxes)
+
+[aa.set_xlabel('$N²$') for aa in axx[1, :]]
+[aa.set_ylabel('Total $S²$') for aa in axx[:, 0]]
+f.set_size_inches((6, 6))
+f.colorbar(hdl, ax=axx[1, :], extend='both', orientation='horizontal',
+           label='$ε [W/kg]$')
+ax.set_xlim([0, 1e-3])
+ax.set_ylim([0, 4e-4])
+
+# f.savefig('images/nrl-shear-n2-eps.png')
+
+#+END_SRC
+#+CAPTION: ε binned by $N²$ and $S²$ (niw) NRL1 looks odd.
+[[file:images/nrl-shear-n2-eps.png]]
+
 *** older stuff
+
+***
 #+BEGIN_SRC ipython :session
 # slab_file = xr.open_dataset('../estimates/merra2-wind-power-input-2014.nc')
 
@@ -2439,8 +2460,6 @@ plot_shear_KT_avg('nrl5', time_interval='2W', mooring=nrl5, loffset='-15D')
 3. NRL5:
    1. Sep-08 - Oct8, high mixing but no shear
    2. Oct 13 - Nov 13 is again outlier: shear but not much mixing
-
-
 ** NRL5
 *** Wind stress
 
@@ -3410,12 +3429,14 @@ for aa in axx:
 2. Since magnitude of KT and magnitude of shear aren't expected to be proportional, maybe I should look at frequency of turbulent events.
 
 #+BEGIN_SRC ipython :session
-nrl3.plot_shear_mixing()
+nrl1.plot_shear_mixing()
 f.savefig('images/shear-test-' + mooring.name.lower() + '.png')
 #+END_SRC
-#+CAPTION:
-[[file:images/shear-test-nrl5.png]]
+
+[[file:images/shear-test-nrl1.png]]
+[[file:images/shear-test-nrl3.png]]
 [[file:images/shear-test-nrl4.png]]
+[[file:images/shear-test-nrl5.png]]
 
 #+BEGIN_SRC ipython :session
 dcpy.ts.PlotCoherence()
