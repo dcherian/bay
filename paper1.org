@@ -581,15 +581,125 @@ with plt.rc_context({'font.size': 11,
 import bay
 bay = importlib.reload(bay)
 
+if 'wind_input' not in locals():
+    wind_input = xr.open_dataset('~/bay/estimates/merra2-wind-power-input-2014.nc')
+    niw = (wind_input.wind_input
+           .sel(time=slice('2013-12-01', '2014-11-30'))
+           .groupby(wind_input.time.monsoon.labels)
+           .mean(xr.ALL_DIMS))
+
+if 'tropflux' not in locals():
+    tropflux = (xr.open_mfdataset('../datasets/tropflux/tau*_tropflux_1d_*.nc')
+                .drop('tau')
+                .sel(time=slice('2013-12-01', '2014-11-30'),
+                     latitude=slice(2, 25),
+                     longitude=slice(78, 96))
+                .load())
+    tau = (tropflux.groupby(tropflux.time.monsoon.labels)
+           .mean(xr.ALL_DIMS))
+
+    taustd = (tropflux.groupby(tropflux.time.monsoon.labels)
+              .std(xr.ALL_DIMS)
+              .rename({'taux': 'taux_std', 'tauy': 'tauy_std'}))
+
+    netflux = (xr.open_mfdataset('../datasets/tropflux/netflux*_tropflux_1d_*.nc')
+                .sel(time=slice('2013-12-01', '2014-11-30'),
+                     latitude=slice(2, 25),
+                     longitude=slice(78, 96))
+                .load())
+    netflux['heat'] = netflux.netflux.where(netflux.netflux > 0)
+    netflux['cool'] = netflux.netflux.where(netflux.netflux < 0)
+    netflux = (netflux.groupby(netflux.time.monsoon.labels)
+                .mean(xr.ALL_DIMS))
+
+    tropflux = xr.merge([tau, netflux, taustd])
+
+if 'trmm' not in locals():
+    trmm = dcpy.oceans.read_trmm()
+    # convert from mm/day to m/s
+    P = trmm.precipitation.sel(**bay.region).load()
+    P = P.groupby(P.time.monsoon.labels).mean(xr.ALL_DIMS)
+    P.attrs['units'] = 'mm/day'
+
 moors = ['RAMA12', 'RAMA15', 'NRL1', 'NRL2', 'NRL3', 'NRL4', 'NRL5']
 
-bay.make_vert_distrib_plot('KT', label_moorings=False)
+f, axx = plt.subplots(2, 4, sharex='row', sharey='row',
+                     gridspec_kw={'height_ratios': [1, 6]})
+ax = dict(zip(bay.seasons, axx[0, :]))
+
+bay.make_vert_distrib_plot('KT', label_moorings=False, f=f, ax=axx[1, :],
+                           adjust_fig=False)
+
+barargs = dict(width=0.5)
+labelargs = dict(ha='center', va='baseline')
+for ss in ax:
+    tflux = tropflux.sel(monsoon=ss)
+    if ss == 'SW':
+        x0 = -1.5
+    elif ss == 'SWNE':
+        x0 = -0.85
+    else:
+        x0 = 0
+
+    # wind stress
+    scale = 0.05
+    ax[ss].quiver(x0, 0, tflux.taux, tflux.tauy,
+                  width=0.1, units='x', scale=scale)
+    # ax[ss].quiver(0, 0, scale, scale,
+    #               scale=scale, width=0.1, units='x',
+    #               angles='xy', scale_units='xy')
+    # ax[ss].plot(tflux.taux/scale, tflux.tauy/scale, 'kx')
+    ax[ss].add_artist(mpl.patches.Ellipse((x0+tflux.taux/scale, tflux.tauy/scale),
+                                          2*tflux.taux_std/scale,
+                                          2*tflux.tauy_std/scale,
+                                          alpha=0.1, color='k', zorder=-1))
+    ax[ss].set_aspect(1)
+
+    # near-inertial input
+    ax[ss].bar(1, niw.sel(monsoon=ss)/0.5e-3, color='#31a354', **barargs)
+
+    # netflux
+    ax[ss].bar(2, tflux.heat/50, color='#d95f02', **barargs)
+    ax[ss].bar(2, tflux.cool/50, color='#7570b3', **barargs)
+
+    # precip
+    ax[ss].bar(3, P.sel(monsoon=ss)/5, color='#7fcdbb', **barargs)
+
+    ax[ss].axhline(0, color='lightgray', zorder=5)
+
+    ax[ss].set_xticklabels([])
+    ax[ss].set_xticks([])
+    ax[ss].set_yticklabels([])
+    ax[ss].set_yticks([])
+    ax[ss].spines['left'].set_visible(False)
+    ax[ss].spines['bottom'].set_visible(False)
+
+    ylabel = -2.5
+    ax[ss].text(0, ylabel, '$τ$', **labelargs)
+    ax[ss].text(1, ylabel, '$Π$', **labelargs)
+    ax[ss].text(2, ylabel, '$J_q^0$', **labelargs)
+    ax[ss].text(3, ylabel, '$P$', **labelargs)
+
+axx[0, 0].set_ylabel('Basin-wide\nseasonal\naverages',
+                     rotation=0, va='center', ha='right')
+
+ax[ss].set_xlim([-2, 4])
+ax[ss].set_ylim([-2, 2])
+
+for ii in range(4):
+    axx[0, ii].set_title(axx[1, ii].get_title())
+    axx[1, ii].set_title('')
+    axx[1, ii].set_xlim([-7, -1.5])
+
+plt.subplots_adjust(wspace=0.22, hspace=0.1)
+f.set_size_inches(7, 8.5)
+f.suptitle('$\\log_{10}$ hourly averaged $K_T$ (m²/s)', y=0.075)
 
 plt.savefig('images/vert-profile.svg', bbox_inches='tight')
 plt.savefig('images/paper1/bay-KT-vert-profile.pdf', bbox_inches='tight')
 plt.savefig('images/bay-KT-vert-profile.png', bbox_inches='tight')
 import subprocess
-subprocess.run('bash images/add-legend-vert-profile.bash')
+subprocess.run(['bash', 'add-legend-vert-profile.bash'], cwd='images/paper1/')
 #+END_SRC
 [[file:images/paper1/bay-KT-vert-profile-label.png]]
 
