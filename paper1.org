@@ -1248,12 +1248,25 @@ grouped = df.groupby([pd.cut(df.S, [34, 34.5, 35, 35.5]),
 mean = grouped.mean()
 count = grouped.count()['Js']
 N = 30 * 24 # number of observations per month per instrument
+count_mask = count/N > 1
 
 sns.heatmap((mean['Js']/1025 * 1e6)
-            .where(count > N)
+            .where(count_mask)
             .reset_index()
             .pivot('S', 'time', 'Js'),
             ax=ax[-2], **heatmap_kwargs)
+
+cmap = dcpy.plots.cmap_params([0, 1, 2, 3, 4],
+                              levels=[0, 1, 2],
+                              cmap=mpl.colors.ListedColormap
+                              ([[0.3, 0.3, 0.3, 1],
+                                [0.6, 0.6, 0.6, 0.5],
+                                [0.3, 0.3, 0.3, 0],]))
+sns.heatmap((count / N).where(count_mask)
+            .reset_index()
+            .pivot('S', 'time', 'Js'),
+            ,**cmap, ax=ax[-2], cbar=False, zorder=10,
+            linewidths=heatmap_kwargs['linewidths'])
 ax[-2].set_xlabel('')
 ax[-2].set_ylim([3, -1])
 ax[-2].tick_params('both', length=0)
