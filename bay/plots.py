@@ -249,7 +249,7 @@ def vert_distrib(df, bins, varname='KT', kind='distribution',
     import cycler
 
     plotkind = 'violin'
-    nadd = 3  # number of extra colors to generate
+    nadd = 1  # number of extra colors to generate
     pal_dist = sns.color_palette("GnBu_d", n_colors=len(bins.unique())+nadd)
     pal_dist.reverse()
     pal_dist = pal_dist[0:-(nadd)]
@@ -269,7 +269,10 @@ def vert_distrib(df, bins, varname='KT', kind='distribution',
 
     if f is None:
         f, axx = plt.subplots(1, 4, sharex=True, sharey=True)
-        ax = {'NE': axx[0], 'NESW': axx[1], 'SW': axx[2], 'SWNE': axx[3]}
+    else:
+        axx = ax
+
+    ax = {'NE': axx[0], 'NESW': axx[1], 'SW': axx[2], 'SWNE': axx[3]}
 
     if varname is 'KT':
         title = '$\\log_{10}$ hourly averaged $K_T$ (m²/s)'
@@ -433,7 +436,7 @@ def mark_moors_clean(ax):
 def make_vert_distrib_plot(varname,
                            bins=default_density_bins,
                            moor=None,
-                           label_moorings=False):
+                           label_moorings=False, **kwargs):
 
     ''' user-friendly wrapper function to make vertical distribution plot. '''
 
@@ -442,9 +445,9 @@ def make_vert_distrib_plot(varname,
     if varname == 'KT':
         df['KT'] = np.log10(df['KT'])
 
-    f, ax = vert_distrib(df, df.bin,
-                         label_moorings=label_moorings,
-                         percentile=True)
+    vert_distrib(df, df.bin,
+                 label_moorings=label_moorings,
+                 percentile=True, **kwargs)
 
 
 def make_labeled_map(ax=None):
