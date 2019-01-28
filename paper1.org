@@ -325,6 +325,8 @@ bibliographystyle:ametsoc2014
 #+BEGIN_SRC ipython :session :results none
 import cartopy.crs as ccrs
 
+isodepth = bay.calc_isohaline_depth(34.75, split=True)
+
 if 'oscar' not in locals():
     oscar = (xr.open_mfdataset('/home/deepak/work/datasets/oscar/oscar_vel*.nc',
                                concat_dim='time')
@@ -401,18 +403,23 @@ with mpl.style.context({'axes.titlesize': 9,
                         'axes.labelsize': 9,
                         'xtick.labelsize': 9,
                         'ytick.labelsize': 9,}):
-    f, ax = plt.subplots(2, 5, sharex=True, sharey=True,
+    f, ax = plt.subplots(3, 5, sharex=True, sharey=True,
                          subplot_kw=dict(projection=ccrs.PlateCarree()),
-                         constrained_layout=False)
+                         constrained_layout=True)
+f.set_size_inches(7, 6.5)
+f.set_constrained_layout_pads(w_pad=0/72, h_pad=0/72)
+f.set_constrained_layout(True)
 [common(aa) for aa in ax.flat]
 
 axes = dict()
 if ax.shape[0] > ax.shape[1]:
     axes['oce'] = dict(zip(bay.splitseasons, ax[:, 0]))
     axes['atm'] = dict(zip(bay.splitseasons, ax[:, 1]))
+    axes['iso'] = dict(zip(bay.splitseasons, ax[:, 2]))
 else:
     axes['oce'] = dict(zip(bay.splitseasons, ax[0, :]))
     axes['atm'] = dict(zip(bay.splitseasons, ax[1, :]))
+    axes['iso'] = dict(zip(bay.splitseasons, ax[2, :]))
 
 for season in bay.splitseasons:
     heke = (eke.sel(monsoon=season)
@@ -466,6 +473,13 @@ for season in bay.splitseasons:
 
     axes['oce'][season].set_title(season)
 
+    hdl = (isodepth.sel(monsoon=season)
+           .plot.contour(x='lon', y='lat', ax=axes['iso'][season],
+                         levels=[10, 50, 75, 100, 150, 200],
+                         colors='k', robust=True, add_colorbar=False,
+                         transform=ccrs.PlateCarree()))
+    axes['iso'][season].clabel(hdl, fmt='%d', fontsize=8)
+
     # [axes[row][season].text(0.05, 0.875, season,
     #                         transform=axes[row][season].transAxes,
     #                         color='k', zorder=10)
@@ -473,29 +487,29 @@ for season in bay.splitseasons:
 
 
 def clean_axis(ax):
-    bay.plots.mark_moors_clean(ax=ax)
     ax.set_xlabel('')
     ax.set_ylabel('')
 
 [clean_axis(aa) for aa in ax.flat]
+[bay.plots.mark_moors_clean(ax=aa) for aa in ax[:-1, :].flat]
 [axes['atm'][aa].set_title('') for aa in axes['atm']]
-[aa.set_xlabel('Longitude') for aa in ax[1, :]]
+[axes['iso'][aa].set_title('') for aa in axes['iso']]
+[aa.set_xlabel('Longitude') for aa in ax[-1, :]]
 [aa.set_ylabel('Latitude') for aa in ax[:, 0]]
 
-hcb1 = plt.colorbar(heke, ax=ax[0, :3], orientation='horizontal',
-                    label='EKE [m²/s²]', shrink=0.7, anchor=(0.3, 1.0))
-hcb2 = plt.colorbar(hniw, ax=ax[0, 2:], orientation='horizontal',
-                    label='Near-inertial wind input $Π$ [mW/m²]',
-                    shrink=0.7, anchor=(0.8, 1.0))
+cbar_kwargs={'orientation': 'horizontal',
+             'aspect': 12,
+             'shrink': 0.6}
+hcb1 = plt.colorbar(heke, ax=ax[-1, :3], label='EKE [m²/s²]', **cbar_kwargs,
+                    anchor=(0.25, 1))
+hcb2 = plt.colorbar(hniw, ax=ax[-1, 2:], label='Near-inertial wind input $Π$ [mW/m²]',
+                    ,**cbar_kwargs, anchor=(0.8, 1))
 hcb1.set_ticks(np.arange(0, 0.31, 0.05))
 hcb2.set_ticks(np.arange(0, 1.21, 0.2))
 
-f.set_size_inches(6, 5)
-plt.subplots_adjust(left=0.080, right=0.99, bottom=0.1, wspace=0.05,
-                    hspace=0.4, top=0.99)
-
-plt.savefig('images/paper1/spatial-maps.pdf', transparent=False,
-            bbox_inches='tight')
+# plt.subplots_adjust(left=0.080, right=0.99)
+# plt.tight_layout()
+plt.savefig('images/paper1/spatial-maps.pdf', transparent=False)
 
 # clim = (aq.sss.sel(longitude=slice(75, 98),
 #                    latitude=slice(0, 24))
