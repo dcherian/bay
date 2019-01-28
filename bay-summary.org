@@ -740,43 +740,6 @@ plt.tight_layout()
 ** depth of salinity surfaces
 
 #+BEGIN_SRC ipython :session
-def calc_iso_surface(my_array, my_value, zs, interp_order=3, power_parameter=0.5):
-    ''' '''
-
-    if interp_order < 1: interp_order = 1
-    from numpy import argsort, take, clip, zeros
-    dist = (my_array - my_value)**2
-    arg = argsort(dist,axis=2)
-    dist.sort(axis=2)
-    w_total = 0.
-    z = zeros(my_array.shape[:2], dtype=float)
-    for i in range(int(interp_order)):
-        zi = take(zs, arg[:,:,i])
-        valuei = dist[:,:,i]
-        wi = 1/valuei
-        clip(wi, 0, 1.e6, out=wi) # avoiding overflows
-        w_total += wi**power_parameter
-        z += zi*wi**power_parameter
-    z /= w_total
-    return z
-
-def calc_S0_depth(dataset, S0):
-    isodepth = dataset.S.isel(depth=1).drop('depth').copy()
-    isodepth.attrs['long_name'] = 'Depth of ' + str(S0) + ' isohaline'
-    isodepth.attrs['units'] = 'm'
-    for tt in range(4):
-        isodepth.values[:, :, tt] = calc_iso_surface(dataset.S.values[:,:,:,tt],
-                                                     S0,
-                                                     zmat.values[:, :, :, tt])
-
-    # isodepth = (zmat.where(np.logical_and(nio.S > S0-0.1,
-    #                                       nio.S < S0+0.1))
-    #             .mean(dim='depth')
-    #             .sel(**bay.region))
-
-    return isodepth
-
-
 import cartopy.crs as ccrs
 
 argo = (dcpy.oceans.read_argo_clim()
@@ -801,13 +764,12 @@ nio = (dcpy.oceans.read_nio()
        .transpose('lon', 'lat', 'depth', 'time')
        .rename({'time': 'monsoon'})
        .sel(**bay.region, depth=slice(0, 400)))
-_, zmat = xr.broadcast(nio.S, nio.depth)
 
 base = argo
 
-argo['iso'] = calc_S0_depth(argo, 34.75)
-argo2014['iso'] = calc_S0_depth(argo2014, 34.75)
-nio['iso'] = calc_S0_depth(nio, 34.75)
+argo['iso'] = bay.calc_isohaline_depth(argo, 34.75)
+argo2014['iso'] = bay.calc_isohaline_depth(argo2014, 34.75)
+nio['iso'] = bay.calc_isohaline_depth(nio, 34.75)
 
 isos = (xr.concat([argo.iso, nio.iso, argo2014.iso])
         .rename({'concat_dims': 'dataset'}))
@@ -839,18 +801,24 @@ S0 = 34.75
 
 f, ax = plt.subplots(1, 1, constrained_layout=True)
 
-for mooring in [nrl3, nrl4, nrl5]:
-    (mooring.ctd.depth.where(np.logical_and(mooring.ctd.S > S0-0.05,
-                                            mooring.ctd.S < S0+0.05))
-     .min('z')
-     .plot(x='time', label=mooring.name))
+zlist = []
 
-ax.legend()
+for mooring in [nrl3, nrl4, nrl5]:
+    zlist.append(mooring.ctd.depth.where(np.logical_and(mooring.ctd.S > S0-0.05,
+                                                        mooring.ctd.S < S0+0.05))
+                 .min('z')
+                 .expand_dims('mooring')
+                 .interp(time=pd.date_range('2013-12-01', '2014-11-30', freq='H')))
+    zlist[-1]['mooring'] = xr.DataArray([mooring.name],
+                                        dims=['mooring'],)
+
+zs = xr.concat(zlist, 'mooring')
+zs.plot.line(x='time', hue='mooring')
 ax.set_ylabel('Depth of 34.75 isohaline from NRL data [m]')
 
 f.savefig('images/isosurface-depth-nrl.png')
 #+END_SRC
-#+CAPTION: Estimate depth of S=34.75 from data? This is nonsensical. I don't have upper water column coverage... so we're implicitly assuming that the 34.75 isohaline is beneath the first instrument always.
+#+CAPTION: Estimate depth of S=34.75 from data? Useful because it tells depths when we did observe mixing through this surface. +This is nonsensical. I don't have upper water column coverage... so we're implicitly assuming that the 34.75 isohaline is beneath the first instrument always.+
 [[file:images/isosurface-depth-nrl.png]]
 
 ** "pycnocline uplift"

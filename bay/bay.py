@@ -378,29 +378,33 @@ def seasonal_mean(data, split=False):
     return (data.groupby(labels).apply(mean))
 
 
-def calc_isohaline_depth(S0=34.75, split=False):
+def calc_isohaline_depth(data=None, S0=34.75, split=False):
 
-    argo = (dcpy.oceans.read_argo_clim()
-            [['S']]
-            .sel(**region, pres=slice(0, 400))
-            .load()
-            .rename({'pres': 'depth'}))
-    if split:
-        groupby = argo.time.monsoon.splitlabels
-    else:
-        groupby = argo.time.monsoon.labels
+    if data is None:
+        data = (dcpy.oceans.read_argo_clim()
+                [['S']]
+                .sel(**region, pres=slice(0, 400))
+                .load()
+                .rename({'pres': 'depth'}))
 
-    argo = (argo.groupby(groupby).mean('time')
-            .transpose('lon', 'lat', 'depth', 'monsoon'))
+    # NIO atlas doesn't need this
+    if 'monsoon' not in data.coords:
+        if split:
+            groupby = data.time.monsoon.splitlabels
+        else:
+            groupby = data.time.monsoon.labels
 
-    isodepth = argo.S.isel(depth=1).drop('depth').copy()
+        data = (data.groupby(groupby).mean('time')
+                .transpose('lon', 'lat', 'depth', 'monsoon'))
+
+    isodepth = data.S.isel(depth=1).drop('depth').copy()
     isodepth.attrs['long_name'] = 'Depth of ' + str(S0) + ' isohaline'
     isodepth.attrs['units'] = 'm'
-    zmat = xr.broadcast(argo.S, argo.depth)[1]
+    zmat = xr.broadcast(data.S, data.depth)[1]
 
-    for tt in range(argo.S.shape[-1]):
+    for tt in range(data.S.shape[-1]):
         isodepth.values[:, :, tt] = dcpy.util.calc_iso_surface(
-            argo.S.values[:, :, :, tt], S0, zmat.values[:, :, :, tt],
+            data.S.values[:, :, :, tt], S0, zmat.values[:, :, :, tt],
             interp_order=3)
 
     # isodepth = (zmat.where(np.logical_and(nio.S > S0-0.1,
