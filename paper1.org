@@ -595,6 +595,13 @@ with plt.rc_context({'font.size': 11,
 import bay
 bay = importlib.reload(bay)
 
+if 'isodepth' not in locals():
+    # isodepth = (bay.calc_isohaline_depth(34.75, split=False)
+    #             .sel(lat=8, lon=[85.5, 87, 88.5], method='nearest')
+    #             .mean('lon'))
+    isodepth = xr.DataArray([90, 100, 60, 75],
+                            dims=['monsoon'], coords={'monsoon': bay.seasons})
+
 if 'wind_input' not in locals():
     wind_input = xr.open_dataset('~/bay/estimates/merra2-wind-power-input-2014.nc')
     niw = (wind_input.wind_input
@@ -602,7 +609,7 @@ if 'wind_input' not in locals():
            .groupby(wind_input.time.monsoon.labels)
            .mean(xr.ALL_DIMS))
 
-if 'tropflux' not in locals():
+if 'tropflux' not in locals() or 'taux_std' not in tropflux:
     tropflux = (xr.open_mfdataset('../datasets/tropflux/tau*_tropflux_1d_*.nc')
                 .drop('tau')
                 .sel(time=slice('2013-12-01', '2014-11-30'),
@@ -704,6 +711,10 @@ for ii in range(4):
     axx[0, ii].set_title(axx[1, ii].get_title())
     axx[1, ii].set_title('')
     axx[1, ii].set_xlim([-7, -1.5])
+    axx[1, ii].plot([-5, -3.9], [isodepth[ii], isodepth[ii]],
+                    'k-', lw=2)
+    axx[1, ii].text(-3.75, isodepth[ii], r'$S$ = 34.75',
+                    ha='left', va='center', fontsize=8)
 
 plt.subplots_adjust(wspace=0.22, hspace=0.1)
 f.set_size_inches(7, 8.5)
