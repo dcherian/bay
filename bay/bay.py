@@ -5,6 +5,7 @@ import pandas as pd
 import tqdm
 
 import dcpy.oceans
+import dcpy.util
 import xarray as xr
 
 region = dict(lon=slice(80, 94), lat=slice(4, 24))
@@ -375,3 +376,36 @@ def seasonal_mean(data, split=False):
         labels = data.time.monsoon.labels
 
     return (data.groupby(labels).apply(mean))
+
+
+def calc_isohaline_depth(S0=34.75, split=False):
+
+    argo = (dcpy.oceans.read_argo_clim()
+            [['S']]
+            .sel(**region, pres=slice(0, 400))
+            .load()
+            .rename({'pres': 'depth'}))
+    if split:
+        groupby = argo.time.monsoon.splitlabels
+    else:
+        groupby = argo.time.monsoon.labels
+
+    argo = (argo.groupby(groupby).mean('time')
+            .transpose('lon', 'lat', 'depth', 'monsoon'))
+
+    isodepth = argo.S.isel(depth=1).drop('depth').copy()
+    isodepth.attrs['long_name'] = 'Depth of ' + str(S0) + ' isohaline'
+    isodepth.attrs['units'] = 'm'
+    zmat = xr.broadcast(argo.S, argo.depth)[1]
+
+    for tt in range(argo.S.shape[-1]):
+        isodepth.values[:, :, tt] = dcpy.util.calc_iso_surface(
+            argo.S.values[:, :, :, tt], S0, zmat.values[:, :, :, tt],
+            interp_order=3)
+
+    # isodepth = (zmat.where(np.logical_and(nio.S > S0-0.1,
+    #                                       nio.S < S0+0.1))
+    #             .mean(dim='depth')
+    #             .sel(**bay.region))
+
+    return isodepth
