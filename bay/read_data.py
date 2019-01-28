@@ -187,6 +187,7 @@ def read_nrl5(minimal=False):
     nrl5.AddChipod(519, depth=104, best='mm1', fname='Turb.mat')
     # 519 mm2 reads low frequently
     nrl5.AddEvents('Storm+IW', '2014-07-17', '2014-08-07')
+    nrl5.AddEvents('Storm-zoomin', '2014-07-25', '2014-08-07 11:59')
     nrl5.AddEvents("nomix", '2014-03-17', '2014-05-06')
 
     if not minimal:

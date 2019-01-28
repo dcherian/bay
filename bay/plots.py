@@ -210,7 +210,7 @@ def plot_distrib(ax, plotkind, var, zloc, zstd, width=12, percentile=False):
                             vert=False, showmedians=False)
 
         for pc in hdl['bodies']:
-            pc.set_alpha(0.55)
+            pc.set_alpha(0.7)
 
         trim_horiz_violin(hdl)
         hdl['cmaxes'].set_visible(False)
@@ -249,7 +249,7 @@ def vert_distrib(df, bins, varname='KT', kind='distribution',
     import cycler
 
     plotkind = 'violin'
-    nadd = 1  # number of extra colors to generate
+    nadd = 2  # number of extra colors to generate
     pal_dist = sns.color_palette("GnBu_d", n_colors=len(bins.unique())+nadd)
     pal_dist.reverse()
     pal_dist = pal_dist[0:-(nadd)]
@@ -677,10 +677,11 @@ def KT_TS(turb, ctd, which_moorings='all', varname='KT', axes=None,
                         transform=axes['NE'].transAxes)
 
 
-def plot_moor(moor, idepth, axx, time_range='2014'):
+def plot_moor(moor, idepth, axx, time_range='2014', events=None):
 
-    axes = dict(zip(['met', 'KT', 'jq'], axx[0:3]))
+    axes = dict(zip(['met', 'KT', 'jq', 'N2'], axx[0:4]))
     axes['js'] = axes['jq'].twinx()
+    axes['Tz'] = axes['N2'].twinx()
     axes['coverage'] = axes['KT'].twinx()
 
     if len(moor.met) != 0:
@@ -704,6 +705,16 @@ def plot_moor(moor, idepth, axx, time_range='2014'):
     hjs = ((moor.Js/1e-2).isel(depth=idepth).sel(time=time_range)
            .resample(time='D').mean('time')
            .plot(ax=axes['js'], _labels=False, lw=1.2, color='C0'))
+
+    htz = ((moor.Tz).isel(depth=idepth).sel(time=time_range)
+           .resample(time='D').mean('time')
+           .plot(ax=axes['Tz'], _labels=False, lw=1.2, color='C0'))
+    # axes['Tz'].set_yscale('symlog', linthreshy=5e-3, linscaley=0.5)
+    axes['Tz'].axhline(0, color='C0', zorder=-1, lw=0.5)
+    hn2 = ((moor.N2/1e-4).isel(depth=idepth).sel(time=time_range)
+           .resample(time='D').mean('time')
+           .plot(ax=axes['N2'], _labels=False, lw=1.2, color='k'))
+    axes['N2'].set_ylim([0, None])
 
     fraction = (moor.KT.sel(time=time_range).isel(depth=idepth)
                 .groupby(moor.KT.sel(time=time_range).time.dt.floor('D'))
@@ -739,7 +750,10 @@ def plot_moor(moor, idepth, axx, time_range='2014'):
     axes['jq'].set_ylabel('$J_q^t$ [W/m²]')
     axes['js'].set_ylabel('$J_s^t$ \n [$10^{-2}$ g/m²/s]')
     [dcpy.plots.set_axes_color(axes[aa], 'C0', 'right')
-     for aa in ['js', 'coverage']]
+     for aa in ['js', 'Tz', 'coverage']]
+
+    axes['Tz'].set_ylabel('$T_z$ [°C/m]')
+    axes['N2'].set_ylabel('$N²$ \n [$10^{-4}$ $s^{-2}$]')
 
     axes['coverage'].set_ylabel('Fraction\ndaily coverage')
     axes['coverage'].set_yticks([0, 0.5, 1])
@@ -747,8 +761,8 @@ def plot_moor(moor, idepth, axx, time_range='2014'):
 
     [aa.set_xlabel('') for aa in axx]
     [aa.set_title('') for aa in axes.values()]
-    [moor.MarkSeasonsAndEvents(ax=axes[aa], events=False)
-     for aa in ['jq', 'KT', 'met']]
+    [moor.MarkSeasonsAndEvents(ax=axes[aa], events=events)
+     for aa in ['jq', 'KT', 'met', 'N2']]
 
     # axx[-1].set_xlabel('2014')
     axx[-1].xaxis.set_tick_params(rotation=0)
