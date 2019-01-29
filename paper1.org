@@ -1178,9 +1178,11 @@ Freshwater in the Bay from $E-P+R$ leaves through two pathways: along Sri Lanka 
 
 The higher salinity Arabian Sea water is present in the top 200m of the water column where salt can be efficiently mixed upwards citep:Vinayachandran2013.
 
-** Figure 8: 8N special :ignore:
+*** Figure 8: 8N special                                           :ignore:
 
 #+BEGIN_SRC ipython :session
+import scikits.bootstrap as bs
+
 if 'trmm' not in locals():
     trmm = dcpy.oceans.read_trmm()
     # convert from mm/day to m/s
@@ -1210,8 +1212,8 @@ if 'nrl' not in locals():
 
 f = plt.figure(constrained_layout=True)
 f.set_constrained_layout_pads(h_pad=1/72, wspace=0.1)
-f.set_size_inches(7, 6.7)
-gs = f.add_gridspec(4, 1, height_ratios=[1, 1, 1, 0.5])
+f.set_size_inches(7, 8)
+gs = f.add_gridspec(4, 1, height_ratios=[1, 1, 0.85, 1])
 ax = list()
 with mpl.style.context({'axes.facecolor': 'w',
                         'axes.grid': True,
@@ -1270,25 +1272,50 @@ f.colorbar(hh, ax=ax[:2], extend='max', shrink=0.8, aspect=30, pad=0.0,
 # Labelled heatmap #
 ####################
 heatmap_kwargs = dict(
-    center=0, annot=True, square=False, cbar=False, linewidths=1, fmt='.2f',
-    vmin=-1.6, vmax=1.6, cmap=mpl.cm.RdYlBu_r)
+    center=0, square=False, cbar=False, linewidths=1,
+    vmin=-1.6, vmax=1.6, cmap=mpl.cm.RdYlBu_r, annot=True, fmt='.2f')
 
-df = (nrl.where(np.abs(nrl.Jq) < 1000).to_dataframe().reset_index()
+
+def _process_df(x):
+    ''' Pivots the reduced dataframe. '''
+
+    return (x.where(count_mask)
+            .reset_index()
+            .pivot('S', 'time', 'Js'))
+
+df = (nrl.where(np.abs(nrl.Jq) < 1000)
+      [['Js', 'S']]
+      .to_dataframe().reset_index()
       .drop(['depth', 'lon'], axis=1)
       .dropna(how='any'))
 
-grouped = df.groupby([pd.cut(df.S, [34, 34.5, 35, 35.5]),
-                      df.time.dt.month])
+groupby = [pd.cut(df.S, [34, 34.5, 35, 35.5]),
+           dftime.dt.month]
+grouped = (df.groupby(groupby))
 mean = grouped.mean()
 count = grouped.count()['Js']
+if 'ci' not in locals():
+    ci = df.Js.groupby(groupby).apply(bs.ci, np.mean)
+Js_mean = _process_df(mean['Js']/1025 * 1e6)
+Js_ci = _process_df(ci/1025 * 1e6)
+
 N = 30 * 24 # number of observations per month per instrument
 count_mask = count/N > 1
 
-sns.heatmap((mean['Js']/1025 * 1e6)
-            .where(count_mask)
-            .reset_index()
-            .pivot('S', 'time', 'Js'),
-            ax=ax[-2], **heatmap_kwargs)
+# build custom annotation
+# annot = np.zeros_like(_process_df(mean['Js'])).astype('S')
+# for ii in range(annot.shape[0]):
+#     for jj in range(annot.shape[1]):
+#         if np.isnan(Js_mean.values[ii, jj]):
+#             continue
+
+#         annot[ii, jj] = '${0:.1f}^{{{1:.1f}}}_{{{2:.1f}}}$'.format(
+#             Js_mean.values[ii, jj],
+#             Js_ci.values[ii, jj][1],
+#             Js_ci.values[ii, jj][0])
+
+hdl = sns.heatmap(Js_mean, ax=ax[-2], **heatmap_kwargs)
+# dcpy.plots.annotate_heatmap_string(hdl.get_children()[0], annot)
 
 cmap = dcpy.plots.cmap_params([0, 1, 2, 3, 4],
                               levels=[0, 1, 2],
@@ -1296,32 +1323,53 @@ cmap = dcpy.plots.cmap_params([0, 1, 2, 3, 4],
                               ([[0.3, 0.3, 0.3, 1],
                                 [0.6, 0.6, 0.6, 0.5],
                                 [0.3, 0.3, 0.3, 0],]))
-sns.heatmap((count / N).where(count_mask)
-            .reset_index()
-            .pivot('S', 'time', 'Js'),
+sns.heatmap(_process_df(count / N),
             ,**cmap, ax=ax[-2], cbar=False, zorder=10,
             linewidths=heatmap_kwargs['linewidths'])
 ax[-2].set_xlabel('')
-ax[-2].set_ylim([3, -1])
+ax[-2].set_ylim([3, 0])
 ax[-2].tick_params('both', length=0)
 ax[-2].set_yticks([0.5, 1.5, 2.5])
 ax[-2].set_yticklabels(['34.25', '34.75', '35.25'])
 ax[-2].set_xticks(np.arange(1, 13) - 0.5)
 ax[-2].set_ylabel('$S$')
 
-sns.heatmap(((E-P.interp(time=E.time)).sel(time='2014')
-             .groupby('time.month').mean('time')
-             .to_dataframe(name='E-P')
-             .transpose()) * 32 * 1e6,
-            ax=ax[-1], **heatmap_kwargs)
-ax[-1].xaxis.set_tick_params(length=0)
-ax[-1].yaxis.set_tick_params(length=0)
-ax[-1].set_yticks([])
+EP = ((32 * 1e6 * (E-P.interp(time=E.time)))
+      .sel(time='2014')
+      .groupby('time.month').mean('time'))
+EP['month'] = EP.month.astype('float') - 0.5
+EP.plot(ax=ax[-1], marker='o', ls='')
 
-dcpy.plots.label_subplots(ax, x=0.03, y=0.8,
+upper = np.zeros_like(Js_mean.values[1, :])
+lower = np.zeros_like(Js_mean.values[1, :])
+for jj in range(Js_ci.shape[1]):
+    lower[jj] = Js_ci.values[1, jj][0]
+    upper[jj] = Js_ci.values[1, jj][1]
+
+ax[-1].errorbar(np.arange(12) + 0.5, Js_mean.values[1, :],
+                yerr=np.abs(np.stack([lower, upper]) - Js_mean.values[1, :]),
+                ls='', fmt='o', )
+ax[-1].set_ylim([-6, 6])
+ax[-1].set_yticks([-5, -2, 0, 2, 5])
+ax[-1].legend(['$S_0 (E-P)$', '$J_s^t$ | $S$ = 34.75'], loc='lower center',
+              frameon=True, framealpha=0.4, facecolor='lightgray', ncol=2)
+dcpy.plots.liney(0, ls='-')
+ax[-1].set_ylabel('Salinity flux [$10^{-6}$ m/s]')
+sns.despine(ax=ax[-1], trim=True)
+
+# sns.heatmap(((E-P.interp(time=E.time)).sel(time='2014')
+#              .groupby('time.month').mean('time')
+#              .to_dataframe(name='E-P')
+#              .transpose()) * 32 * 1e6,
+#             ax=ax[-1], **heatmap_kwargs)
+# ax[-1].xaxis.set_tick_params(length=0)
+# ax[-1].yaxis.set_tick_params(length=0)
+# ax[-1].set_yticks([])
+
+dcpy.plots.label_subplots(ax, x=0.03, y=0.1,
                           labels=['', '',
                                   '$ρ_0^{-1}$ $J_s^t$ [$10^{-6}$ m/s]',
-                                  '$S_0 (E-P)$ [$10^{-6}$ m/s]'])
+                                  ''], zorder=10)
 
 plt.setp(ax[0].xaxis.get_ticklabels(), visible=False)
 plt.setp(ax[2].xaxis.get_ticklabels(), visible=False)
@@ -1330,13 +1378,11 @@ ax[2].set_xticklabels([])
 ax[-1].set_xticklabels(['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul',
                         'Aug', 'Sep', 'Oct', 'Nov', 'Dec'])
 ax[-1].set_xlabel('2014')
-ax[-1].set_ylabel('')
-ax[-1].set_ylim([0, 2])
 
 f.savefig('images/paper1/8N-binned-avg-js-ep.png', bbox_to_inches='tight')
 #+END_SRC
 #+NAME: fig:8njs
-#+CAPTION: Turbulent salt flux $J_s^t$ at 8N. (a, b) Scatter plots of hourly averaged $J_s^t$ in depth and salinity spaces respectively. Points with larger $J_s^t$ are plotted over points with lower $J_q^t$ so that high flux events are prominent. (c) Monthly averaged turbulent $J_s^t$ through salinity surfaces $S=34.25, 34.75$ and $35.5$. These are estimated by bin averaging the values in (b) in bins with edges [34, 34.5, 35, 36]. Bins with less than one instrument-month of data are not shown. Those with less than two instrument months of data are grayed out. Only one bin has more than three instrument-months of data. (d) Monthly averaged surface salinity flux $S_0 (E-P)$ estimated using evaporation from OAFlux and precipitation from TRMM. $S_0$ is assumed to be 32.
+#+CAPTION: Turbulent salt flux $J_s^t$ at 8N. (a, b) Scatter plots of hourly averaged $J_s^t$ in depth and salinity spaces respectively. Points with larger $J_s^t$ are plotted over points with lower $J_q^t$ so that high flux events are prominent. (c) Monthly averaged turbulent $J_s^t$ through salinity surfaces $S=34.25, 34.75$ and $35.5$. These are estimated by bin averaging the values in (b) in bins with edges [34, 34.5, 35, 36]. Bins with less than one instrument-month of data are not shown. Those with less than two instrument months of data are grayed out. Only one bin has more than three instrument-months of data. (d) Monthly averaged surface salinity flux $S_0 (E-P)$ estimated using evaporation from OAFlux and precipitation from TRMM. $S_0$ is assumed to be 32. In orange is $J_s^t$ through $S=34.75$ from (c) with bootstrap error bars.
 [[file:images/paper1/8N-binned-avg-js-ep.png]]
 
 * Summary
