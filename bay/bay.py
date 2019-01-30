@@ -2,6 +2,7 @@ import airsea
 import cycler
 import numpy as np
 import pandas as pd
+import scipy as sp
 import tqdm
 
 import dcpy.oceans
@@ -413,3 +414,35 @@ def calc_isohaline_depth(data=None, S0=34.75, split=False):
     #             .sel(**bay.region))
 
     return isodepth
+
+
+def generate_mean_median_dataframe():
+
+    print('Generating table of means & medians')
+
+    import scikits.bootstrap as bs
+
+    turb = nc_to_binned_df()
+
+    dflist = []
+    for (season, name), group in tqdm.tqdm(
+            turb[['KT', 'z']].groupby([turb.season, turb.bin])):
+
+        ci_mean = bs.ci(group.KT, np.mean)
+        ci_median = bs.ci(group.KT, np.median)
+        dflist.append(pd.DataFrame({'season': season,
+                                    'bin': name,
+                                    'KT_mean': group.KT.mean(),
+                                    'KT_median': group.KT.median(),
+                                    'ci_mean': [ci_mean],
+                                    'ci_median': [ci_median],
+                                    'z': sp.stats.trim_mean(group.z, 0.1)},
+                                   index=[0]))
+
+    df = pd.concat(dflist)
+    df['season'] = df.season.astype('category')
+    df['bin'] = df['bin'].astype('category')
+
+    df.to_csv('~/bay/estimates/mean_median_KT.csv')
+
+    return df

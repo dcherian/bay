@@ -389,6 +389,30 @@ seaborn_vert_distrib(KTdf, 'mean_depth', 'kde')
 #+END_SRC
 #+RESULTS:
 [[file:images/bay-KT-vert-hist-depths.png]]
+** salt flux @ 8N using K_T and climatological S_z
+
+#+BEGIN_SRC ipython :session :results output drawer
+KT = xr.DataArray([1e-5, 1e-6, 1e-4, 1e-4],
+                  dims=['monsoon'],
+                  coords={'monsoon':bay.seasons})
+
+argo = dcpy.oceans.read_argo_clim()
+argoS = (argo.S.sel(lat=8, method='nearest')
+         .sel(lon=slice(85, 89), pres=slice(0, 500))
+         .groupby(argo.time.monsoon.labels).mean('time')
+         .mean('lon').load())
+Si = argoS.interp(pres=np.arange(0, argoS.pres.max(), 1))
+S0_depth = np.abs(Si - 34.5).argmin('pres')
+S1_depth = np.abs(Si - 35).argmin('pres')
+
+dSdz = xr.zeros_like(KT)
+for ss in bay.seasons:
+    dSdz.loc[dict(monsoon=ss)] = (argoS.sel(monsoon=ss).differentiate('pres')
+                                  .interp(pres=S0_depth.sel(monsoon=ss)))
+
+print(KT * dSdz / 1e-6)
+#+END_SRC
+
 ** nutrient fluxes
 #+BEGIN_SRC ipython :session :ipyfile images/temp/imgDBOejX.png
 df = bay.convert_nc_to_binned_df()
@@ -2013,8 +2037,7 @@ f.savefig('images/wind-KT-correlations.png')
 #+CAPTION: Trying scatter plot / correlations. Good results for the 15m instrument @ RAMA 12N. 30m, 45m not so much.
 [[file:images/wind-KT-correlations.png]]
 
-** all NRL
-*** low- & high-pass shear variance
+** low- & high-pass shear variance
 
 #+BEGIN_SRC ipython :session
 turb = xr.open_dataset("../estimates/bay_merged_hourly.nc")
@@ -2134,6 +2157,8 @@ f.savefig("images/shear-scatter-" + mooring.name.lower() + ".png")
 
 # ax[0].legend(bay.seasons)
 #+END_SRC
+#+CAPTION: NRL1
+file:images/shear-scatter-nrl1.png
 #+CAPTION: NRL3
 file:images/shear-scatter-nrl3.png
 #+CAPTION: NRL4
@@ -2141,7 +2166,7 @@ file:images/shear-scatter-nrl4.png
 #+CAPTION: NRL5
 [[file:images/shear-scatter-nrl5.png]]
 
-*** Shear variance + N²
+** Shear variance + N²
 #+BEGIN_SRC ipython :session
 f, axx = plt.subplots(2, 2, constrained_layout=True, sharex=True, sharey=True)
 
@@ -2183,9 +2208,8 @@ ax.set_ylim([0, 4e-4])
 #+CAPTION: ε binned by $N²$ and $S²$ (niw) NRL1 looks odd.
 [[file:images/nrl-shear-n2-eps.png]]
 
-*** older stuff
+** older stuff
 
-***
 #+BEGIN_SRC ipython :session
 # slab_file = xr.open_dataset('../estimates/merra2-wind-power-input-2014.nc')
 
@@ -6385,35 +6409,17 @@ will need to follow cite:Gumley2010.
 ** summary paper
 *** Figure 6: bootstrap CI
 #+BEGIN_SRC ipython :session
-import scikits.bootstrap as bs
-import tqdm
+if 'mmkt' not in locals():
+    mmkt = bay.generate_mean_median_dataframe()
 
-if 'turb' not in locals():
-    turb = bay.nc_to_binned_df()
 
-if 'df' not in locals():
-    dflist = []
-    for (season, name), group in tqdm.tqdm(
-            turb[['KT', 'z']].groupby([turb.season, turb.bin])):
 
-        ci = bs.ci(group.KT)
-        dflist.append(pd.DataFrame({'season': season,
-                                    'bin': name,
-                                    'KT': group.KT.mean(),
-                                    'ci': [ci],
-                                    'z': sp.stats.trim_mean(group.z, 0.1)},
-                                   index=[0]))
+# bay.plots.vert_distrib(df, df.bin, kind='mean_ci_profile',
+#                        label_moorings=False, add_offset=True,
+#                        xlim=[-7.5, -2])
+# plt.subplots_adjust(wspace=0)
 
-    df = pd.concat(dflist)
-    df['season'] = df.season.astype('category')
-    df['bin'] = df['bin'].astype('category')
-
-bay.plots.vert_distrib(df, df.bin, kind='mean_ci_profile',
-                       label_moorings=False, add_offset=True,
-                       xlim=[-7.5, -2])
-plt.subplots_adjust(wspace=0)
-
-plt.savefig('images/paper1/mean-profile.pdf', bbox_inches='tight')
+# plt.savefig('images/paper1/mean-profile.pdf', bbox_inches='tight')
 #+END_SRC
 #+CAPTION:
 [[file:images/paper1/mean-profile.pdf]]

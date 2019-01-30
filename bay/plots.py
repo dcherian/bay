@@ -275,7 +275,7 @@ def vert_distrib(df, bins, varname='KT', kind='distribution',
     ax = {'NE': axx[0], 'NESW': axx[1], 'SW': axx[2], 'SWNE': axx[3]}
 
     if varname is 'KT':
-        title = '$\\log_{10}$ hourly averaged $K_T$ (m²/s)'
+        title = '$\\log_{10}$ hourly averaged $K_T$ [m²/s]'
         xlim = kwargs.pop('xlim', [-7.5, 2])
         xlines = kwargs.pop('xlines', [-5, -4])
     else:
@@ -368,7 +368,7 @@ def vert_distrib(df, bins, varname='KT', kind='distribution',
                             color=color, ha='left',
                             va='center', fontsize=6)
 
-    ax['NE'].set_ylabel('depth (m)')
+    ax['NE'].set_ylabel('depth [m]')
     ax['NE'].set_ylim([120, 0])
     # ax['NE'].set_yticks(np.arange(120,0,-20))
     # ax['NE'].set_yticklabels(np.arange(120,0,-10).astype('str'))
