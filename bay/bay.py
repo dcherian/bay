@@ -52,8 +52,7 @@ def make_merged_nc(moorings):
 
     for m in tqdm.tqdm(moorings):
         subset = (m.turb.reset_coords(['ρ', 'S', 'T', 'z', 'mld', 'ild'])
-                  .expand_dims(['lat', 'lon'])
-                  .drop(['χ', 'N2', 'Tz', 'Sz']))
+                  .expand_dims(['lat', 'lon']))
 
         if m.name == 'NRL1':
             subset.depth.values = [55.0, 75.0]
