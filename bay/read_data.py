@@ -162,7 +162,7 @@ def read_nrl4(minimal=False):
     nrl4 = moor.moor(87, 8, 'NRL4', 'nrl4', 'ebob', '../ebob/')
     nrl4.ReadCTD('NRL4', FileType='ebob')
     nrl4.AddChipod(514, 55, 'mm1', 'Turb.mat')
-    nrl4.AddChipod(516, 75, 'mm', 'Turb.mat')
+    nrl4.AddChipod(516, 75, 'mm2', 'Turb.mat')
     nrl4.AddEvents('SLD', '2014-06-01', '2014-09-01')
 
     if not minimal:
