@@ -4003,6 +4003,14 @@ f.savefig('images/8N-events.png')
 [[file:8N-jq-js-separated.png
 ]]
 
+* Seasonal salt budgets
+citep:Wilson2016:
+1. *BIAS* we find that HYCOM’s internal freshwater forcing does not adequately reproduce the observed freshwater fluxes over the bay.
+2. *BIAS* Late fall (Oct-Dec): because HYCOM predicts that the water exported out of the bay by the EICC is more saline than the water flowing into the bay elsewhere. This is because HYCOM (incorrectly) simulates a relatively saline EICC during this time
+3. However, between September and December, ΔS_{residual} is relatively large and positive. During these months, the upper BoB experiences its most rapid increase in salinity but none of the computed flux terms can explain this increase. If we assume that this residual is mostly due to salinity fluxes associated with vertical salt fluxes, we would conclude that ΔS_{vmix} is negligibly small for most of the year except during the months that immediately follow the summer monsoon. This conclusion is physically reasonable as the vertical salinity gradient is relatively weak during the first half of the year but very strong during the months that follow the summer monsoon.
+4. *BIAS CORRECTED* The ΔS_{residual} is still negligibly small between January and April but now ranges between 0.1 and 0.25 psu/month between May and November. If we again assume that ΔS_{residual} mostly captures the effect of vertical processes, we would conclude that vertical salinity fluxes have a major effect on near-surface salinities during and immediately following summer monsoon.
+5. From our budget analysis, we deduce that /vertical salt fluxes, across the base of the mixed layer, are largely responsible for counterbalancing the freshening of the near-surface layer caused by summertime freshwater fluxes.// These results corroborate previous findings that highlight the importance of vertical mixing (e.g., Vinayachandran et al. 2013; Benshila et al. 2014; Akhil et al. 2014). The certainty of these results is undermined by the fact that HYCOM is likely overestimating the strength of vertical mixing in the upper 50 m of the bay. This is evidenced by the slight but persistent negative salinity biases observed below the mixed layer for most of the year (Fig. 5b). However, even after accounting for these biases, we still conclude that vertical salinity fluxes are necessary to close the near-surface salinity budget.
+6. For our focus period, years 2008 to 2013, we find that /horizontal salt fluxes across 108N, in the upper 30 m, are not large enough/ to compensate for the huge freshening caused by surface freshwater fluxes. This holds true even after we accounted for the model’s positive salinity bias along the path of the EICC.
 * NRL4 details
 ** paper summary
 #+BEGIN_SRC ipython :session
