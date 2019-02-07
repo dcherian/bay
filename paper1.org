@@ -1281,6 +1281,11 @@ ax[1].set_ylabel('$S$')
 
 ax[1].xaxis.set_major_locator(mpl.dates.MonthLocator())
 ax[1].set_xticklabels([])
+dcpy.plots.liney([34, 34.5, 35, 35.5], zorder=10, lw=1.2, color='k', ax=ax[1], ls='-')
+for tt in pd.date_range('01-Jan-2014', '01-Jan-2015', freq='MS'):
+    hl = ax[1].plot([tt, tt], [35.5, 34], lw=1.2, color='k', ls='-')
+    hl[0].set_clip_on(False)
+
 # ax[1].xaxis.set_major_formatter(mpl.dates.DateFormatter('%b'))
 f.colorbar(hh, ax=ax[:2], extend='max', shrink=0.8, aspect=30, pad=0.0,
            orientation='vertical', label=r'hourly mean salt flux $J_s^t$')
