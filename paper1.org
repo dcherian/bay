@@ -777,13 +777,12 @@ We leave a more detailed examination of the mesoscale, the near-inertial wave fi
 # 1. High NIW shear during NE monsoon but higher stratification presumably suppresses turbulence.
 # 2. Are there independent M2 soliton or is the inertial peak losing energy to freely propagating waves.
 
-** Figure 5: NRL time series :ignore:
+*** Figure 5: NRL time series                                      :ignore:
 
 #+BEGIN_SRC ipython :session
-if 'nrl5' not in locals():
-    nrl5 = bay.read_nrl5()
+mooring = nrl5
 
-shear = nrl5.interp_shear('bins')
+shear = mooring.interp_shear('bins', wkb_scale=True)
 
 from dcpy.plots import annotate_end, set_axes_color
 
@@ -792,92 +791,97 @@ f5.set_constrained_layout_pads(hspace=0.001, h_pad=0)
 f5.set_size_inches((8, 8))
 
 niw_shear = xfilter.bandpass(shear.shear, 'time',
-                             freq=np.array([1/2, 2])*nrl5.inertial.values,
+                             freq=np.array([1/2, 2])*mooring.inertial.values,
                              order=3, cycles_per='D')
 low_shear = xfilter.lowpass(shear.shear, 'time',
                             freq=0.1, cycles_per='D', order=3)
 
-hniw = (((niw_shear).rolling(time=7*24).reduce(dcpy.util.ms) * 1e5)
+N = np.sqrt(mooring.N2.isel(depth=1)
+            .resample(time='M').mean('time')
+            .interp(time=niw_shear.time))
+hniw = (((niw_shear).rolling(time=7*24).reduce(dcpy.util.ms)* 1e5)
         .sel(time='2014')
-        .plot(ax=axx5[-2], _labels=False, color='g', lw=1.2))
+        .plot(ax=axx5[-2], _labels=False, color='g', lw=1.5))
 hlow = ((np.abs(low_shear.sel(time='2014'))**2 * 1e5)
-        .plot(ax=axx5[-2], _labels=False, color='k', lw=1.2))
-annotate_end(hlow[0], 'low pass')
+        .plot(ax=axx5[-2], _labels=False, color='k', lw=1.5))
+annotate_end(hlow[0], 'low pass', va='top')
 annotate_end(hniw[0], '  near\n  inertial', va='center')
 hniw[0].set_clip_on(False)
 hniw[0].set_in_layout(False)
-nrl5.MarkSeasonsAndEvents(events='Storm-zoomin', ax=axx5[-2])
-axx5[-2].set_ylabel('Squared shear\n[$10^{-5}$ s$^{-2}$]')
-axx5[-2].set_ylim([0, 6])
+hlow[0].set_clip_on(False)
+hlow[0].set_in_layout(False)
+mooring.MarkSeasonsAndEvents(events='Storm-zoomin', ax=axx5[-2])
+axx5[-2].set_ylabel('Squared WKB shear\n[$10^{-5}$ s$^{-2}$]')
+axx5[-2].set_ylim([0, 8])
 
-axnrl5 = bay.plots.plot_moor(nrl5, idepth=1, axx=axx5, events='Storm-zoomin')
-axnrl5['jq'].set_ylim([-20, 0])
-axnrl5['js'].set_ylim([0, 2e-1])
+axmooring = bay.plots.plot_moor(mooring, idepth=1, axx=axx5, events='Storm-zoomin')
+axmooring['jq'].set_ylim([-20, 0])
+axmooring['js'].set_ylim([0, 0.5])
 
 # fill in the 20m gap with linear interpolation
 # then interpolate velocity to CTD depths
 # then difference to get shear
-zinterp = nrl5.ctd.depth.isel(z=slice(1, 3))
-vel_interp = (nrl5.vel[['u', 'v']].interpolate_na('depth')
+zinterp = mooring.ctd.depth.isel(z=slice(1, 3))
+vel_interp = (mooring.vel[['u', 'v']].interpolate_na('depth')
               .interp(time=zinterp.time, depth=zinterp.drop('depth')))
 shear_interp = (np.hypot(vel_interp.u.diff('z')/15, vel_interp.v.diff('z')/15)
                 .squeeze())
 
-N2 = ((9.81/1025 * nrl5.ctd.ρ.diff('z')/nrl5.ctd.depth.diff('z'))
+N2 = ((9.81/1025 * mooring.ctd.ρ.diff('z')/mooring.ctd.depth.diff('z'))
       .isel(z=1))
 Ri = (N2.where(N2 > 0)/shear_interp**2).sel(time='2014')
 
-axnrl5['ri'] = axx5[-1]
+axmooring['ri'] = axx5[-1]
 ((Ri.where(Ri < 5).resample(time='D').count()/144)
- .plot(ax=axnrl5['ri'], label='< 10', _labels=False, color='k'))
-axnrl5['ri'].set_ylabel('Fraction of day\nwith Ri < 5')
-nrl5.MarkSeasonsAndEvents(events='Storm-zoomin', ax=axnrl5['ri'])
+ .plot(ax=axmooring['ri'], label='< 10', _labels=False, color='k'))
+axmooring['ri'].set_ylabel('Fraction of day\nwith Ri < 5')
+mooring.MarkSeasonsAndEvents(events='Storm-zoomin', ax=axmooring['ri'])
 
-axnrl5['depth'] = axnrl5['ri'].twinx()
-(nrl5.zχpod.sel(num=1).resample(time='D').mean('time')
- .plot(ax=axnrl5['depth'], _labels=False, color='C0', lw=1.2))
-set_axes_color(axnrl5['depth'], 'C0', spine='right')
-axnrl5['depth'].set_ylabel('$χ$pod depth [m]')
-axnrl5['depth'].set_ylim([90, 140])
+axmooring['depth'] = axmooring['ri'].twinx()
+(mooring.zχpod.sel(num=1).resample(time='D').mean('time')
+ .plot(ax=axmooring['depth'], _labels=False, color='C0', lw=1.2))
+set_axes_color(axmooring['depth'], 'C0', spine='right')
+axmooring['depth'].set_ylabel('$χ$pod depth [m]')
+axmooring['depth'].set_ylim([60, 140])
 
-axnrl5['input'] = axnrl5['met'].twinx()
-axnrl5['input'].plot(nrl5.niw.time, nrl5.niw.true_flux*1000, color='C0')
-axnrl5['input'].set_ylabel('Near-inertial input\n$Π$[mW/m²]')
-set_axes_color(axnrl5['input'], 'C0', spine='right')
+axmooring['input'] = axmooring['met'].twinx()
+axmooring['input'].plot(mooring.niw.time, mooring.niw.true_flux*1000, color='C0')
+axmooring['input'].set_ylabel('Near-inertial input\n$Π$[mW/m²]')
+set_axes_color(axmooring['input'], 'C0', spine='right')
 
 dcpy.plots.label_subplots(axx5, x=0.025, y=0.83)
 
 [tt.set_rotation(0) for tt in axx5[-1].get_xticklabels()]
 [tt.set_ha('center') for tt in axx5[-1].get_xticklabels()]
 
-f5.savefig('images/paper1/nrl5.pdf')
+f5.savefig('images/paper1/' + mooring.name.lower() + '.pdf')
 
-# shear_interp = (nrl5.vel.shear
+# shear_interp = (mooring.vel.shear
 #                 .interp(time=zpod.time, depth=zpod.isel(num=1))
 #                 .interpolate_na('time'))
-# axnrl5['depth'] = axx5[-1].twinx()
+# axmooring['depth'] = axx5[-1].twinx()
 
-# (nrl5.zχpod.isel(num=1).resample(time='D').mean('time')
-#  .plot.line(x='time', ax=axnrl5['depth'], color='C0'))
-# set_axes_color(axnrl5['depth'], 'C0', spine='right')
-# axnrl5['depth'].set_title('')
+# (mooring.zχpod.isel(num=1).resample(time='D').mean('time')
+#  .plot.line(x='time', ax=axmooring['depth'], color='C0'))
+# set_axes_color(axmooring['depth'], 'C0', spine='right')
+# axmooring['depth'].set_title('')
 
 # bpshear = mooring.calc_shear_bandpass(depth=120).to_array('band')
 # (bpshear.sel(time='2014').sel(band=['f0', 'M4'])
 #  .rolling(time=24*5).var()
 #  .plot.line(x='time', add_legend=True, ax=axx5[-1]))
 
-# bpshear2 = nrl5.calc_shear_bandpass(depth=50).to_array('band')
+# bpshear2 = mooring.calc_shear_bandpass(depth=50).to_array('band')
 # (bpshear2.sel(time='2014').sel(band='f0')
 #  .rolling(time=24*5).var()
 #  .plot.line(x='time', ax=axx5[-1]))
 
-# shear = (nrl5.calc_shear_bandpass(depth=120).sel(time='2014')
+# shear = (mooring.calc_shear_bandpass(depth=120).sel(time='2014')
 #          .resample(time='D').var())
 
-# hm2 = (shear['M2']/1e-6).plot(ax=axnrl5['shear'])
-# hm4 = (shear['M4']/1e-6).plot(ax=axnrl5['shear'])
-# hf0 = (shear['f0']/1e-6).plot(ax=axnrl5['shear'])
+# hm2 = (shear['M2']/1e-6).plot(ax=axmooring['shear'])
+# hm4 = (shear['M4']/1e-6).plot(ax=axmooring['shear'])
+# hf0 = (shear['f0']/1e-6).plot(ax=axmooring['shear'])
 # for hh in [hm2, hm4, hf0]:
 #     hh[0].set_clip_on(False)
 #     hh[0].set_in_layout(False)
@@ -894,34 +898,43 @@ f5.savefig('images/paper1/nrl5.pdf')
 # # axes['shear'].set_ylim([0, 2.5])
 #+END_SRC
 #+NAME: fig:nrl
-#+CAPTION: NRL5: Time series of daily averaged quantities: (a) wind stress and local wind-forced near-inertial energy flux; (b) daily averaged $K_T$ and fraction daily coverage; (c) turbulent heat and salt fluxes $J_q^t, J_s^t$; (d) Buoyancy frequency $N²$ and temperature stratification $T_z$; (e) Weekly running mean of filtered squared shear magnitude: 6.6 day low pass in black and near-inertial bandpass in green; (f) Fraction of day where Richardson number Ri < 5. Background colors mark seasons; white region indicates time period that is subject of Figure [[fig:nrl-niw]].
+#+CAPTION: A year of observations at NRL5. Time series of daily averaged quantities: (a) Tropflux wind stress and wind-forced near-inertial energy flux; (b) daily averaged $K_T$ and fraction daily coverage; (c) turbulent heat and salt fluxes $J_q^t, J_s^t$; (d) Buoyancy frequency $N²$ and temperature stratification $T_z$; (e) Weekly running mean of filtered squared shear magnitude: 6.6 day low pass in black and near-inertial bandpass in green; (f) Fraction of day where Richardson number Ri < 5. Background colors mark seasons; white region indicates time period that is subject of Figure [[fig:nrl5-niw]].
 [[file:images/paper1/nrl5.pdf]]
 
-** Figure 6: NRL5 zoom-in :ignore:
+*** Figure 6: NRL5 zoom-in                                         :ignore:
 
 #+BEGIN_SRC ipython :session :results none
 trange = slice(nrl5.events['Storm-zoomin'][0],
                nrl5.events['Storm-zoomin'][1])
 
-f, ax = plt.subplots(3, 1, sharex=True, constrained_layout=True,
-                     gridspec_kw={'height_ratios': [1.5, 1, 2]})
+f, ax = plt.subplots(2, 1, sharex=True, constrained_layout=True,
+                     gridspec_kw={'height_ratios': [1, 2]})
 f.set_size_inches((6.5, 5))
 
 color = 'C0'
-Jqi = (nrl5.Jq.sel(time=trange).isel(depth=1)
-       .interpolate_na('time'))
-Jqi[Jqi < -200] = -200
-Jqi = Jqi.resample(time='30min').mean('time')
-ax[0].fill_between(Jqi.time.values, Jqi.values, color=color, alpha=0.2)
-hjq = (Jqi.plot.line(x='time', ax=ax[0], ylim=[-200, 0],
-                     add_legend=True, color=color, lw=1))
-ax[0].set_ylabel('$J_q^t$ [W/m²]')
-# hjq[0].set_clip_on(False)
+
+# shear = nrl5.interp_shear('bins')
+# (xfilter.lowpass((shear.sel(time=trange).shear),
+#                  coord='time', freq=1/4, cycles_per='h')
+#  .plot.line(x='time', ax=ax[0], color=color, lw=1))
+# # Jqi = (nrl5.Jq.sel(time=trange).isel(depth=1)
+# (xfilter.lowpass((shear.sel(time=trange).uz),
+#                  coord='time', freq=1/4, cycles_per='h')
+#  .plot.line(x='time', ax=ax[0], color='C1', lw=1))
+# # Jqi = (nrl5.Jq.sel(time=trange).isel(depth=1)
+#        .interpolate_na('time'))
+# Jqi[Jqi < -200] = -200
+# Jqi = Jqi.resample(time='30min').mean('time')
+# ax[0].fill_between(Jqi.time.values, Jqi.values, color=color, alpha=0.2)
+# hjq = (Jqi.plot.line(x='time', ax=ax[0], ylim=[-200, 0],
+#                      add_legend=True, color=color, lw=1))
+# ax[0].set_ylabel('$J_q^t$ [W/m²]')
+# # hjq[0].set_clip_on(False)
 # hjq[0].set_in_layout(False)
 
 (nrl5.ε.sel(time=trange).isel(depth=1).interpolate_na('time')
- .resample(time='30min').mean('time')
- .plot.line(x='time', ax=ax[1], yscale='log', ylim=[1e-11, 1e-6],
+ .resample(time='30min', loffset='15min').mean('time')
+ .plot.line(x='time', ax=ax[-2], yscale='log', ylim=[1e-11, 1e-6],
             add_legend=False, color=color, lw=1))
 ax[1].set_ylabel('$ε$ [W/kg]')
 
@@ -930,24 +943,28 @@ shear = (nrl5.vel.uz.rolling(depth=3, center=True, min_periods=1).mean())
 shear.dc.set_name_units('Zonal shear', '1/s')
 
 (shear.sel(time=trange, depth=slice(90, 300))
- .plot.contourf(yincrease=False, cmap=mpl.cm.RdYlBu_r, ax=ax[2],
+ .plot.contourf(yincrease=False, cmap=mpl.cm.RdYlBu_r, ax=ax[-1],
                 levels=20, vmax=0.01,
                 cbar_kwargs={'orientation': 'horizontal', 'shrink': 0.7,
                              'ticks': np.arange(-0.01, 0.011, 0.005)}))
 
+(nrl5.ctd['T'].sel(time=trange)
+ .resample(time='H', loffset='30min').mean('time')
+ .plot.contour(levels=np.arange(17, 20.1, 2.5),
+               colors='w', yincrease=False, linewidths=2.5))
 hT = (nrl5.ctd['T'].sel(time=trange)
-      .resample(time='H', loffset='-30min').mean('time')
+      .resample(time='H', loffset='30min').mean('time')
       .plot.contour(levels=np.arange(17, 20.1, 2.5),
-                    colors='k', yincrease=False, linewidths=0.8))
-dcpy.plots.contour_label_spines(hT, prefix='$T$ =', fmt='%.1f')
+                    colors='k', yincrease=False, linewidths=1))
+dcpy.plots.contour_label_spines(hT, prefix='$T$=', fmt='%.1f')
 
 (nrl5.zχpod.sel(time=trange).isel(num=1)
- .plot.line(x='time', ax=ax[2], color='w', lw=2.5,
+ .plot.line(x='time', ax=ax[-1], color='w', lw=2.5,
             add_legend=False, _labels=False))
 hz = (nrl5.zχpod.sel(time=trange).isel(num=1)
-      .plot.line(x='time', ax=ax[2], color='k', lw=1,
+      .plot.line(x='time', ax=ax[-1], color='k', lw=1,
                  add_legend=False, _labels=False))
-ax[2].set_xlim(trange.start, trange.stop)
+ax[-1].set_xlim(trange.start, trange.stop)
 dcpy.plots.annotate_end(hz[0], r'$χ$pod', va='center')
 
 [aa.set_title('') for aa in ax]
@@ -955,10 +972,10 @@ dcpy.plots.annotate_end(hz[0], r'$χ$pod', va='center')
 ax[-1].set_ylabel('depth [m]')
 [tt.set_rotation(0) for tt in ax[-1].get_xticklabels()]
 [tt.set_ha('center') for tt in ax[-1].get_xticklabels()]
-ax[2].set_ylim([250, 90])
+ax[-1].set_ylim([250, 90])
 
 dcpy.plots.label_subplots(ax[:-1], x=0.03)
-ax[-1].text(0.03, 0.05, '(c)', transform=ax[-1].transAxes)
+ax[-1].text(0.03, 0.05, '(b)', transform=ax[-1].transAxes)
 
 # label timescales
 harr = ax[-1].plot((np.datetime64('2014-08-01 05:00'),
@@ -969,25 +986,34 @@ harr = ax[-2].plot((np.datetime64('2014-08-01 05:00'),
                     np.datetime64('2014-08-01 17:25')),
                    (2e-10, 2e-10), color='k')
 
+# harr = ax[0].plot((np.datetime64('2014-07-30 12:00'),
+#                    np.datetime64('2014-07-31 00:25')),
+#                    (5e-3, 5e-3), color='k')
+
 ax[-2].text(np.datetime64('2014-08-01 11:00'), 1.5e-10, '$M_2$',
             ha='center', va='top')
-
 ax[-1].text(np.datetime64('2014-08-01 11:00'), 208, '$M_2$',
-harr = ax[-1].plot((np.datetime64('2014-07-27 00:00'),
-                    np.datetime64('2014-07-30 14:10')),
+            ha='center', va='top')
+# ax[0].text(np.datetime64('2014-07-30 18:00'), 4.9e-3, '$M_2$',
+#            ha='center', va='top')
+
+harr = ax[-1].plot((np.datetime64('2014-07-26 20:00'),
+                    np.datetime64('2014-07-30 10:10')),
                    (205, 205), color='k')
-ax[-1].text(np.datetime64('2014-07-28 19:12'), 208, '$f_0$',
+ax[-1].text(np.datetime64('2014-07-28 15:12'), 208, '$f_0$',
             ha='center', va='top')
 
 ax[-1].xaxis.set_major_formatter(mpl.dates.DateFormatter('%b-%d'))
 
+f.set_size_inches((6.5, 4))
+
 f.savefig('images/paper1/nrl5-aug-niw-mixing.pdf')
 #+END_SRC
 #+NAME: fig:nrl5-niw
-#+CAPTION: An example of pumping of the near-inertial shear layers past the χpod by the nonlinear $M_2$ tide at NRL5. Time series of (a) turbulent heat flux $J_q^t$ (b) TKE dissipation $ε$ and (c) zonal shear for a period of high mixing associate with passage of a downward propagating near-inertial wave packet.
+#+CAPTION: An example of pumping of the near-inertial shear layers past the χpod by the $M_2$ tide at NRL5. The time period of focus is highlighted in white in Figure [[fig:nrl]]. Time series of (a) TKE dissipation $ε$ and (b) zonal shear for a period of high mixing associated with downward propagating near-inertial energy.
 [[file:images/paper1/nrl5-aug-niw-mixing.pdf]]
 
-** Figure 7: NRL scatter plots :ignore:
+*** Figure 7: NRL scatter plots                                    :ignore:
 
 #+BEGIN_SRC ipython :session
 import cycler
@@ -995,17 +1021,26 @@ import statsmodels.api as sm
 from statsmodels.sandbox.regression.predstd import wls_prediction_std
 
 timescale = "M"
-if timescale == 'M':
-    window = 30
-elif timescale == '3W':
-    window = 21
-elif timescale == '2W':
-    window = 15
-elif timescale == 'W':
-    window = 7
+skip_outliers = True
 
-def _mean(variable, meanfunc, stdfunc, timescale=timescale):
-    if timescale == 'M':
+def _get_outliers(mooring):
+
+    if mooring.name == 'NRL1':
+        idx = [-1]
+    if mooring.name == 'NRL3':
+        idx = [0]
+    if mooring.name == 'NRL4':
+        idx = [2]
+    if mooring.name == 'NRL5':
+        idx = [2, 3, 10]
+
+    return idx
+
+def _get_window(timescale):
+    ''' Translates resample timescale to rolling window length.'''
+    if timescale == '2M':
+        window = 60
+    elif timescale == 'M':
         window = 30
     elif timescale == '3W':
         window = 21
@@ -1014,6 +1049,10 @@ def _mean(variable, meanfunc, stdfunc, timescale=timescale):
     elif timescale == 'W':
         window = 7
 
+    return window
+
+def _mean(variable, meanfunc, stdfunc, timescale=timescale):
+    window = _get_window(timescale)
     resampler = variable.resample(time=timescale)
     count = resampler.count()
     out = xr.Dataset()
@@ -1022,6 +1061,14 @@ def _mean(variable, meanfunc, stdfunc, timescale=timescale):
 
     out['std'] = (resampler.apply(stdfunc)
                   .where(count/24/window > 0.5))
+
+    if variable.name == 'ε':
+        out['mean'].attrs['long_name'] = '$ε$'
+        out['mean'].attrs['units'] = 'W/kg'
+
+    elif variable.name == 'KT':
+        out['mean'].attrs['long_name'] = '$K_T$'
+        out['mean'].attrs['units'] = 'm²/s'
 
     return out
 
@@ -1052,51 +1099,53 @@ for estimate in ax:
                .dropna("depth", how="all")
                .isel(depth=1))
 
-        epsr = _mean(mix.ε, np.mean, np.std, timescale)
-        shear = _mean(locals()[estimate],
+        shear_vec = locals()[estimate]
+        # N2 = mix.N2.interp(time=shear_vec.time)
+        # Ri = (N2/np.abs(shear_vec)**2)
+        # Rir = _mean(Ri.where(Ri < 100), np.mean, np.std, timescale)
+
+        # N2r = _mean(mix.N2, np.mean, np.std, timescale).interp(time=turbr)
+        turbr = _mean(mix.eps, np.mean, np.std, timescale)
+        shear = _mean(shear_vec,
                       dcpy.util.ms,
                       (lambda da: (np.abs(da**2)).std('time')),
-                      timescale).interp(time=epsr.time)
+                      timescale).interp(time=turbr.time)
+
+        # shear['mean'] = N2r['mean']/shear['mean']
 
         # he.append(ax[estimate].errorbar(
         #     np.log10(shear['mean']),
-        #     np.log10(epsr["mean"]),
+        #     np.log10(turbr["mean"]),
         #     xerr=(np.log10(shear['mean'] + shear['std'].values/np.sqrt(window * 24))
         #           - np.log10(shear['mean'])),
-        #     yerr=(np.log10(epsr['mean'] + epsr['std'].values / np.sqrt(window * 24))
-        #           - np.log10(epsr['mean'])),
+        #     yerr=(np.log10(turbr['mean'] + turbr['std'].values / np.sqrt(window * 24))
+        #           - np.log10(turbr['mean'])),
         #     fmt='o', ms=3))
 
+        window = _get_window(timescale)
         he.append(ax[estimate].errorbar(
             shear['mean'],
-            epsr["mean"],
+            turbr["mean"],
             xerr=shear['std'].values / np.sqrt(window * 24),
-            yerr=epsr['std'].values / np.sqrt(window * 24),
+            yerr=turbr['std'].values / np.sqrt(window * 24),
             fmt='o', ms=3))
 
         ax[estimate].set_xscale('log')
         ax[estimate].set_yscale('log')
 
-        if mooring.name == 'NRL1':
-            idx = [-1]
-        if mooring.name == 'NRL3':
-            idx = [0]
-        if mooring.name == 'NRL4':
-            idx = [2]
-        if mooring.name == 'NRL5':
-            idx = [2, 3, 10]
+        if skip_outliers:
+            idx = _get_outliers(mooring)
+            ax[estimate].plot(shear['mean'][idx],
+                              turbr['mean'][idx],
+                              'wo', ms=2, zorder=10)
+            turbr['mean'].values[idx] = np.nan
 
-        ax[estimate].plot(shear['mean'][idx],
-                          epsr['mean'][idx],
-                          'wo', ms=2, zorder=10)
-        epsr['mean'].values[idx] = np.nan
-
-
-        e.append(epsr['mean'].values)
-        eci.append(epsr['std'].values / np.sqrt(window * 24))
+        e.append(turbr['mean'].values)
+        eci.append(turbr['std'].values / np.sqrt(window * 24))
         s.append(shear['mean'].values)
 
-        ax[estimate].set_ylabel(r'$ε$ [W/kg]')
+        ax[estimate].set_ylabel(turbr['mean'].attrs['long_name']
+                                + '[' + turbr['mean'].attrs['units'] + ']')
 
     x = np.log10(np.hstack(s))
     idx = np.argsort(x)
@@ -1129,11 +1178,13 @@ for estimate in ax:
     # ax[estimate].fill_between(10**x_expanded, 10**iv_l, 10**iv_u,
     #                           color='k', alpha=0.1, zorder=-1, edgecolor=None)
 
-axx[0].set_ylim([10**-12, 10**-6])
-axx[0].set_xlim([10**-5.25, 10**-3.9])
-axx[1].set_xlabel(r"mean squared shear [$s^{-2}$]")
+# axx[0].set_ylim([10**-12, 10**-6])
+# axx[0].set_xlim([10**-5.25, 10**-3.9])
+axx[1].set_xlabel("mean squared shear [$s^{-2}$]")
 ax['niw'].legend(handles=he[len(labels):] + hfit + [herr],
-                 labels=labels+['power law fit', 'factor of 4\nerror in $ε$'],
+                 labels=labels+['power law fit',
+                                'factor of 4\nerror in '
+                                + turbr['mean'].attrs['long_name']],
                  loc='lower right', ncol=2)
 dcpy.plots.label_subplots(axx, labels=['total shear', 'near-inertial shear'])
 
@@ -1422,7 +1473,7 @@ ax[-1].set_xlabel('2014')
 [tt.set_visible(False) for tt in ax[2].get_xticklabels()]
 sns.despine(ax=ax[-1], trim=True)
 
-f.savefig('images/paper1/8°N-binned-avg-js-ep.png', bbox_to_inches='tight')
+f.savefig('images/paper1/8N-binned-avg-js-ep.png', bbox_to_inches='tight')
 #+END_SRC
 #+NAME: fig:8njs
 #+CAPTION: Turbulent salt flux $J_s^t$ at 8°N. (a, b) Scatter plots of hourly averaged $J_s^t$ in depth and salinity spaces respectively. Points with larger $J_s^t$ are plotted over points with lower $J_q^t$ so that high flux events are prominent. (c) Monthly averaged turbulent $J_s^t$ through salinity surfaces $S=34.25, 34.75$ and $35.5$. These are estimated by bin averaging the values in (b) in bins with edges [34, 34.5, 35, 36]. Bins with less than one instrument-month of data are not shown. Those with less than two instrument months of data are grayed out. (d) Monthly averaged surface salinity flux $S_0 (E-P)$ estimated using evaporation from OAFlux and precipitation from TRMM. $S_0$ is assumed to be 32. In orange is $J_s^t$ through $S=34.75$ from (c) with bootstrap error bars.
