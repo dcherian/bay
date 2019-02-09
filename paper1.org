@@ -9,18 +9,21 @@
 \renewcommand{\bibsection}{}
 \newcommand{\ML}{_\text{ML}}
 \newcommand{\niw}{^\text{in}}
+\newcommand{\wkb}{^\text{wkb}}
+\newcommand{\note}[1]{\marginpar{\vspace{4em} \small \textit{#1}}}
 
 \vspace{-5em}
 \tableofcontents*
 \newpage
 \begin{abstract}
-We describe the seasonal cycle of turbulent mixing as observed by moored turbulence sensors (χpods) deployed on moorings distributed throughout the Bay of Bengal in the north Indian Ocean during 2014 and 2015.
+We describe the seasonal cycle of turbulent mixing in the top \SI{100}{m} of the Bay of Bengal as observed by moored turbulence sensors (χpods) during 2014 and 2015.
 We combine all χpod observations to form seasonal-mean vertical profiles of diffusivity in the top 100m.
 The seasonal cycle of near-surface turbulent diffusivity (top 45m) in the Bay appears to follow the seasonal cycle in wind forcing.
 In the thermocline between \SI{50}{m} and \SI{100}{m}, we repeatedly find that high mixing events coincide with the passage of surface-forced downward propagating near-inertial waves and occasionally with the presence of enhanced low-frequency shear associated with the Summer Monsoon Current.
 The months of March and April, a period of weak wind forcing and low near-inertial shear amplitude, are characterized by near-laminar flow and near-molecular temperature diffusivities for weeks at a time.
-Both observations lead us to link the seasonal cycle of thermocline turbulence to the seasonal cycle of near-inertial energy flux in the Bay at two locations.
-Monthly averaged turbulent salt flux out of the warm salty Arabian Sea water mass at 8°N during the southwest monsoon is significant relative to local $E-P$.
+Both observations lead us to link the seasonal cycle of thermocline turbulence to the seasonal cycle of near-inertial energy flux in the Bay.
+In the thermocline at two moorings, monthly mean turbulent kinetic energy dissipation $ε$ is correlated with monthly mean squared near-inertial shear but this agreement breaks down at two other moorings.
+We also find that monthly averaged turbulent salt flux out of the salty Arabian Sea water mass being advected northward by the Summer Monsoon Current at 8°N between August and January can be significant relative to local $E-P$ and is of the right magnitude to make up the residual salt flux required by multiple model-based salt budgets for the upper Bay of Bengal.
 \end{abstract}
 #+END_EXPORT
 
@@ -51,7 +54,7 @@ if 'netflux' not in locals():
                     latitude=slice(2, 25),
                     longitude=slice(78, 96))
                .load())
-q
+
 if 'isodepth' not in locals():
     isodepth = bay.calc_isohaline_depth(34.75, split=True)
 
@@ -111,21 +114,34 @@ if 'turb' not in locals():
 #     true_input = true_input.where(np.abs(true_input) > 0)
 
 #+END_SRC
+
 * To do list: :noexport:
+
 1. RAMA vs. NRL figure
    - [ ] bootstrap error bars on K_T
 2. [ ] Describe sorted estimate algorithm
-3. [ ] Should I add depth of 34.75 isohaline as time-series at 8N? or seasonal average?
-4. [ ] Add stratification to NRL1
-5. [X] Make scatter plots for NRL
-6. [X] Need citation for paper with low turbulence measurements in the thermocline.
-7. [X] Need citation for Ritabrata's paper
-8. [X] Add basin-wide mean wind stress, ∫near-inertial input, ± heat flux
-9. cite:Sardessai2007
-10. [ ] cite:Vinayachandran2003 say that Ekman pumping pumps up nutrients to force a bloom during the NE monsoon. Maybe I can estimate this flux climatologically?
-11. [ ] Need to look at climatological Chl-a. Observations are not in the right place for the bloom reported in cite:Vinayachandran2003,Vinayachandran2005
+3. [ ] Add stratification to NRL1
+4. [X] Should I add depth of 34.75 isohaline as time-series at 8N? or seasonal average?
+5. [X] Could describe annual mean values in table and sort-of compare to cite:Zhang1998
+6. [X] Make scatter plots for NRL
+7. [X] Need citation for paper with low turbulence measurements in the thermocline.
+8. [X] Need citation for Ritabrata's paper
+9. [X] Add basin-wide mean wind stress, ∫near-inertial input, ± heat flux
+10. cite:Sardessai2007
+11. [ ] cite:Vinayachandran2003 say that Ekman pumping pumps up nutrients to force a bloom during the NE monsoon. Maybe I can estimate this flux climatologically?
+12. [ ] Need to look at climatological Chl-a. Observations are not in the right place for the bloom reported in cite:Vinayachandran2003,Vinayachandran2005
 
 \newpage
+
+* intro outline                                                    :noexport:
+
+1. Importance of mixing (and long-term mixing measurements) in the bay
+   1. Something about OMZ
+   2. Nutrient fluxes & seasonal cycle of Chl-A
+   3. near-surface connections to MISOs
+   4. Cyclones and heat-extraction from the Bay.
+
+2. cite:Vinayachandran2003: Primary production in the Bay is limited by nutrients, not light. (McGill 1973, Gomes et al 2000). The blooms in this paper are west of the EBoB array. There doesn't seem to be much action by the EBoB array but I need Chl-a data to really know.
 
 * Introduction
 
@@ -133,9 +149,11 @@ The Bay of Bengal is the eastern semi-enclosed basin of the north Indian Ocean.
 Large outflows from the Ganga, Brahmaputra, and Irrawady rivers and substantial precipitation combine to maintain strong salinity stratification that is thought to inhibit turbulent mixing and in turn help maintain a relatively shallow oxygen minimum zone citep:Paulmier2009.
 Yet mixing /is/ climatologically important.
 For one, during the southwest monsoon (May - Sep) the net surface heat flux warms the near-surface ocean on average yet the sea surface temperature (SST) cools citep:Warner2016,Shenoi2002.
-Second, the lack of overturning in the Bay implies that its long-time salt balance depends on the Summer Monsoon Current mixing up the relatively saltier Arabian Sea water it brings to the Bay citep:Vinayachandran2013.
+Second, the Bay's long-time salt balance depends on the Summer Monsoon Current mixing up the relatively saltier Arabian Sea water it brings to the Bay citep:Vinayachandran2013.
+In agreement with this idea, model studies have implicated vertical mixing as the primary mechanism of diluting the immense amount of freshwater received during the southwest monsoon citep:Akhil2014,Benshila2014,Wilson2016.
 
-The seasonality of wind forcing imprints seasonality on both turbulence (as we will show) and the Bay's circulation (our Figure ref:fig:spatial and citealp:Schott2002).
+#+LATEX: \note{seasonality of currents + 34.75 surface}
+The seasonality of wind forcing imprints seasonality on both turbulence (as we will show) and the Bay's circulation (our Figure ref:fig:spatial and citealp:Schott2002,Shankar2002).
 During the southwest monsoon (May-Sep, SW), precipitation over the Indian subcontinent and the southwesterly winds are strong.
 Over the ocean, the precipitation maximum occurs over the northeastern Bay.
 Episodic strong cyclones that interrupt periods of weak winds characterize the months of October and November (southwest to northeast transition, SWNE).
@@ -145,36 +163,21 @@ The months of March and April are a period of extremely weak winds and weak flow
 The East Indian Coastal Current spins up at the Bay's western boundary during both monsoons, flowing northward between May and October and then southward between December and April.
 In addition, a strong mesoscale cyclone spins up to the east of Sri Lanka during the SW monsoon, termed the Sri Lanka Dome.
 In the southwestern Bay, the Summer Monsoon Current (SMC) threads a pathway between the Sri Lanka Dome to the north and an anticyclone to the south, transporting warm salty Arabian Sea water in to the Bay.
-Meanders in the Summer Monsoon Current forced by Rossby waves that trace their origin back to wind fluctuations along the equator make the southwestern Bay a site of strong mesoscale activity during the southwest monsoon (our Figure ref:fig:spatial and citealp:Vinayachandran1998).
-The signature of the SMC is visible in maps of the depth of the 34.75 isohaline surface (Figure ref:fig:spatial, lower row).
-In the southwestern Bay, the surface shallows by \SI{25}{m} or so  during the summer monsoon relative to other times in the year.
+The signature of the SMC is visible in maps of the depth of the 34.75 isohaline surface which shallows by \SI{25}{m} or so in the southwestern Bay during the summer monsoon relative to other times in the year (Figure ref:fig:spatial, bottom row).
+The depth of this isohaline surface in Figure ref:fig:spatial is determined using the Argo climatology citep:Roemmich2009 but the results are consistent with the North Indian Ocean Atlas of cite:Chatterjee2012.
+Meanders in the Summer Monsoon Current forced by Rossby waves that trace their origin back to wind fluctuations along the equator make the southwestern and south-central Bay a site of strong mesoscale activity during the southwest monsoon (upper row of our Figure ref:fig:spatial and citealp:Vinayachandran1998).
 
-The seasonal cycle of winds implies a seasonal cycle of near-inertial energy flux $Π$ into the mixed layer.
-The middle panels of Figure [[fig:spatial]] shows an estimate of this cycle for the year 2014.
-We estimate $Π$ by following cite:Alford2003 and use a slab ocean mixed layer model with MERRA-2 10-m winds citep:Gelaro2017 and mixed layer depths from the Monthly Isopycnal Upper-Ocean Climatology with Mixed Layers (MIMOC) dataset citep:Schmidtko2013[fn::Also see Appendix A].
-As expected, the SW monsoon sees near-inertial flux nearly throughout the Bay.
-Perhaps surprisingly, the largest near-inertial fluxes are confined to latitudes south of 10N until the months of October and November where we see large input along the winter storm track in the Bay.
-The track of Tropical Cyclone Hudhud (October 8-11) is clearly visible in the near-inertial input field.
+#+LATEX: \note{seasonal cycle of near-inertial input}
+The seasonal cycle of winds implies a seasonal cycle of near-inertial energy flux in to the mixed layer $Π$.
+We estimate $Π$ by following cite:Alford2003 and use a slab ocean mixed layer model with MERRA-2 10-m winds citep:Gelaro2017 and climatological mixed layer depths from the Monthly Isopycnal Upper-Ocean Climatology with Mixed Layers (MIMOC) dataset citep:Schmidtko2013[fn::Also see Appendix A].
+The SW monsoon sees near-inertial flux nearly uniformly throughout the Bay (Figure ref:fig:spatial, middle row).
+Perhaps surprisingly, the largest near-inertial fluxes are confined to latitudes south of 10N until the months of October and November where we see large input between 12°N and 16°N associated with the passage of Tropical Cyclone Hudhud (October 5-14, 2014).
+The tracks of Very Severe Cyclonic Storm Madi (December 7-11, 2013) and Depression BOB01 (January 2-6, 2014) are also apparent in the near-inertial input field for the NE monsoon.
+Intense near-inertial input in the Bay is clearly associated with passage of cyclonic systems as in the mid-latitudes cite:Alford2003.
 The most striking aspect of Figure [[fig:spatial]] is the near-complete lack of near-inertial energy flux into the mixed layer during March (northern Bay) and April (northern & southern Bay).
-Here we describe year-long observations of turbulence at multiple sites in the Bay (Figure ref:fig:map) and find that the seasonal cycle of winds, currents and near-inertial energy flux described above is imprinted on both near-surface and thermocline turbulence.
+Here we study year-long observations of turbulence at multiple sites in the Bay (Figure ref:fig:map) and find that the seasonal cycle of winds, currents and near-inertial energy is imprinted on both near-surface and thermocline turbulence.
 
 
-** outline :noexport:
-1. Monsoon seasonal variations blah blah
-   1. wind stress + precip + near-surface heating + mention ISOs
-   2. SWNE = cyclone season
-   3. Use met data in top panel of Figure ref:fig:ramanrl and maps in Figure ref:fig:spatial
-   4. Ocean circulation schematic required? Add arrows to Figure ref:fig:map.
-
-2. Importance of mixing (and long-term mixing measurements) in the bay
-   1. Something about OMZ
-   2. Nutrient fluxes & seasonal cycle of Chl-A
-   3. near-surface connections to MISOs
-   4. Cyclones and heat-extraction from the Bay.
-
-- cite:Vinayachandran2003: Primary production in the Bay is limited by nutrients, not light. (McGill 1973, Gomes et al 2000). The blooms in this paper are west of the EBoB array. There doesn't seem to be much action by the EBoB array but I need Chl-a data to really know.
-
-** Figure 1: spatial maps of EKE etc.                               :ignore:
 *** Figure 1: spatial maps of EKE etc.                             :ignore:
 
 #+BEGIN_SRC ipython :session :results none
@@ -373,10 +376,10 @@ plt.savefig('images/paper1/spatial-maps.pdf', transparent=False)
 #+END_SRC
 #+NAME: fig:spatial
 #+ATTR_LATEX: :width \textwidth
-#+CAPTION: (top) Seasonal mean circulation in the Bay of Bengal for the year 2014. Color shows seasonal mean EKE from AVISO; vectors indicate surface currents from seasonally averaged 5-day OSCAR estimate citep:oscar,Bonjean2002. (middle) Seasonal near-inertial energy input calculated for the year 2014 using a slab ocean mixed layer model following cite:Alford2003 as detailed in Appendix A as well as MERRA-2 wind stress vectors. White contours are $Π=$ \SIlist{2; 4; 10}{mW/m²}. (bottom) Depth of the 34.75 isohaline surface estimated using the mapped Argo climatology citep:Roemmich2009. White dots in top two panels mark mooring locations used in the study.
+#+CAPTION: Seasonal cycle of forcing and circulation in the Bay for 2014. White dots in the top two rows mark mooring locations used in the study. (top) Seasonal mean circulation in the Bay of Bengal for the year 2014. Color shows seasonal mean EKE from AVISO; vectors indicate surface currents from seasonally averaged 5-day OSCAR estimate citep:oscar,Bonjean2002. (middle) Seasonal near-inertial energy input calculated for the year 2014 using a slab ocean mixed layer model following cite:Alford2003 as detailed in Appendix A as well as MERRA-2 wind stress vectors. White contours are $Π=$ \SIlist{2; 4; 10}{mW/m²}. (bottom) 50, 75 and 100m depth contours of the 34.75 isohaline surface estimated using the mapped Argo climatology citep:Roemmich2009.
 [[file:images/paper1/spatial-maps.pdf]]
 
-** Figure 2: map :ignore:
+*** Figure 2: map                                                  :ignore:
 
 #+BEGIN_SRC ipython :session
 import cartopy.crs as ccrs
@@ -417,7 +420,7 @@ with plt.rc_context({'font.size': 11,
 #+NAME: fig:map
 #+ATTR_LATEX: :width 0.5\textwidth
 #+ATTR_HTML: :style width:50%
-#+CAPTION: (a) deployment locations of χpods as part of the ASIRI and EBoB programmes. (b, c) χpod deployment depths marked using horizontal lines on climatological T-S profiles from the Argo dataset citep:Roemmich2009 for RAMA and EBoB moorings, respectively.
+#+CAPTION: 2014, 2015 χpod deployment in the Bay. (a) Locations of mooring with χpods. (b, c) χpod deployment depths marked using horizontal lines on climatological T-S profiles from the Argo dataset citep:Roemmich2009 for RAMA and EBoB moorings, respectively. EBoB moorings in the south-central Bay suffered significant blowdown. The depth range covered by χpods on these moorings are shaded in (c) with horizontal lines marking median depth.
 [[file:images/paper1/map.pdf]]
 
 * Observations
@@ -434,56 +437,53 @@ Turbulent temperature diffusivity $K_T$, turbulent heat flux $J_q^t$ and turbule
 \begin{equation}
         K_T = \frac{χ/2}{T_z}; \quad J_q^t = - ρ_0\, c_p\, K_T\, T_z; \quad J_s^t = ρ_0 \, K_T \, S_z
 \end{equation}
-where $T_z, S_z$ are mean background temperature and salinity gradients.
+where $T_z, S_z$ are background temperature and salinity gradients usually obtained from nearby CTDs on the mooring (subscript $z$ indicates \(z\)-derivative).
 Again, we have assumed that high Reynolds number geophysical turbulence mixes all scalars at the same rate so that $K_T = K_S$.
-Inferring $K_T, J_q$ when temperature stratification $T_z$ (subscript $z$ indicates \(z\)-derivative) is sufficiently small can be problematic since these quantities are inversely proportional to $T_z^2$ and $T_z$ respectively.
+Inferring $K_T, J_q$ when temperature stratification $T_z$ is sufficiently small can be problematic since these quantities are inversely proportional to $T_z^2$ and $T_z$ respectively.
 Our standard procedure is to mask out $χ$ estimates when $T_z < \SI{1e-3}{\celsius\per\metre}$ which can occur frequently with near surface χpods on RAMA moorings that are frequently in the mixed layer.
 
 *** Table 1 : mooring details                                      :ignore:
 
 #+NAME: tab:pods
-#+CAPTION: χpod deployments in the Bay of Bengal in 2014, 2015.
-|---------+------------+-------------+-------------------------------------|
-|         | Location   |   Depth [m] | Duration of valid data return       |
-|---------+------------+-------------+-------------------------------------|
-| RAMA 12 | 90°E, 12°N |          15 |                                     |
-|         |            |             |                                     |
-|         |            |          30 |                                     |
-|         |            |             |                                     |
-|         |            |          45 |                                     |
-|---------+------------+-------------+-------------------------------------|
-| RAMA 15 | 90°E, 15°N |          15 |                                     |
-|         |            |          30 |                                     |
-|---------+------------+-------------+-------------------------------------|
-| NRL1    |            | 60 (55-100) | 19 Dec 2013 - 31 Dec 2014           |
-|         |            | 80 (75-115) | \phantom{19 Dec 2013 -} 06-May-2014 |
-|---------+------------+-------------+-------------------------------------|
-| NRL2    |            |             |                                     |
-|---------+------------+-------------+-------------------------------------|
-| NRL3    |            |  32 (28-78) | 20 Dec 2013 - 12 Dec 2014           |
-|         |            | 52 (48-100) | \phantom{20 Dec 2013 -} 28 Dec 2014 |
-|---------+------------+-------------+-------------------------------------|
-| NRL4    |            |  63 (60-85) | 21 Dec 2013 - 28 Dec 2014           |
-|         |            | 83 (80-105) | \phantom{21 Dec 2013 -} 09 Feb 2015 |
-|---------+------------+-------------+-------------------------------------|
-| NRL5    |            |          85 | 21 Dec 2013 - 30 Jan 2015           |
-|         |            |         105 | \phantom{21 Dec 2013 -} 22 Feb 2015 |
-|---------+------------+-------------+-------------------------------------|
-
-
+#+CAPTION: Bay of Bengal χpod deployments described in this paper.
+|---------+---------------+-------------+-------------------------------------|
+|         | Location      |   Depth [m] | Duration of valid data return       |
+|---------+---------------+-------------+-------------------------------------|
+| RAMA 12 | 90°E, 12°N    |          15 | 29 Nov 2013 - 22 Nov 2014           |
+|         |               |             | 04 Dec 2014 - 18 Dec 2015           |
+|         |               |          30 | 29 Nov 2013 - 16 Sep 2014           |
+|         |               |             | 04 Dec 2014 - 31 Jan 2016           |
+|         |               |          45 | 04 Dec 2014 - 27 Jul 2015           |
+|---------+---------------+-------------+-------------------------------------|
+| RAMA 15 | 90°E, 15°N    |          15 | 06 Dec 2014 - 11 Dec 2015           |
+|---------+---------------+-------------+-------------------------------------|
+| NRL1    | 85.5°E, 5°N   | 60 (55-100) | 19 Dec 2013 - 31 Dec 2014           |
+|         |               | 80 (75-115) | \phantom{19 Dec 2013 -} 06-May-2014 |
+|---------+---------------+-------------+-------------------------------------|
+| NRL2    | 85.5°E, 6.5°N |          70 | 19 Dec 2013 - 05 Feb 2014           |
+|---------+---------------+-------------+-------------------------------------|
+| NRL3    | 85.5°E, 8°N   |  32 (28-78) | 20 Dec 2013 - 12 Dec 2014           |
+|         |               | 52 (48-100) | \phantom{20 Dec 2013 -} 28 Dec 2014 |
+|---------+---------------+-------------+-------------------------------------|
+| NRL4    | 87°E, 8°N     |  63 (60-85) | 21 Dec 2013 - 28 Dec 2014           |
+|         |               | 83 (80-105) | \phantom{21 Dec 2013 -} 09 Feb 2015 |
+|---------+---------------+-------------+-------------------------------------|
+| NRL5    | 88.5°E, 8°N   |          85 | 21 Dec 2013 - 30 Jan 2015           |
+|         |               |         105 | \phantom{21 Dec 2013 -} 22 Feb 2015 |
+|---------+---------------+-------------+-------------------------------------|
 
 ** The 2014-2015 Bay of Bengal deployment
 
 As part of the U.S. Office of Naval Research's Air Sea Interaction Regional Initiative (ASIRI), Naval Research Laboratory's (NRL) Effects of Bay of Bengal Freshwater Flux on Indian Ocean Monsoon (EBoB) and the Indian government's Ocean Mixing and Monsoons (OMM) projects, a number of χpods were deployed on moorings throughout the Bay (Figure ref:fig:map and Table ref:tab:pods).
-On the Research Moored Array for African-Asian-Australian Monsoon Analysis and Prediction (RAMA) moorings at 12N and 15N, χpods were deployed at 15m, 30m (2014, 2015) and 45m (2015 only).
+On the Research Moored Array for African-Asian-Australian Monsoon Analysis and Prediction (RAMA) moorings at 12°N and 15°N, χpods were deployed at 15m, 30m (2014, 2015) and 45m (2015 only).
 These units were usually either in or near the base of the mixed or barrier layers and recorded the wind-forced near-surface cycle of turbulence (Figure [[fig:map]]).
 
 χpods were also deployed as part of NRL's EBoB array east of Sri Lanka during 2014 and some returned data up to Jan 2015.
-The EBoB χpods ended up at a variety of depths but most were in the main thermocline (Table ref:tab:pods, Figure [[fig:map]]b and citealp:Wijesekera2016a).
+The EBoB χpods ended up at a variety of depths but nearly all were predominantly in the main thermocline (Table ref:tab:pods, Figure [[fig:map]]b and citealp:Wijesekera2016a).
 This region experiences both a significant seasonal cycle in mesoscale EKE associated with the spinup and spindown of the Summer Monsoon Current.
 These moorings experienced significant blowdown during periods of high currents, up to 50m for a month or two at some moorings, complicating the interpretation of parts of the χpod record.
 
-In addition, the OMM/WHOI mooring at 18N was heavily instrumented with χpods.
+In addition, the OMM/WHOI mooring at 18°N was heavily instrumented with χpods.
 This location is relatively unique because it experiences significant freshwater influence from the Ganga-Brahmaputra runoff and the seasonal cycle differs from that at the moorings summarized here.
 The seasonal cycle from the OMM/WHOI measurements are presented elsewhere citep:ThakursubmittedGRL.
 
@@ -694,35 +694,39 @@ import subprocess
 subprocess.run(['bash', 'add-legend-vert-profile.bash'], cwd='images/paper1/')
 #+END_SRC
 #+NAME: fig:vert
-#+CAPTION: (top) Basin-wide seasonal averages of Tropflux wind stress $τ$, near-inertial energy input $Π$, Tropflux net surface heat flux $J_q^0$ and TRMM precipitation $P$. Gray ellipses have widths and heights equal to twice the standard deviation of $τ_x$ and $τ_y$. (bottom) Vertical profile of hourly averaged turbulent temperature diffusivity $K_T$ formed by combining all available χpod data in density bins (Section [[sec:profile]]). PDFs as well as means ($\bigtriangleup$) and medians ($\bigcirc$) are shown. Bins are marked by 'ML' (mixed layer), 'BL' (barrier layer) and $ρ-1000$ for deeper bins. Black horizontal line marks the climatological depth of the $S=34.75$ isohaline at 8°N estimated using the Argo climatology citep:Roemmich2009.
+#+CAPTION: The seasonal cycle of $K_T$. (top) Basin-wide seasonal averages of dail Tropflux wind stress $τ$, near-inertial energy input $Π$, daily Tropflux net surface heat flux $J_q^0$ and TRMM precipitation $P$. Gray ellipses have widths and heights equal to twice the standard deviation of $τ_x$ and $τ_y$. (bottom) Vertical profile of hourly averaged turbulent temperature diffusivity $K_T$ formed by combining all available χpod data in density bins (Section [[sec:profile]]). PDFs as well as means ($\bigtriangleup$) and medians ($\bigcirc$) are shown. Bins are marked by 'ML' (mixed layer), 'BL' (barrier layer) and $ρ-1000$ for deeper bins. Black horizontal line marks the climatological depth of the $S=34.75$ isohaline at 8°N estimated using the Argo climatology citep:Roemmich2009.
 file:images/paper1/bay-KT-vert-profile-label.png
 
 * A comparison of near-surface and thermocline mixing
 <<sec:ramanrl>>
 
-We contrast two year-long mixing records, one from the RAMA 12N (12N, 90E) mooring at 15m and the other from the NRL5 mooring (8N, 88.5E) at 104m (Figures ref:fig:rama and ref:fig:nrl).
-The two records are at approximately the same longitude and are representative of the shallowest two bins in Figure ref:fig:vert and the deepest two bins in Figure ref:fig:vert respectively.
-Figures ref:fig:rama and ref:fig:nrl show daily averaged turbulence quantities as well as daily averaged surface forcing at both moorings.
-As mentioned in Section ref:sec:pod, frequent masking of inferred $K_T, J_q^t, J_s^t$ in mixed layer χpod records at low values of vertical temperature gradient means that the term ``daily averages'' is not entirely accurate.
+#+LATEX: \note{compare 2 records, note coverage issues with mixed layer χpods}
+We now contrast two year-long mixing records, one from the RAMA 12N (12N, 90E) mooring at 15m and the other from the NRL5 mooring (8°N, 88.5E) at 104m (Figures ref:fig:rama and ref:fig:nrl).
+These two records are at approximately the same longitude and are representative of the shallowest two and the deepest two bins in Figure ref:fig:vert respectively.
+Figures ref:fig:rama and ref:fig:nrl show daily averaged turbulence quantities as well as daily averaged surface forcing quantities at both moorings.
+Frequent masking of inferred $K_T, J_q^t, J_s^t$ in mixed layer χpod records at low values of vertical temperature gradient means that the term ``daily averages'' is not entirely accurate (Section ref:sec:pod).
 Accordingly we show the fraction of the day with valid $K_T$ estimates in blue in Figure [[fig:rama]]b and [[fig:nrl]]b.
 Consider data from the RAMA 12N mooring in the month of February (Figure [[fig:rama]]b).
-During weak wind periods the 15m χpod appears to be within the night-time convective boundary layer whereas during the daytime, solar heating builds up stratification at 15m (Figure [[fig:rama]]).
+At night during weak wind periods the 15m χpod appears to be within the night-time convective boundary layer whereas during the daytime, solar heating builds up stratification at 15m (Figure [[fig:rama]]d).
+At such times we can only estimate $K_T$ during the day.
 The ``daily average'' is really a ``daytime average'' estimate of $K_T$ and fraction daily coverage is approximately 50%.
 
 ** Near-surface mixing: RAMA 12N, 90E, 15m
 
 The 15m χpod at RAMA 12N recorded a distinct seasonal cycle that mirrors the seasonal cycle in surface wind stress (Figure [[fig:rama]]a).
 cite:Warner2016 summarized this record previously and so we limit ourselves to a brief description here.
-During the northeast monsoon, wind stress $τ$ of about \SI{0.1}{N/m²} drives turbulence with a daily averaged temperature diffusivity of \SI{1e-4}{m²/s}.
+During the northeast monsoon, wind stress $τ$ of about \SI{0.1}{N/m²} drives turbulence with a daily averaged temperature diffusivity of \SI{1e-4}{m²\per\s}.
 By mid-February the outflow from the Irrawady river arrives at the mooring and the mixed layer shallows to approximately \SI{10}{m}.
 The χpod at \SI{15}{m} sees increased turbulent heat flux $J_q^t = ρ c_p K_T T_z$ and turbulent salt flux $J_s^t = ρ K_T S_z$ during this period (Figure [[fig:rama]]c) while the deeper χpod at 30m, in the barrier layer, sees almost no heat and salt flux during this period (not shown).
 By March, the weakening wind stress field along with intense surface heating builds up near-surface stratification.
 The mixed layer shoals to a depth shallower than 15m and the χpod senses little turbulence.
-Diffusivity $K_T$ decreases to \SI{1e-5}{m²/s} resulting in near-negligible turbulent heat and salt fluxes.
+Diffusivity $K_T$ decreases to \SI{1e-5}{m²\per\s} resulting in near-negligible turbulent heat and salt fluxes.
 By May, the strong winds of the southwest monsoon force high mixing, a deeper mixed layer, a hundredfold increase in diffusivity $K_T$ at \SI{15}{m} and significant increases in turbulent fluxes of both heat and salt.
 Tropical cyclones and storms during the months of October & November drive a 2-3 order of magnitude increase in diffusivity.
 - Cyclone-forced mixing can have important consequences for productivity in the Bay: for an analysis of Tropical Cyclone Hudhud see cite:Girishkumar2019.
 - unleash the scatter plot: wind stress, $K_T$
+- Calculate $r²$ for scatter plot. Include scatter plot in supplementary information.
+- Cite Ritabrata's paper
 
 *** Figure 4: RAMA 12N time series                                 :ignore:
 
@@ -751,59 +755,70 @@ f.set_size_inches((8, 5))
 f.savefig('images/paper1/rama12.pdf')
 #+END_SRC
 #+NAME: fig:rama
-#+CAPTION: RAMA 12N: Time series of daily averaged quantities: (a) wind stress and local wind-forced near-inertial energy flux; (b) daily averaged $K_T$ and fraction daily coverage; (c) turbulent heat and salt fluxes $J_q^t, J_s^t$. (d) Buoyancy frequency $N²$ and temperature stratification $T_z$.
+#+CAPTION: A year of observations at RAMA 12N. Time series of daily averaged quantities: (a) locally measured wind stress $τ$ and locally measured net surface heat flux $J_q^0$; (b) daily averaged $K_T$ and fraction daily coverage; (c) turbulent heat and salt fluxes $J_q^t, J_s^t$. (d) Buoyancy frequency $N²$ and temperature stratification $T_z$. Background colors mark seasons.
 [[file:images/paper1/rama12.pdf]]
-** Thermocline mixing: NRL5 8N, 88.5E, 105m
+** Thermocline mixing: NRL5 8°N, 88.5E, 105m
 
-The seasonal cycle of thermocline turbulence at 8°N, 88.5°E (NRL5) is significantly different from that of near-surface turbulence at 12N (Figure ref:fig:nrl) but again appears to parallel a seasonal cycle in wind stress.
-Prior research has shown a link between wind-forced near-inertial waves and thermocline mixing citep:Alford2001,Whalen2018 and we now examine whether near-inertial shear is a major driver of mixing in the Bay's thermocline.
+#+LATEX: \note{brief outline, mention low mixing Figure \ref{fig:nrl}}
+The seasonal cycle of thermocline turbulence at 8°N, 88.5°E (NRL5) is significantly different from that of near-surface turbulence at 12N (Figure ref:fig:nrl) but again appears to parallel a seasonal cycle in wind stress (Figure [[fig:nrl]]a, black).
+At 105m mixing is weaker by one to two orders of magnitude relative to the 15m χpod discussed in the previous section (compare Figure [[fig:rama]]b and Figure [[fig:nrl]]b).
+Here the χpod measures sustained relatively high mixing between the months of May and October --- a period of energetic mesoscale activity and moderately large near-inertial energy input $Π$ in the south-central Bay (Figures ref:fig:spatial and [[fig:nrl]]a).
+Even then diffusivity $K_T$ is consistently below and rarely exceeds the canonical thermocline value of \SI{1e-5}{\m\square\per\s}.
+Strikingly the χpod observes near-laminar flow in the thermocline with near-molecular values of $K_T$ during the month of April.
+Similar periods of low to negligible mixing are evident at other χpods and in the deeper distributions presented in Figure ref:fig:vert.
+Turbulent heat flux $J_q^t$ likewise is generally small and exceeds \SI{10}{\W\per\m\square} only for a few days (Figure [[fig:nrl]]c) in the entire year.
+Low values of diffusivity are perhaps not surprising given the observations of cite:Jinadasa2016 and cite:Kunze2006 but these χpod observations are the first to show that extremely low mixing persists for multiple weeks at multiple locations in the south-central Bay (Figure ref:fig:vert).
 
-We compute a local estimate of near-inertial energy flux into the mixed layer $Π$ as $ρ_0 \, u\niw\ML⋅τ\niw$ ( blue time series in our Figure [[fig:nrl]]a, citealp:Silverthorne2009) using the topmost velocity bin at 8m depth as representative of mixed layer velocity $u\ML$ and daily average $τ$ from Tropflux[fn::No local wind measurements are available at the (subsurface) NRL moorings.] citep:Kumar2012.
-The inertial component of the mixed layer velocity $u\niw\ML$ and wind stress $τ\niw$ are estimated by using a third-order bandpass Butterworth filter with half-power points at [1/1.25, 1.25] $T_f$ where $T_f=\SI{3.59}{days}$ is the local inertial period.
-
-At 105m mixing is weaker by 1-2 orders of magnitude relative to the 15m χpod (compare Figure [[fig:rama]]b and Figure [[fig:nrl]]b).
-The χpods measure sustained relatively high mixing between the months of May and October --- a period of energetic mesoscale activity as well as large near-inertial energy input $Π$ in the southwestern Bay (Figures ref:fig:spatial and [[fig:nrl]]a).
-$K_T$ exceeds \SI{1e-5}{m²/s} only rarely during this period.
-Outside May-October, $K_T$ is consistently below the canonical thermocline value of \SI{1e-5}{m²/s}.
-Strikingly, the χpod observes a near-laminar thermocline with near-molecular values of $K_T$ during the month of April.
-Similar periods of low mixing are evident at other χpods and in the distributions presented in Figure ref:fig:vert.
-Turbulent heat flux $J_q^t$ likewise is generally small and exceeds \SI{10}{W/m²} only for a few days (Figure [[fig:nrl]]c) in the entire year.
-Low values of diffusivity are perhaps not surprising given the observations of cite:Jinadasa2016 and cite:Kunze2006 but these χpod observations are the first to show that the seasonally low mixing persists for multiple weeks at multiple locations in the southwestern Bay.
-
-Shear at the χpod is estimated by central differencing the velocity over bins that span the χpods depth.
-The shear time series is then filtered using a third-order Butterworth filter to obtain low frequency shear (lowpass with half power point 6.6 days) and near-inertial shear (bandpass between half power points 6.6 days and 2 days) and shown in Figure [[fig:nrl]]d.
-Between May and October, Summer Monsoon Current meanders through the array citep:Wijesekera2016a.
-These meanders are visible as short periods of elevated low frequency shear in Figure [[fig:nrl]]c that occasionally line up with elevated mixing.
-Surface geostrophic velocities in the OSCAR dataset show that the SMC ceases to exist as a continuous flow from the Arabian Sea near the beginning of October.
-Subsequent periods of enhanced low frequency shear in Figure [[fig:nrl]]c between October and January appear to be associated with westward propagating Rossby waves.
-
-In addition to enhanced shear associated with mesoscale features, we also see bursts of elevated near-inertial shear that last for multiple weeks at a time.
-Over the year, near-inertial variability accounts for roughly 40-60% of total shear variance between \SI{100}{m} and \SI{150}{m} with occasional peaks of 70-80%.
-All three moorings along 8N (NRL3, NRL4, NRL5) witness the passage of extremely energetic packets of near-inertial energy in January and February (Figure [[fig:nrl]]c), consistent with elevated input inferred from the slab model estimate in Figure ref:fig:spatial.
+#+LATEX: \note{describe near-inertial input calculation}
+Prior research has shown a link between wind-forced near-inertial waves and thermocline mixing (for example, citealp:Alford2001,Whalen2018) and we now examine whether near-inertial shear is a major driver of mixing in the Bay's thermocline.
+We compute a /local/ estimate of near-inertial energy flux into the mixed layer $Π$ as $ρ_0 \, u\niw\ML⋅τ\niw$ (blue time series in our Figure [[fig:nrl]]a; citealp:Silverthorne2009) using the topmost velocity bin at 8m depth as representative of mixed layer velocity $u\ML$ and daily average $τ$ from Tropflux[fn::No local wind measurements are available at the (subsurface) NRL moorings.].
+The inertial component of the mixed layer velocity $u\niw\ML$ and wind stress $τ\niw$ are estimated by using a fourth-order bandpass Butterworth filter with half-power points at [1/1.25, 1.25] $T_f$ where $T_f=\SI{3.59}{days}$ is the local inertial period.
 The SW monsoon is perhaps surprisingly not a period of peak near-inertial input but this is consistent with the estimate of surface near-inertial energy input in Figure ref:fig:spatial and Figure [[fig:nrl]]a.
-- A direct relation between a local input into the mixed layer and local shear is not evident but this is expected since near-inertial transmission is function of the mesoscale etc. etc. etc.
+The time series of $Π$ and $K_T$ do not appear to be correlated with each other.
 
-- there is a clear seasonal cycle in near-inertial shear variance in the thermocline with a seasonal low in April that mirrors the seasonal cycle of near-inertial energy flux at the surface (Figures ref:fig:spatial, [[fig:nrl]]a,d).
+#+LATEX: \note{describe shear calculation + time series Figure \ref{fig:nrl}}
+Shear at the χpod is estimated by central differencing the velocity over bins that span the χpods depth level.
+To account for seasonal $N²$ variations we WKB scale the shear as $u_z\wkb = u_z (\tilde{N}(t)/N_0)^{3/2}$ using $\tilde{N}(t)$  calculated as the 30-day low-passed filtered $N$ and $N_0$ calculated as the annual mean $N$.
+The WKB-scaled shear time series is then filtered using a fourth-order Butterworth filter to obtain low frequency shear and near-inertial shear (lowpass with half power point 6.6 days; bandpass between half power points 6.6 days and 2 days; Figure [[fig:nrl]]e).
+Meanders of the Summer Monsoon Current are visible as short periods of elevated low frequency shear between May and October in Figure [[fig:nrl]]e that occasionally line up with elevated mixing.
+Near the beginning of October, surface geostrophic velocities in the OSCAR dataset show that the SMC ceases to exist as a continuous flow from the Arabian Sea.
+Subsequent periods of enhanced low frequency shear in Figure [[fig:nrl]]e between October and January appear to be associated with westward propagating Rossby waves seen in OSCAR surface velocity data.
 
+In addition to enhanced low frequency shear associated with the SMC, we also see bursts of elevated near-inertial shear that last for one to two weeks at a time.
+Over the year, near-inertial variability accounts for roughly 40-60% of total shear variance between \SI{100}{m} and \SI{150}{m} with occasional peaks of 70-80%.
+All three moorings along 8°N (NRL3, NRL4, NRL5) witness the passage of extremely energetic packets of near-inertial energy in January and February (Figure [[fig:nrl]]e) likely associated with the passage of Cyclonic Storm Madi and Depression BOB01 (Figure ref:fig:spatial).
+There are two weak near-inertial events in March and April.
+Near-inertial shear levels pick up during the SW monsoon with one extremely energetic burst that we will discuss next.
+November and early December are periods of high near-inertial shear, likely forced by two strong wind events at the surface in October and November.
+This seasonal cycle in near-inertial input into the mixed layer and thermocline near-inertial shear variance is consistent with observations at both NRL3 and NRL4 with the seasonal low in April being a prominent feature (Figures ref:fig:spatial, [[fig:nrl]]a,e).
 
-Coarse sampling limits our ability to confidently infer a seasonal cycle in the Richardson number $\Ri$ estimated using 20m-scale shear and $N²$ sampled hourly.
-Instead we show a time series of the fraction of day with $\Ri < 5$ expecting that χpods are more likely to observe turbulence when relatively lower values of $\Ri$ occur more frequently (Figure [[fig:nrl]]d).
-The arrival of Arabian Sea water in June reduces the stratification and we observe a corresponding increase in occurrences of hours with $\Ri < 5$ up until when stratification rises again in December.
-This period of relatively low $\Ri$ coincides with elevated diffusivity $K_T$.
+# There does not appear to be a direct relation between a local near-inertial input into the mixed layer $Π$ and local near-inertial shear.
+# The lack of correlation is perhaps expected since downward transmission of near-inertial energy from the mixed layer is at least a function of the prevailing stratification and mesoscale vorticity (for example citealp:Young1997,Elipot2010)
 
-The maximum observed diffusivity and maximum observed turbulent fluxes are associated with a particularly strong set of near-inertial wave packets that forced significantly enhanced turbulence at the χpod's depth (July 23 -- August 7, Figure [[fig:nrl]]b,c).
-Turbulent heat flux $J_q^t$, turbulent kinetic energy (TKE) dissipation $ε$ and zonal shear for this period of intense mixing are shown in Figure ref:fig:nrl5-niw.
-This period of elevated mixing also witnesses a set of nonlinear $M_2$  internal tide packets passing by the mooring and we see modulation of turbulent quantities $K_T, J_q^t, J_s^t$ at the $M_2$ frequency.
+#+LATEX: \note{describe one near-inertial event in detail Figure \ref{fig:nrl5-niw}}
+The maximum observed diffusivity and maximum observed turbulent fluxes in Figure [[fig:nrl]] are associated with a particularly strong set of near-inertial wave packets that forced significantly enhanced turbulence at the χpod's depth (July 23 -- August 7, highlighted in white in Figure [[fig:nrl]]b,c).
+Turbulent kinetic energy (TKE) dissipation $ε$ and zonal shear for this period of intense mixing are shown in Figure ref:fig:nrl5-niw.
+This period of elevated mixing coincides with the passage of a set of $M_2$ internal tide packets that vertically displace the isotherms in Figure [[ref:fig:nrl5-niw]]b.
 /Eulerian/ shear spectra contain a peak of varying amplitude at a consistent frequency of $-f ± M_2$ peak rather than pure $M_2$ (not shown).
 The energy in this peak is substantially reduced in isopycnal spectra --- a sign that the $M_2$ tide is heaving near-inertial shear layers rather than nonlinearly interacting with the near-inertial waves citep:Alford2001a.
-We interpret the apparent modulation of turbulence quantities at near-$M_2$ frequency is thus a result of the $M_2$ internal tide heaving near-inertial shear layers past the χpod, and not a mixing forced by tidal shear.
+Hence we interpret the apparent modulation of $ε$ at near-$M_2$ frequency (Figure [[fig:nrl5-niw]]a) as a result of the $M_2$ internal tide heaving near-inertial shear layers past the χpod, and not mixing forced by tidal shear.
 
-Locally elevated near-inertial shear does not always coincide with enhanced turbulence  in Figure [[fig:nrl]].
+#+LATEX: \note{Ri}
+Coarse sampling limits our ability to confidently infer a seasonal cycle in the Richardson number $\Ri$ estimated using 20m-scale shear (not WKB scaled) and $N²$ sampled hourly.
+Instead we show a time series of the fraction of day with $\Ri < 5$ expecting that χpods are more likely to observe turbulence at times when relatively lower values of $\Ri$ are more frequent (Figure [[fig:nrl]]f).
+The arrival of Arabian Sea water in July reduces both $N²$ and $T_z$ and we observe a corresponding increase in occurrences of hours with $\Ri < 5$ up until when stratification rises again in December (Figure [[fig:nrl]]d, f).
+This period of relatively low $\Ri$ coincides with elevated diffusivity $K_T$.
+More generally, peaks in occurrence of low $\Ri$ tend to coincide with either elevated low-frequency shear or elevated near-inertial shear.
+
+- do I WKB scale the shear?
+- Is it scattering well because ε \tilde fn(N) and unscaled shear ~ fn(N)
+#+LATEX: \note{do scatter plot Figure \ref{fig:scatter}}
+Locally elevated near-inertial shear does not always coincide with enhanced turbulence in Figure [[fig:nrl]].
 The intensity of turbulence driven by shear instability is a function of both shear and stratification and the presence of elevated shear does not necessarily imply mixing.
 It is also possible that mixing is occurring at depths deeper than the χpod and is occasionally pumped past the χpod as in Figure ref:fig:nrl5-niw so direct correspondence between periods of high shear and high mixing at the χpod is again not necessary.
 In other words, the presence of high mixing is usually coincident with enhanced shear (not always near-inertial) but the presence of shear does not imply mixing.
 Two dimensional histograms of $ε$ against squared shear and stratification were not enlightening.
-Instead, we instead make use of the fact that monthly $N²$ variations at the deepest χpod on NRL4 and NRL5 are very similar and combine measurements from those two moorings.
+Instead, we instead make use of the fact that monthly $N²$ variations at NRL4 and NRL5 are very similar and combine measurements from those two moorings.
 We present a scatter plot of TKE dissipation $ε$ against mean squared total shear (Figure [[fig:scatter]]a) and mean square near-inertial shear (Figure [[fig:scatter]]b) for the deeper χpod at NRL4 and NRL5[fn::Unfortunately, we are restricted to using the deeper χpod at each mooring for this part of the analysis because the shallower χpod was deployed within the blanking zone of the downward looking ADCP. Consequently no shear information is available at the shallow χpod's depth level.].
 All quantities are monthly averaged and plotted on a logarithmic scale.
 Power law fits and corresponding $r²$ values are shown solely to illustrate degree of covariance between squared shear and $ε$.
@@ -811,13 +826,21 @@ Figure [[fig:scatter]]a shows that months of elevated total shear are correlated
 Despite a few outliers, Figure [[fig:scatter]]b shows that months of elevated /near-inertial/ shear are correlated with χpod observations of elevated turbulence ($r²=0.76$).
 The outliers include the energetic near-inertial packets of January and February but these are also periods of higher stratification.
 
-- NRL3 sees much more influence from the Sri Lanka Dome and the meandering Summer Monsoon Current. Mean shear variance and so is excluded from this analysis.
+- scatter of $ε$ against Ri is not great but maybe not surprising
+- Need to exclude NRL1, NRL3
+- NRL3
+  - sees much more influence from the Sri Lanka Dome and the meandering Summer Monsoon Current. Mean shear variance and so is excluded from this analysis.
+  - χpods are shallower
+
 - NRL1 is also weird
+  - NIW shear is being dominated by higher frequency shear.
+
 - scatter against wind stress?
 - NRL3?
 - wind stress vs. $K_T$ ???
 
-We leave a more detailed examination of the mesoscale, the near-inertial wave field and associated mixing in the Bay's thermocline at 8N to a future paper.
+Despite our initial observation that $K_T$ appears approximately proportional to wind stress $τ$, a direct link between turbulence and near-inertial shear was not
+We leave a more detailed examination of the mesoscale, the near-inertial wave field and associated mixing in the Bay's thermocline at 8°N to a future paper.
 
 # 1. High NIW shear during NE monsoon but higher stratification presumably suppresses turbulence.
 # 2. Are there independent M2 soliton or is the inertial peak losing energy to freely propagating waves.
@@ -942,7 +965,7 @@ f5.savefig('images/paper1/' + mooring.name.lower() + '.pdf')
 # # axes['shear'].set_ylim([0, 2.5])
 #+END_SRC
 #+NAME: fig:nrl
-#+CAPTION: A year of observations at NRL5. Time series of daily averaged quantities: (a) Tropflux wind stress and wind-forced near-inertial energy flux; (b) daily averaged $K_T$ and fraction daily coverage; (c) turbulent heat and salt fluxes $J_q^t, J_s^t$; (d) Buoyancy frequency $N²$ and temperature stratification $T_z$; (e) Weekly running mean of filtered squared shear magnitude: 6.6 day low pass in black and near-inertial bandpass in green; (f) Fraction of day where Richardson number Ri < 5. Background colors mark seasons; white region indicates time period that is subject of Figure [[fig:nrl5-niw]].
+#+CAPTION: A year of observations at NRL5. Time series of daily averaged quantities: (a) Tropflux wind stress and wind-forced near-inertial energy flux; (b) daily averaged $K_T$ and fraction daily coverage; (c) turbulent heat and salt fluxes $J_q^t, J_s^t$; (d) Buoyancy frequency $N²$ and temperature stratification $T_z$; (e) Weekly running mean of filtered squared WKB-scaled shear magnitude: 6.6 day low pass in black and near-inertial bandpass in green; (f) Fraction of day where Richardson number Ri < 5. Background colors mark seasons; white region indicates time period that is subject of Figure [[fig:nrl5-niw]].
 [[file:images/paper1/nrl5.pdf]]
 
 *** Figure 6: NRL5 zoom-in                                         :ignore:
@@ -1054,7 +1077,7 @@ f.set_size_inches((6.5, 4))
 f.savefig('images/paper1/nrl5-aug-niw-mixing.pdf')
 #+END_SRC
 #+NAME: fig:nrl5-niw
-#+CAPTION: An example of pumping of the near-inertial shear layers past the χpod by the $M_2$ tide at NRL5. The time period of focus is highlighted in white in Figure [[fig:nrl]]. Time series of (a) TKE dissipation $ε$ and (b) zonal shear for a period of high mixing associated with downward propagating near-inertial energy.
+#+CAPTION: An example of pumping of the near-inertial shear layers past the χpod by the $M_2$ tide at NRL5. The time period of focus is highlighted in white in Figure [[fig:nrl]]. Time series of (a) TKE dissipation $ε$ and (b) zonal shear for a period of high mixing associated with downward propagating near-inertial energy. The depth of the χpod and two isotherms are shown in (b).
 [[file:images/paper1/nrl5-aug-niw-mixing.pdf]]
 
 *** Figure 7: NRL scatter plots                                    :ignore:
@@ -1566,19 +1589,14 @@ The seasonal cycle of near-surface turbulence follows from a seasonal cycle in d
 The seasonal cycle of thermocline turbulence is influenced by the winds both through downward propagating near-inertial waves and by wind forcing of the strongly sheared Summer Monsoon Current (Figures ref:fig:nrl and ref:fig:nrl5-niw)
 
 Strikingly, multiple χpods observe extended periods of very low mixing between 50m and 100m depth during the months of March and April --- a period of weak winds, weak currents, low near-inertial energy input and low near-inertial shear (Figures ref:fig:spatial and [[fig:nrl]]).
-It is possible that these extremely low values of mixing have large impact on simulations of the Indian Ocean.
-Improved upper ocean state representation in the CFSv2 operational forecast model run by the Indian Institute of Tropical Meteorology has been shown to improve rainfall forecasts over central India citep:Koul2018.
-cite:Chowdary2016a show this model to be biased cold in the top 80m, biased warm below 100m and have excessive vertical turbulent heat fluxes in the top \SI{200}{m} (/annual mean/).
-They link the high mixing bias to excess shear and reduced stratification in the model.
-Our observations would suggest that the background mixing in the model might also need to be lowered.
-Climate model configurations that account for the latitudinal variation of diffusivity noted in cite:Gregg2003 use a minimum background $K_T ≈ \SI{1e-6}{m^2/s}$ at the equator, larger than the near-molecular mean $K_T$  we observe between \SIrange{80}{100}{m} at 8°N in the Bay during March and April (for example citealp:Jochum2009,Danabasoglu2012).
-Perhaps artificially high background mixing is partly to blame for the biases noted by cite:Chowdary2016a?
 
-Why is mixing so much lower in the Bay?
-Is the internal wave energy level always lower than that expected from the GM spectrum?
-Is there a seasonal cycle in internal wave energy levels?
-What is the vertical structure of the seasonal variability in near-inertial energy and shear levels?
+Biases in models:
+- negative subsurface salinity bias in HYCOM cite:Wilson2016a, cite:DAddezio2015.
 
+cite:Wilson2016a
+#+begin_quote
+This subsurface bias is largest in November and has maximum magnitude in the northern regions of the bay. For February through May, the negative salinity biases at 50-m depth are associated with positive salinity biases near the surface. This suggests that the model is overestimating the strength of vertical mixing in the upper bay for those months and possibly for other times of the year.
+#+end_quote
 
 # Yet at the low background levels that we observe, numerical mixing would dominate.
 # - I haven't managed to find a paper that relates bias in Jun-Sep predictions to errors in March / April ocean state.
@@ -1586,7 +1604,14 @@ What is the vertical structure of the seasonal variability in near-inertial ener
 # The seasonal cycle of thermocline turbulence likely follows from a seasonal cycle of near-inertial energy input into the Bay.
 # We find that high mixing events in the thermocline coincide with enhanced near-inertial wave shear and the seasonality in near-inertial input as well as near-inertial shear variance is clear (Figures ref:fig:spatial and [[fig:nrl]]a,d).
 
-** Next :noexport:
+** Next
+
+Why is mixing so much lower in the Bay for extended periods of time?
+- Results in this paper suggest that we must characterize the shear field at 8N : seasonal cycle etc. paying attention to both near-inertial and the more general internal wave wavenumber ranges.
+- Is the internal wave energy level always lower than that expected from the GM spectrum?
+- Is there a seasonal cycle in internal wave energy levels?
+- What is the vertical structure of the seasonal variability in near-inertial energy and shear levels?
+
 - Magnitude of seasonal cycle of internal wave energy is strongly depth dependent.
   - The SW monsoon isn't the obvious peak, but the cyclone season is.
 
@@ -1643,11 +1668,26 @@ The evaporation product was provided by the WHOI OAFlux project (http://oaflux.w
 * Appendix A: Near-inertial input calculation
 
 Near-inertial energy input $Π$ is calculated following [[cite:Alford2003]]'s spectral solution of the cite:Pollard1970 slab ocean mixed layer using wind speeds from the MERRA-2 reanalysis citep:Gelaro2017 and monthly mean mixed layer depth from the MIMOC climatology citep:Schmidtko2013.
-There are flaws associated with this calculation citep:Plueddemann2006 but we believe Figure ref:fig:spatial captures the qualitative large-scale spatial variation of $Π$.
-MERRA-2 does not capture the large wind stresses evident in the TropFlux compilation citep:Kumar2012.
+There are flaws associated with this calculation citep:Plueddemann2006 but we believe Figure ref:fig:spatial captures the qualitative large-scale spatial and seasonal variation of $Π$.
+Another source of errors is that MERRA-2 does not capture the large wind stresses evident in the TropFlux compilation citep:Kumar2012.
 However, since TropFlux data is available at daily resolution one cannot calculate the near-inertial input north of approximately 10N, where the inertial period nears 2 days, the Nyquist frequency of the TropFlux winds.
 
 * TODO Appendix B: Treating the χpod as a profiler
+
+* Appendix C: Table of seasonal means of $K_T$
+
+#+BEGIN_SRC ipython :session :results value output :exports results
+import tabulate
+
+# mmkt = bay.generate_mean_median_dataframe()
+mmkt = pd.read_csv('~/bay/estimates/mean_median_KT.csv')
+
+meanKT = mmkt.pivot('bin', 'season', 'KT_mean') * 1e4
+print(tabulate.tabulate(meanKT,
+                        headers=['bin', 'NE', 'NESW', 'SW', 'SWNE'],
+                        floatfmt='.1f',
+                        tablefmt='latex_booktabs'))
+#+END_SRC
 
 * Supplementary Material
 
@@ -1665,4 +1705,3 @@ bibliographystyle:ametsoc2014
 #+ATTR_HTML: :style width:90%
 #+CAPTION: (a) Wind stress $τ$ and net surface heat flux $J_q^0$  at RAMA 12N. (b, d) Turbulent heat and salt fluxes $J_q^t, J_s^t$ at RAMA 12N, 15m and NRL5 8N, 105m respectively. (c) Turbulent diffusivity at RAMA 12N, 15m and NRL5 8N, 105m. (e) Wind stress $τ$ and near-inertial energy input $Π$ at NRL5 8N. (f) Fraction of day where we have good turbulence observations. (g, h) Daily average temperature stratification $∂T/∂z$ and salinity $S$ respectively. (i) Shear variance in near-inertial, $M_2$ and $M_4$ frequency bands at NRL5, 8N.
 [[file:images/paper1/rama12.pdf]]
-
