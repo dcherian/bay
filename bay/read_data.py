@@ -206,8 +206,8 @@ def read_nrl5(minimal=False):
 
 def __common(mooring, minimal=False):
     mooring.calc_mld_ild_bld()
-    mooring.CombineTurb()
     mooring.ReadTropflux('../tropflux/')
+    mooring.CombineTurb()
     if not minimal:
         mooring.ReadSSH()
         mooring.calc_niw_input()

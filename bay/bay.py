@@ -59,11 +59,6 @@ def make_merged_nc(moorings):
         if m.name == 'NRL3':
             subset.depth.values = np.array([30, 45])
 
-        if 'RAMA' in m.name:
-            subset['tau'] = m.met.τ.interp(time=m.turb.time.values)
-        elif 'NRL' in m.name:
-            subset['tau'] = m.tropflux.tau.interp(time=m.turb.time.values)
-
         Turb = xr.merge([Turb, (subset.expand_dims(['lat', 'lon'])
                                 .set_coords(['lat', 'lon']))])
 
@@ -82,9 +77,9 @@ def make_merged_nc(moorings):
     #         orig = (m.turb.reset_coords()[var]
     #                 .dropna(dim='time', how='all'))
     #         xr.testing.assert_equal(merged, orig)
-    #         del orig
+    #         del merged orig
 
-    # Turb = Turb.rename({'ε': 'epsilon',
+    # orig = Turb.rename({'ε': 'epsilon',
     #                     'χ': 'chi_t'})
 
     # Turb.epsilon.attrs['long_name'] = (
