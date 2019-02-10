@@ -41,7 +41,7 @@ def make_merged_nc(moorings):
 
     Inputs
     ------
-    A list of mooring objects (moor)
+    moorings: A list of mooring objects
 
     Outputs
     -------
@@ -51,8 +51,7 @@ def make_merged_nc(moorings):
     Turb = xr.Dataset()
 
     for m in tqdm.tqdm(moorings):
-        subset = (m.turb.reset_coords(['ρ', 'S', 'T', 'z', 'mld', 'ild'])
-                  .expand_dims(['lat', 'lon']))
+        subset = (m.turb.reset_coords())
 
         if m.name == 'NRL1':
             subset.depth.values = [55.0, 75.0]
@@ -60,7 +59,13 @@ def make_merged_nc(moorings):
         if m.name == 'NRL3':
             subset.depth.values = np.array([30, 45])
 
-        Turb = xr.merge([Turb, subset.reset_coords()])
+        if 'RAMA' in m.name:
+            subset['tau'] = m.met.τ.interp(time=m.turb.time.values)
+        elif 'NRL' in m.name:
+            subset['tau'] = m.tropflux.tau.interp(time=m.turb.time.values)
+
+        Turb = xr.merge([Turb, (subset.expand_dims(['lat', 'lon'])
+                                .set_coords(['lat', 'lon']))])
 
     del subset
 
