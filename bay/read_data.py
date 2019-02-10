@@ -111,8 +111,9 @@ def read_nrl1(minimal=False):
     nrl1.AddChipod(500, depth=56, best='mm', fname='Turb.mat')
     nrl1.AddChipod(501, depth=76, best='mm1', fname='Turb.mat')
 
+    nrl1.ReadVel('NRL1', FileType='ebob')
+
     if not minimal:
-        nrl1.ReadVel('NRL1', FileType='ebob')
         nrl1.ReadNIW()
 
     nrl1.AddEvents("SW1", '2014-01-23', '2014-02-02')
@@ -129,10 +130,7 @@ def read_nrl2(minimal=False):
     nrl2 = moor.moor(85.5, 6.5, 'NRL2', 'nrl2', 'ebob', '../ebob/')
     nrl2.ReadCTD('NRL2', FileType='ebob')
     nrl2.AddChipod(504, 69, 'mm', 'Turb.mat')
-
-    if not minimal:
-        nrl2.ReadVel('NRL2', FileType='ebob')
-        # nrl2.ReadNIW()
+    nrl2.ReadVel('NRL2', FileType='ebob')
 
     nrl2 = __common(nrl2, minimal)
 
@@ -148,8 +146,9 @@ def read_nrl3(minimal=False):
     nrl3.AddEvents('SLD', '2014-06-01', '2014-09-01')
     # this period has salinity gap that I filled in using TS fits.
     nrl3.AddEvents('Sal gap', '2014-03-14', '2014-09-29')
+    nrl3.ReadVel('NRL3', FileType='ebob')
+
     if not minimal:
-        nrl3.ReadVel('NRL3', FileType='ebob')
         nrl3.ReadNIW()
 
     nrl3 = __common(nrl3, minimal)
@@ -164,9 +163,9 @@ def read_nrl4(minimal=False):
     nrl4.AddChipod(514, 55, 'mm1', 'Turb.mat')
     nrl4.AddChipod(516, 75, 'mm2', 'Turb.mat')
     nrl4.AddEvents('SLD', '2014-06-01', '2014-09-01')
+    nrl4.ReadVel('NRL4', FileType='ebob')
 
     if not minimal:
-        nrl4.ReadVel('NRL4', FileType='ebob')
         nrl4.ReadNIW()
 
     nrl4 = __common(nrl4, minimal)
@@ -189,9 +188,9 @@ def read_nrl5(minimal=False):
     nrl5.AddEvents('Storm+IW', '2014-07-17', '2014-08-07')
     nrl5.AddEvents('Storm-zoomin', '2014-07-25', '2014-08-07 11:59')
     nrl5.AddEvents("nomix", '2014-03-17', '2014-05-06')
+    nrl5.ReadVel('NRL5', FileType='ebob')
 
     if not minimal:
-        nrl5.ReadVel('NRL5', FileType='ebob')
         nrl5.ReadNIW()
 
     nrl5.χpod[519].mixing_seasons = dict(
