@@ -1039,17 +1039,33 @@ axes = dict(zip(bay.seasons, axx))
 for seas in axes:
     ax = axes[seas]
 
-    mappable = ax.hexbin(_select((np.abs(low.wkb_uz + 1j*low.wkb_vz)**2),
-                                 seas).values.ravel(),
-                         _select(_process(np.abs(niw.wkb_uz + 1j*niw.wkb_vz)**2),
-                                 seas).values.ravel(),
-                         C=_select(deep.KT, seas).values.ravel(),
+    slo = _select((np.abs(low.wkb_uz + 1j*low.wkb_vz)**2), seas).values.ravel()
+    sni = (_select(_process(np.abs(niw.wkb_uz + 1j*niw.wkb_vz)**2), seas)
+           .values.ravel())
+    sKT = _select(deep.KT, seas).values.ravel()
+    mask = np.logical_or(np.logical_or(np.isnan(slo), np.isnan(sni)),
+                         np.isnan(sKT))
+
+    mappable = ax.hexbin(slo,
+                         sni,
+                         C=sKT,
                          reduce_C_function=np.nanmean,
                          xscale='log', yscale='log',
                          gridsize=25, mincnt=10,
                          extent=[-7, -3, -7, -3],
                          cmap=cmap, norm=norm,
                          edgecolors='#333333', linewidths=0.5)
+
+    hist, xbins, ybins = np.histogram2d(slo[~mask],
+                                        sni[~mask],
+                                        bins=[np.logspace(-8, -2, 100),
+                                              np.logspace(-8, -2, 100)],
+                                        density=False)
+    ax.contour((xbins[:-1] + xbins[1:])/2,
+               (ybins[:-1] + ybins[1:])/2,
+               sp.ndimage.filters.gaussian_filter(hist, 3, mode='constant'),
+               colors='k', levels=3, linewidths=1)
+
     ax.set_aspect(1)
     dcpy.plots.line45(color='w', lw=2, ax=ax)
     dcpy.plots.line45(color='k', lw=1, ax=ax)
@@ -1057,18 +1073,15 @@ for seas in axes:
     ax.spines['top'].set_visible(True)
     ax.grid(True)
 
-
 axx[0].set_xlim([10**-6.5, 10**-3.5])
 axx[0].set_ylim([10**-6.5, 10**-3.5])
 
 axx[0].set_ylabel(
     'WKB near-inertial $S²$\n[s$^{-2}$] (4-day running mean)')
-
 axx[2].set_ylabel(
     'WKB near-inertial $S²$\n[s$^{-2}$] (4-day running mean)')
 
 axx[2].set_xlabel('WKB low-frequency $S²$ [s$^{-2}$]')
-
 axx[3].set_xlabel('WKB low-frequency $S²$ [s$^{-2}$]')
 
 dcpy.plots.label_subplots(axx, y=0.9, labels=bay.seasons)
