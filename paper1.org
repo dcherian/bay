@@ -353,25 +353,6 @@ plt.savefig('images/paper1/spatial-maps.pdf', transparent=False)
 #  .plot.contour(ax=axes[season], x='lon', y='lat',
 #                levels=pptlevels, zorder=4,
 #                colors=raincolor, linewidths=1))
-
-# cmap = (sns.blend_palette(
-#     [[0.988235, 0.988235, 0.992157],
-#      [0.811765, 0.831373, 0.886275],
-#      [0.627451, 0.678431, 0.788235],
-#      [0.521569, 0.615686, 0.729412],
-#      [0.584314, 0.698039, 0.749020],
-#      [0.690196, 0.803922, 0.772549],
-#      [0.847059, 0.905882, 0.796078],
-#      [1.000000, 0.980392, 0.756863],
-#      [0.996078, 0.839216, 0.447059],
-#      [0.996078, 0.670588, 0.286275],
-#      [0.992157, 0.501961, 0.219608],
-#      [0.968627, 0.270588, 0.152941],
-#      [0.835294, 0.070588, 0.125490],
-#      [0.674510, 0.000000, 0.149020],
-#      [0.509804, 0.000000, 0.149020]],
-#     n_colors=21, as_cmap=True))
-
 #+END_SRC
 #+NAME: fig:spatial
 #+ATTR_LATEX: :width \textwidth
@@ -414,6 +395,7 @@ with plt.rc_context({'font.size': 11,
     ax3.set_ylabel('')
     ax3.set_yticklabels([])
 
+    f.savefig('images/paper1/map.pdf', bbox_inches='tight')
     f.savefig('images/paper1/map.pdf', bbox_inches='tight')
 #+END_SRC
 #+NAME: fig:map
@@ -691,80 +673,97 @@ f.savefig('images/paper1/rama12.pdf')
 *** Figure 5: NRL time series                                      :ignore:
 
 #+BEGIN_SRC ipython :session
-mooring = nrl5
+def plot_nrl(mooring):
 
-shear = mooring.interp_shear('bins', wkb_scale=True)
+    shear, low_shear, _, niw_shear, _ = mooring.filter_interp_shear('bins')
 
-from dcpy.plots import annotate_end, set_axes_color
+    from dcpy.plots import annotate_end, set_axes_color
 
-f5, axx5 = plt.subplots(6, 1, sharex=True, constrained_layout=True)
-f5.set_constrained_layout_pads(hspace=0.001, h_pad=0)
-f5.set_size_inches((8, 8))
+    f5, axx5 = plt.subplots(6, 1, sharex=True, constrained_layout=True)
+    f5.set_constrained_layout_pads(hspace=0.001, h_pad=0)
+    f5.set_size_inches((8, 8))
 
-niw_shear = xfilter.bandpass(shear.shear, 'time',
-                             freq=np.array([1/2, 2])*mooring.inertial.values,
-                             cycles_per='D')
-low_shear = xfilter.lowpass(shear.shear, 'time', freq=0.1, cycles_per='D')
+    # niw_shear = xfilter.bandpass(shear.shear, 'time',
+    #                              freq=np.array([1/2, 2])*mooring.inertial.values,
+    #                              cycles_per='D')
+    # low_shear = xfilter.lowpass(shear.shear, 'time', freq=0.1, cycles_per='D')
 
-N = np.sqrt(mooring.N2.isel(depth=1)
-            .resample(time='M').mean('time')
-            .interp(time=niw_shear.time))
-hniw = (((niw_shear).rolling(time=7*24).reduce(dcpy.util.ms)* 1e5)
-        .sel(time='2014')
-        .plot(ax=axx5[-2], _labels=False, color='g', lw=1.5))
-hlow = ((np.abs(low_shear.sel(time='2014'))**2 * 1e5)
-        .plot(ax=axx5[-2], _labels=False, color='k', lw=1.5))
-annotate_end(hlow[0], 'low pass', va='top')
-annotate_end(hniw[0], '  near\n  inertial', va='center')
-hniw[0].set_clip_on(False)
-hniw[0].set_in_layout(False)
-hlow[0].set_clip_on(False)
-hlow[0].set_in_layout(False)
-mooring.MarkSeasonsAndEvents(events='Storm-zoomin', ax=axx5[-2])
-axx5[-2].set_ylabel('Squared WKB shear\n[$10^{-5}$ s$^{-2}$]')
-axx5[-2].set_ylim([0, 8])
+    residual = shear.shear - niw_shear - low_shear
 
-axmooring = bay.plots.plot_moor(mooring, idepth=1, axx=axx5, events='Storm-zoomin')
-axmooring['jq'].set_ylim([-20, 0])
-axmooring['js'].set_ylim([0, 0.5])
+    N = np.sqrt(mooring.N2.isel(depth=1)
+                .resample(time='M').mean('time')
+                .interp(time=niw_shear.time))
+    hniw = ((niw_shear.rolling(time=7*24).reduce(dcpy.util.ms)* 1e5)
+            .sel(time='2014')
+            .plot(ax=axx5[-2], _labels=False, color='g', lw=1.5))
+    hlow = ((np.abs(low_shear)**2 * 1e5)
+            .sel(time='2014')
+            .plot(ax=axx5[-2], _labels=False, color='k', lw=1.5))
+    hres = ((residual.rolling(time=7*24).reduce(dcpy.util.ms) * 1e5)
+            .sel(time='2014')
+            .plot(ax=axx5[-2], _labels=False, color='C1', lw=1.5))
+    # annotate_end(hlow[0], 'low pass', va='top')
+    # annotate_end(hniw[0], '  near\n  inertial', va='center')
+    # annotate_end(hres[0], '  residual', va='center')
 
-# fill in the 20m gap with linear interpolation
-# then interpolate velocity to CTD depths
-# then difference to get shear
-zinterp = mooring.ctd.depth.isel(z=slice(1, 3))
-vel_interp = (mooring.vel[['u', 'v']].interpolate_na('depth')
-              .interp(time=zinterp.time, depth=zinterp.drop('depth')))
-shear_interp = (np.hypot(vel_interp.u.diff('z')/15, vel_interp.v.diff('z')/15)
-                .squeeze())
+    axx5[-2].text('2014-08-12', 7.5, 'near-inertial', color=hniw[0].get_color())
+    axx5[-2].text('2014-10-06', 7.5, 'low-frequency', color=hlow[0].get_color())
+    axx5[-2].text('2014-12-02', 7.5, 'residual', color=hres[0].get_color())
+    hniw[0].set_clip_on(False)
+    hniw[0].set_in_layout(False)
+    hlow[0].set_clip_on(False)
+    hlow[0].set_in_layout(False)
+    mooring.MarkSeasonsAndEvents(events='Storm-zoomin', ax=axx5[-2])
+    axx5[-2].set_ylabel('Squared WKB shear\n[$10^{-5}$ s$^{-2}$]')
+    axx5[-2].set_ylim([0, 10])
 
-N2 = ((9.81/1025 * mooring.ctd.ρ.diff('z')/mooring.ctd.depth.diff('z'))
-      .isel(z=1))
-Ri = (N2.where(N2 > 0)/shear_interp**2).sel(time='2014')
+    axmooring = bay.plots.plot_moor(mooring, idepth=1,
+                                    axx=axx5, events='Storm-zoomin')
+    axmooring['jq'].set_ylim([-20, 0])
+    axmooring['js'].set_ylim([0, 0.5])
 
-axmooring['ri'] = axx5[-1]
-((Ri.where(Ri < 5).resample(time='D').count()/144)
- .plot(ax=axmooring['ri'], label='< 10', _labels=False, color='k'))
-axmooring['ri'].set_ylabel('Fraction of day\nwith Ri < 5')
-mooring.MarkSeasonsAndEvents(events='Storm-zoomin', ax=axmooring['ri'])
+    # fill in the 20m gap with linear interpolation
+    # then interpolate velocity to CTD depths
+    # then difference to get shear
+    zinterp = mooring.ctd.depth.isel(z=slice(1, 3))
+    vel_interp = (mooring.vel[['u', 'v']].interpolate_na('depth')
+                  .interp(time=zinterp.time, depth=zinterp.drop('depth')))
+    shear_interp = (np.hypot(vel_interp.u.diff('z')/15, vel_interp.v.diff('z')/15)
+                    .squeeze())
 
-axmooring['depth'] = axmooring['ri'].twinx()
-(mooring.zχpod.sel(num=1).resample(time='D').mean('time')
- .plot(ax=axmooring['depth'], _labels=False, color='C0', lw=1.2))
-set_axes_color(axmooring['depth'], 'C0', spine='right')
-axmooring['depth'].set_ylabel('$χ$pod depth [m]')
-axmooring['depth'].set_ylim([60, 140])
+    N2 = ((9.81/1025 * mooring.ctd.ρ.diff('z')/mooring.ctd.depth.diff('z'))
+          .isel(z=1))
+    Ri = (N2.where(N2 > 0)/shear_interp**2).sel(time='2014')
 
-axmooring['input'] = axmooring['met'].twinx()
-axmooring['input'].plot(mooring.niw.time, mooring.niw.true_flux*1000, color='C0')
-axmooring['input'].set_ylabel('Near-inertial input\n$Π$[mW/m²]')
-set_axes_color(axmooring['input'], 'C0', spine='right')
+    axmooring['ri'] = axx5[-1]
+    ((Ri.where(Ri < 5).resample(time='D').count()/144)
+     .plot(ax=axmooring['ri'], label='< 10', _labels=False, color='k'))
+    axmooring['ri'].set_ylabel('Fraction of day\nwith Ri < 5')
+    mooring.MarkSeasonsAndEvents(events='Storm-zoomin', ax=axmooring['ri'])
 
-dcpy.plots.label_subplots(axx5, x=0.025, y=0.83)
+    axmooring['depth'] = axmooring['ri'].twinx()
+    (mooring.zχpod.sel(num=1).resample(time='D').mean('time')
+     .plot(ax=axmooring['depth'], _labels=False, color='C0', lw=1.2))
+    set_axes_color(axmooring['depth'], 'C0', spine='right')
+    axmooring['depth'].set_ylabel('$χ$pod depth [m]')
+    axmooring['depth'].set_ylim([60, 140])
 
-[tt.set_rotation(0) for tt in axx5[-1].get_xticklabels()]
-[tt.set_ha('center') for tt in axx5[-1].get_xticklabels()]
+    axmooring['input'] = axmooring['met'].twinx()
+    axmooring['input'].plot(mooring.niw.time, mooring.niw.true_flux*1000, color='C0')
+    axmooring['input'].set_ylabel('Near-inertial input\n$Π$[mW/m²]')
+    set_axes_color(axmooring['input'], 'C0', spine='right')
 
-f5.savefig('images/paper1/' + mooring.name.lower() + '.pdf')
+    dcpy.plots.label_subplots(axx5, x=0.025, y=0.83)
+
+    [tt.set_rotation(0) for tt in axx5[-1].get_xticklabels()]
+    [tt.set_ha('center') for tt in axx5[-1].get_xticklabels()]
+
+    return f5, axmooring
+
+
+f5, _ = plot_nrl(nrl5)
+
+f5.savefig('images/paper1/nrl5.pdf')
 
 # shear_interp = (mooring.vel.shear
 #                 .interp(time=zpod.time, depth=zpod.isel(num=1))
@@ -808,7 +807,7 @@ f5.savefig('images/paper1/' + mooring.name.lower() + '.pdf')
 # # axes['shear'].set_ylim([0, 2.5])
 #+END_SRC
 #+NAME: fig:nrl
-#+CAPTION: A year of observations at NRL5. Time series of daily averaged quantities: (a) Tropflux wind stress and wind-forced near-inertial energy flux; (b) daily averaged $K_T$ and fraction daily coverage; (c) turbulent heat and salt fluxes $J_q^t, J_s^t$; (d) Buoyancy frequency $N²$ and temperature stratification $T_z$; (e) Weekly running mean of filtered squared WKB-scaled shear magnitude: 6.6 day low pass in black and near-inertial bandpass in green; (f) Fraction of day where Richardson number Ri < 5. Background colors mark seasons; white region indicates time period that is subject of Figure [[fig:nrl5-niw]].
+#+CAPTION: A year of observations at NRL5. Time series of daily averaged quantities: (a) Tropflux wind stress and wind-forced near-inertial energy flux; (b) daily averaged $K_T$ and fraction daily coverage; (c) turbulent heat and salt fluxes $J_q^t, J_s^t$; (d) Buoyancy frequency $N²$ and temperature stratification $T_z$; (e) Weekly running mean of filtered squared WKB-scaled shear magnitude: 6.6 day low pass in black, near-inertial bandpass in green and the residual in orange; (f) Fraction of day where Richardson number Ri < 5. Background colors mark seasons; white region indicates time period that is subject of Figure [[fig:nrl5-niw]].
 [[file:images/paper1/nrl5.pdf]]
 
 
@@ -839,25 +838,25 @@ Such cyclone-forced mixing can have important consequences for productivity in t
 The arrival of the Ganga-Brahmaputra-Meghna river plume in August at 18°N shuts down mixing even at \SI{65}{m} depth at 18°N  citep:Thakur2019.
 Interestingly, such a shutdown of mixing is not visible at either 12°N or 15°N in the three instrument-years of observations we have currently possess.
 
-*** Figure 6 : ML scatter plot                                     :ignore:
+*** Figure 6 : ML scatter plot :ignore:
 
 #+BEGIN_SRC ipython :session
 subset = (df.where(df.lon == 90)
-          .where((df.bin == 'ML') | (df.bin == 'BL'))
-          .where(df.tau < 0.3)
           .dropna())
 
 f, ax = plt.subplots(1, 1, constrained_layout=True)
-mappable = ax.hexbin(subset.tau, (subset.KT), gridsize=35, mincnt=5,
+mappable = ax.hexbin((subset.tau/1025)**(1/2), (subset.KT),
+                     gridsize=40, mincnt=5,
                      cmap=mpl.cm.Blues, vmin=0, vmax=45,
-                     extent=[0, 0.3, -6, -2],
+                     extent=[0, 0.02, -6, -2],
                      yscale='log', edgecolors='k', linewidths=0.25)
+ax.set_xlabel('Friction velocity $u_{*} = (τ/ρ_0)^{1/2}$ [m s$^{-1}$]')
 f.colorbar(mappable, ax=ax, extend='max', label='count')
-ax.set_xlabel('Wind stress $τ$ [N m$^{-2}$]')
+# ax.set_xlabel('Wind stress $τ$ [N m$^{-2}$]')
 ax.set_ylabel('$K_T$ [m² s$^{-1}$]')
 
 ax.grid(True)
-ax.set_xlim([0, 0.3])
+ax.set_xlim([0, 0.02])
 ax.set_ylim([1e-6, 1e-2])
 f.set_size_inches(4, 3.3)
 
@@ -865,6 +864,65 @@ f.savefig('images/paper1/scatter-ml-bl.pdf')
 #+END_SRC
 #+NAME: fig:mlbl
 #+ATTR_LATEX: :width 4in
+#+CAPTION: Diffusivity in the mixed and barrier layers is proportional to wind stress. Histogram of hourly averaged $K_T$ in the mixed and barrier layers binned by wind stress.
+[[file:images/paper1/scatter-ml-bl.pdf]]
+
+*** Figure 6 : ML scatter plot with ε                              :noexport:ignore:
+
+#+BEGIN_SRC ipython :session
+# df = bay.nc_to_binned_df(turb)
+
+# subset = (df.where(df.lon == 90)
+#           .where((df.bin == 'ML'))
+#           .where(np.abs(df.Tz) > 2e-3)
+#           .where(df.N2 > 0)
+#           .dropna())
+
+subset = usual.turb.sel(depth=15).to_dataframe(); title='normal';
+# subset = wda.turb.sel(depth=15).to_dataframe(); title='sorted'
+
+subset = subset.where(subset.mld < 20)
+
+eps_wall = (subset.tau/1025)**(3/2)/0.41/subset.z
+
+f, ax = plt.subplots(1, 2, constrained_layout=True)
+mappable = ax[0].hexbin((subset.tau/1025)**(1/2) * 0.41 * subset.z,
+                        subset.KT, gridsize=35, mincnt=10,
+                        cmap=mpl.cm.Blues,
+                        xscale='log', yscale='log',
+                        edgecolors='k', linewidths=0.25)
+ax[0].set_xlabel('$κ z u_{*}$')
+ax[0].set_ylabel('$K_T$ [m² s$^{-1}$]')
+ax[0].set_ylim([1e-6, 1e-2])
+# ax[1].set_xlim([0, 0.02])
+
+mappable = ax[1].hexbin((subset.tau/1025)**(3/2)/0.41/subset.z,
+                        subset.ε, gridsize=35, mincnt=10,
+                        cmap=mpl.cm.Blues,
+                        xscale='log', yscale='log',
+                        edgecolors='k', linewidths=0.25)
+ax[1].set_xlabel('Law of the wall\n$ε = (τ/ρ_0)^{3/2}/(κ_{vk}z)$ [W kg$^{-1}$]')
+ax[1].set_ylabel('$ε_χ$ [W kg$^{-1}$]')
+ax[1].set_ylim([1e-9, 1e-4])
+ax[1].set_xlim([1e-9, 1e-4])
+
+f.colorbar(mappable, ax=ax, extend='max',
+           orientation='horizontal',
+           shrink=0.6,
+           label='Number of observations in bin')
+
+for aa in ax:
+    aa.grid(True)
+
+dcpy.plots.line45(ax=ax[1])
+
+# ax.set_xlim([0, 0.2])
+f.set_size_inches(7, 4)
+f.suptitle(title)
+
+# f.savefig('images/paper1/scatter-ml-bl.pdf')
+#+END_SRC
+#+NAME: fig:mlbl
 #+CAPTION: Diffusivity in the mixed and barrier layers is proportional to wind stress. Histogram of hourly averaged $K_T$ in the mixed and barrier layers binned by wind stress.
 [[file:images/paper1/scatter-ml-bl.pdf]]
 
@@ -885,29 +943,39 @@ We are also restricted to estimating shear only at the deeper χpod on each NRL 
 Shear at the deeper χpod is estimated by central differencing the velocity over three \SI{8}{m} wide bins that span that χpods depth level.
 We account for seasonal as well as spatial variability in $N²$ by WKB scaling the shear as $u_z\wkb = u_z (\tilde{N}(t)/N_0)^{3/2}$ using $\tilde{N}(t)$  calculated as the 30-day low-passed filtered $N$ and $N_0$ calculated as the annual mean $N$.
 The WKB-scaled shear time series is then filtered using a second-order Butterworth filter applied forwards and backwards to obtain low frequency (lowpass with half power point 9 days) and near-inertial shear (bandpass between half power points 7 days and 2 days respectively; Figure [[fig:nrl]]e).
-Coarse sampling limits our ability to confidently infer a seasonal cycle in $\Ri$ estimated using 20m-scale shear (not WKB scaled) and $N²$ sampled hourly[fn::Similarly reduced shear $S² - 4N²$ is rarely positive and not useful.].
+Vertical pumping of near-inertial shear by the internal $M_2$ shifts some energy out of the near-inertial peak and moves it to $-f ± ω_{M2}$ where $ω_{M2}$ is the frequency of the $M_2$ tide citep:Alford2001a.
+This effect is visible as a three-pronged peak around $ω_{M2}$ in /Eulerian/ shear spectra at different depths (not shown) and is substantially reduced in isopycnal spectra as in cite:Alford2001a.
+Sparse sampling of $T$ and $S$ on these moorings results in the loss of a large number of shear estimates at the χpod's depth level when mapping to isopycnal space.
+Instead, we account for tidal pumping by further filtering the shear time series in a narrow band about $M_2$ and adding that to the filtered near-inertial estimate i.e. all shear variance near $M_2$ is attributed to near-inertial waves.
+
+Coarse sampling severely limits our ability to confidently infer a seasonal cycle in $\Ri$ estimated using 20m-scale shear (not WKB scaled) and $N²$ sampled hourly[fn::Similarly reduced shear $S² - 4N²$ is rarely positive and not useful.].
 Instead we show a time series of the fraction of day with $\Ri < 5$ expecting that χpods are more likely to observe turbulence at times when relatively lower values of $\Ri$ are more frequent (Figure [[fig:nrl]]f).
-Peaks in the occurrence of low $\Ri$ tend to coincide with either elevated low-frequency shear between May and November or elevated near-inertial shear (Figure [[fig:nrl]], panels e and f).
+Peaks in the occurrence of low $\Ri$ tend to coincide with either elevated low-frequency shear between May and November and/or elevated near-inertial shear (Figure [[fig:nrl]], panels e and f).
+The residual shear obtained by removing the filtered low-frequency and near-inertial time series is of much lower magnitude and so our discussion will focus on the low-frequency and near-inertial components (orange time series in Figure [[fig:nrl]]e).
 Peaks in low-frequency shear reflect the strongly sheared Summer Monsoon Current (SMC) meandering through the mooring line at 8°N, elevating shear and decreasing $N²$ in the top \SIrange{100}{150}{m} between July and December (Figure [[fig:nrl]]d).
 Both seasonal mean surface velocities from OSCAR and mooring ADCP data show the SMC to be prominent especially at NRL3 and NRL4, the two westernmost moorings along 8°N (EKE max in top row of Figure ref:fig:spatial and citealp:Wijesekera2016a).
 Bursts of enhanced near-inertial shear in the thermocline are frequent during both monsoons and are significantly weaker in April and October (Figure [[fig:nrl]]e).
-These bursts tend to coincide with enhanced mixing events similar to previous work that has shown a link between wind-forced near-inertial waves and thermocline mixing (for example, citealp:Alford2001b).
+These bursts occasionally coincide with enhanced mixing events similar to previous work that has shown a link between wind-forced near-inertial waves and thermocline mixing (citealp:Alford2001b).
+Enhanced near-inertial shear need not necessarily lead to mixing.
+cite:Alford2001b observe that peak mixing associated with a downward propagating near-inertial wave occurs at the stratification maximum and point out that for a wave that obeys WKB scaling, the Froude number scales with stratification: $\Fr = S/N \sim N^{1/4}$.
+A χpod would need to be at the right depth relative to the stratification structure to observe turbulence forced by near-inertial energy --- a major caveat to our analysis.
 
-#+LATEX: \note{describe near-inertial input calculation}
+We visualize the seasonal cycle of shear and mixing in the thermocline by presenting diffusivity $K_T$ as a function of both low-frequency and near-inertial shear squared in Figure ref:fig:shearscatter.
+Hourly mean $K_T$ estimates at the NRL3, 4 and 5 moorings along 8°N are binned two-dimensionally and averaged.
+We exclude observations that were likely made at the base of the mixed layer by ignoring those associated with $T_z < \SI{1e-2}{\celsius\per\m}$.
+This criterion only affects the shallower χpod at NRL3, nominally deployed at \SI{30}{m}.
+The NRL1 mooring at a latitude of 5°N records a weak seasonal cycle and is possibly associated with the equatorial dynamical regime.
+We leave further analysis of this record to a future paper.
+In constructing Figure ref:fig:shearscatter we assume that shear at the shallower χpod is identical to that at the deeper χpod — these are separated by \SI{20}{m} — which adds some error but greatly increases the number of available turbulence observations that get averaged in each bin.
+Qualitatively, there is a strong seasonal cycle in low-frequency shear — large values during the SW monsoon and the post-monsoon periods; a weaker seasonal cycle in near-inertial shear — weaker during the transition months of March and April (NESW).
+
+#+LATEX: \note{describe near-inertial input calculation. Do I need this?}
 The seasonal variability in near-inertial shear variance weakly mirrors the seasonal cycle of /local/ near-inertial input (Figure [[fig:nrl]]a).
 We compute this local estimate of near-inertial energy flux into the mixed layer $Π$ as $ρ_0 \, u\niw\ML⋅τ\niw$  using the topmost velocity bin at 8m depth as representative of mixed layer velocity $u\ML$ and daily average $τ$ from Tropflux[fn::No local wind measurements are available at the (subsurface) NRL moorings.] (blue time series in our Figure [[fig:nrl]]a; citealp:Silverthorne2009).
 The inertial component of the mixed layer velocity $u\niw\ML$ and wind stress $τ\niw$ are estimated by using a second-order bandpass Butterworth filter run forwards and backwards with half-power points at [1/1.25, 1.25] $T_f$ where $T_f=\SI{3.59}{days}$ is the local inertial period.
 The SW monsoon is perhaps surprisingly not a period of peak near-inertial input but this is consistent with the estimate of surface near-inertial energy input into the mixed layer (Figure ref:fig:spatial).
 This seasonal cycle in near-inertial input into the mixed layer and thermocline near-inertial shear variance is consistent with observations at both NRL3 and NRL4 with the seasonal low in April being a prominent feature (Figures ref:fig:spatial, [[fig:nrl]]a,e).
-Given the weak relation between local near-inertial shear variance and local near-inertial input, we leave a more detailed examination of Bay's near-inertial field to a future paper and instead focus on relating the observed mixing to near-inertial shear peaks observed at the χpod.
-
-We visualize the seasonal cycle of shear and mixing in the thermocline by presenting diffusivity $K_T$ as a function of both low-frequency and near-inertial shear squared in Figure ref:fig:shearscatter.
-Hourly mean $K_T$ estimates at the NRL3, 4 and 5 moorings along 8°N are binned two-dimensionally and averaged.
-We exclude observations that are likely at the base of the mixed layer by ignoring those associated with $T_z < \SI{1e-2}{\celsius\per\m}$[fn::This criterion only affects the shallower χpod at NRL3, nominally deployed at \SI{30}{m}].
-The NRL1 mooring at a latitude of 5°N records a weak seasonal cycle and is possibly associated with the equatorial dynamical regime.
-We leave further analysis of this record to a future paper.
-In constructing Figure ref:fig:shearscatter we assume that shear at the shallower χpod is identical to that at the deeper χpod — these are separated by \SI{20}{m} — which adds some error but greatly increases the number of available turbulence observations that get averaged in each bin.
-Qualitatively, there is a strong seasonal cycle in low-frequency shear — large values during the SW monsoon and the post-monsoon periods — and a weaker seasonal cycle in near-inertial shear — substantially weaker during the transition months of March and April (NESW).
+Given the weak relation between local near-inertial shear variance and local near-inertial input, we leave a more detailed examination of Bay's near-inertial field to a future paper and instead focus on relating the observed mixing to near-inertial and low-frequency shear peaks observed at the χpod.
 
 *** NE monsoon
 
@@ -949,9 +1017,7 @@ The arrival of Arabian Sea water in July reduces both $N²$ and $T_z$ and we obs
 This period of relatively low $\Ri$ coincides with elevated diffusivity $K_T$.
 The maximum observed diffusivity and maximum observed turbulent fluxes at NRL5 in Figure [[fig:nrl]] are associated with a particularly strong set of near-inertial wave packets that forced significantly enhanced turbulence at the χpod's depth (July 23 -- August 7, highlighted in white in Figure [[fig:nrl]]b,c).
 Turbulent kinetic energy (TKE) dissipation $ε$ and zonal shear for this period of intense mixing are shown in Figure ref:fig:nrl5-niw.
-This period of elevated mixing coincides with the passage of a set of $M_2$ internal tide packets that vertically displace the isotherms in Figure [[ref:fig:nrl5-niw]]b.
-/Eulerian/ shear spectra contain a peak of varying amplitude at a consistent frequency of $-f ± M_2$ peak rather than pure $M_2$ (not shown).
-The energy in this peak is substantially reduced in isopycnal spectra --- a sign that the $M_2$ tide is heaving near-inertial shear layers rather than nonlinearly interacting with the near-inertial waves citep:Alford2001a.
+This period of elevated mixing coincides with the passage of a set of $M_2$ internal tide packets that vertically displace the isotherms and shear layers (Figure [[ref:fig:nrl5-niw]]b).
 Hence we interpret the apparent modulation of $ε$ at near-$M_2$ frequency (Figure [[fig:nrl5-niw]]a) as a result of the $M_2$ internal tide heaving near-inertial shear layers past the χpod, and not mixing forced by tidal shear.
 
 *** Post-monsoon
@@ -963,9 +1029,7 @@ Despite the absence of an organized mean flow, relatively weakly-stratified high
 As with the other seasons, enhanced turbulence appears to coincide with energetic near-inertial and low-frequency shear events (Figure [[fig:shearscatter]]d).
 Two strong wind events at the surface in October and November are likely responsible for downward propagating near-inertial energy during this period (Figure [[fig:nrl]]a).
 At NRL5, there is some mixing associated with a low-frequency shear peak in October but negligible mixing associated with a later burst in near-inertial shear.
-cite:Alford2001b observe that peak mixing associated with a downward propagating near-inertial wave occurs at the stratification maximum and point out that for a wave that obeys WKB scaling, the Froude number scales with stratification: $\Fr=S/N \sim \mO(N^{1/4})$.
-It is possible that this χpod was just not at the right depth to observe mixing associated with that burst of near-inertial energy.
-This bias applies to all panels in Figure ref:fig:shearscatter.
+That packet of waves appears to have forced turbulence at a different depth, if at all.
 
 # There does not appear to be a direct relation between a local near-inertial input into the mixed layer $Π$ and local near-inertial shear.
 # The lack of correlation is perhaps expected since downward transmission of near-inertial energy from the mixed layer is at least a function of the prevailing stratification and mesoscale vorticity (for example citealp:Young1997,Elipot2010)
@@ -980,9 +1044,9 @@ This bias applies to all panels in Figure ref:fig:shearscatter.
 There is a strong seasonal cycle in mixing that appears to correlate with a seasonal cycle in thermocline shear.
 The presence of the Summer Monsoon Current greatly increases low-frequency shear between July and October.
 We observe more energetic bursts of WKB-scaled near-inertial shear during the two monsoons but caution that a much longer record is necessary to properly characterize the magnitude of the near-inertial seasonal cycle (there appears to be approximately one near-inertial event per month throughout the year in Figure [[fig:nrl]]e; those in March and April are extremely weak).
-That said Figure ref:fig:shearscatter offers compelling evidence that thermocline mixing is correlated with enhanced near-inertial shear throughout the year, and with low-frequency shear during the SW monsoon.
+That said Figure ref:fig:shearscatter is evidence that thermocline mixing is correlated with enhanced near-inertial shear throughout the year, and with low-frequency shear during the SW monsoon.
 A scatter plot of monthly mean $K_T$ against monthly mean local $Π$ did not reveal a meaningful relationship between the two quantities unlike the mid-latitude results of cite:Whalen2018.
-A possibility is that relative importance of mean shear to forcing mixing in the south-central Bay for an extended period of time during the SW monsoon (Figure [[fig:shearscatter]]c).
+Perhaps this may be interpreted as a sign of the relative importance of mean shear to forcing mixing in the south-central Bay during the SW monsoon (Figure [[fig:shearscatter]]c).
 Next we examine the consequences of turbulent mixing in the thermocline.
 
 *** Figure 7: NRL scatter plot                                     :ignore:
@@ -1591,12 +1655,12 @@ cite:Chowdary2016a show this model to be biased cold in the top 80m, biased warm
 They link the high mixing bias to excess shear and reduced stratification in the model.
 Our observations would suggest that the background mixing in the model might also need to be lowered.
 Climate model configurations that account for the latitudinal variation of diffusivity noted in cite:Gregg2003 use a minimum background $K_T ≈ \SI{1e-6}{m^2\per\s}$ at the equator, larger than the near-molecular mean $K_T$  we observe between \SIrange{80}{100}{m} at 8°N in the Bay during March and April (for example citealp:Jochum2009,Danabasoglu2012).
-Perhaps unnaturally high background mixing is partly to blame for the biases noted by cite:Chowdary2016a?
+Perhaps artificially high background mixing is partly to blame for the biases noted by cite:Chowdary2016a?
 
 We find that thermocline mixing is primarily associated with bursts of near-inertial shear outside the SW monsoon time period implying that characterizing the seasonal cycle of the near-inertial shear field and understanding the mechanisms that drive that seasonal cycle at depth are of prime importance.
 These mechanisms include the interaction of near-inertial energy with lower-frequency mesoscale features citep:Johnston2016 as well as the sensitivity of downward radiation to multi-layer stratification citep:Lucas2016.
 Another puzzle is the extended period of low mixing — is the internal field weaker than that expected from the GM spectrum and if so, why?
-The Bay thus offers intriguing opportunities for the ocean's internal wave field and its links to turbulence.
+The Bay offers intriguing opportunities for studying the ocean's internal wave field and its links to turbulence.
 
 # For one, note the repeated correspondence of strong near-inertial shear with strong low-frequency shear in the south-central Bay during the SW monsoon --- a time-period of strong mesoscale variability (Figures ref:fig:scattershear and ref:fig:spatial).
 # The radiation problem is further complicated by the presence of multi-layered stratification in the Bay: in the northern Bay cite:Lucas2016 report observing elevated near-inertial shear at the base of the mixed layer but no such elevation at the base of the barrier layer, preventing further downward radiation.
@@ -1752,9 +1816,17 @@ print(tabulate.tabulate(medianKT,
 
 :end:
 
-* Supplementary Information
+* Supplementary Information :noexport:
 
-** Summary images for remaining moorings.
+#+BEGIN_SRC ipython :session
+for mooring in [nrl1, nrl3, nrl4]:
+    f, axmooring = plot_nrl(mooring)
+    f.savefig('images/paper1/' + mooring.name.lower() + '.pdf')
+#+END_SRC
+
+[[file:images/paper1/nrl3.pdf]]
+[[file:images/paper1/nrl4.pdf]]
+[[file:images/paper1/nrl5.pdf]]
 
 * References
 
