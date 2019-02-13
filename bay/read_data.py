@@ -220,12 +220,11 @@ def _filter_wda_rama(mooring):
         best = pod.chi[pod.best]
         if 'w' in pod.best:  # e.g. mm1w
             tzm = pod.chi[pod.best[:-1]].dTdz
+            tzm = tzm.interp(time=best.time)
+            jq0 = mooring.flux.Jq0.interp(time=tzm.time)
 
-        tzm = tzm.interp(time=best.time)
-        jq0 = mooring.flux.Jq0.interp(time=tzm.time)
-
-        mooring.χpod[unit].chi[pod.best] = best.where(
-            ~((np.abs(tzm) < 1e-3) & (jq0 < 0)))
+            mooring.χpod[unit].chi[pod.best] = best.where(
+                ~((np.abs(tzm) < 1e-3) & (jq0 < 0)))
 
     return mooring
 
