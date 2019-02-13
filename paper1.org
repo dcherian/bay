@@ -334,6 +334,7 @@ hcb2.set_ticks(np.arange(0, 1.21, 0.2))
 
 # plt.subplots_adjust(left=0.080, right=0.99)
 # plt.tight_layout()
+f.canvas.draw()
 plt.savefig('images/paper1/spatial-maps.pdf', transparent=False)
 
 # clim = (aq.sss.sel(longitude=slice(75, 98),
@@ -395,13 +396,13 @@ with plt.rc_context({'font.size': 11,
     ax3.set_ylabel('')
     ax3.set_yticklabels([])
 
-    f.savefig('images/paper1/map.pdf', bbox_inches='tight')
+    f.canvas.draw()
     f.savefig('images/paper1/map.pdf', bbox_inches='tight')
 #+END_SRC
 #+NAME: fig:map
-#+ATTR_LATEX: :width 0.5\textwidth
+#+ATTR_LATEX: :width 19pc
 #+ATTR_HTML: :style width:50%
-#+CAPTION: 2014, 2015 χpod deployment in the Bay. (a) Locations of mooring with χpods. (b, c) χpod deployment depths marked using horizontal lines on climatological T-S profiles from the Argo dataset citep:Roemmich2009 for RAMA and EBoB moorings, respectively. EBoB moorings in the south-central Bay suffered significant blowdown. The depth range covered by χpods on these moorings are shaded in (c) with horizontal lines marking median depth.
+#+CAPTION: 2014, 2015 χpod deployment in the Bay. (a) Locations of mooring with χpods. (b, c) χpod deployment depths marked using horizontal lines on climatological T-S profiles from the Argo dataset citep:Roemmich2009 for RAMA and EBoB moorings, respectively. The EBoB moorings in the south-central Bay suffered significant blowdown. The depth range covered by χpods on these moorings are shaded in (c) with horizontal lines marking median depth. Temperature and salinity axes (lower and upper x-axes) are scaled such that axis limits represent equal jumps in density.
 [[file:images/paper1/map.pdf]]
 
 
