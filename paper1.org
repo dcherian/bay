@@ -740,9 +740,9 @@ bibliographystyle:ametsoc2014
 
 #+BEGIN_SRC ipython :session :results none
 niw_split = (wind_input
-                 .sel(time=slice('2013-12-01', '2014-11-30'))
-                 .groupby(wind_input.time.monsoon.splitlabels)
-                 .mean('time'))
+             .sel(time=slice('2013-12-01', '2014-11-30'))
+             .groupby(wind_input.time.monsoon.splitlabels)
+             .mean('time'))
 
 if 'oscar' not in locals():
     oscar = (xr.open_mfdataset('/home/deepak/work/datasets/oscar/oscar_vel*.nc',
@@ -772,7 +772,7 @@ osc = oscar.sel(latitude=slice(None, None, 2),
 def common(ax):
     ax.set_xticks(range(80, 96, 4))
     ax.set_yticks(range(4, 24, 4))
-    bay.plot_coastline(ax)
+    bay.plot_coastline(ax, rivers=False)
     ax.set_extent([80, 94, 4, 24])
     # bay.mark_moors(ax=ax, color='black', colortext='white',
     #                fontsize=7, markersize=8)
@@ -894,7 +894,8 @@ hcb2.set_ticks(np.arange(0, 1.21, 0.2))
 # plt.subplots_adjust(left=0.080, right=0.99)
 # plt.tight_layout()
 f.canvas.draw()
-plt.savefig('images/paper1/spatial-maps.pdf', transparent=False)
+f.savefig('images/paper1/spatial-maps.pdf', transparent=False)
+f.savefig('images/paper1/png/spatial-maps.png', transparent=False)
 
 # clim = (aq.sss.sel(longitude=slice(75, 98),
 #                    latitude=slice(0, 24))
@@ -957,6 +958,7 @@ with plt.rc_context({'font.size': 11,
 
     f.canvas.draw()
     f.savefig('images/paper1/map.pdf', bbox_inches='tight')
+    f.savefig('images/paper1/png/map.png', bbox_inches='tight')
 #+END_SRC
 #+NAME: fig:map
 #+ATTR_LATEX: :width \columnwidth
@@ -1078,7 +1080,7 @@ subprocess.run(['bash', 'add-legend-vert-profile.bash'], cwd='images/paper1/')
 #+END_SRC
 #+NAME: fig:vert
 #+ATTR_LATEX: :float multicolumn
-#+CAPTION: The seasonal cycle of $K_T$. (top) Basin-wide seasonal averages of daily Tropflux wind stress $\tau$, near-inertial energy input $\Pi$, daily Tropflux net surface heat flux $J_q^0$ and TRMM precipitation $P$. Gray ellipses have widths and heights equal to twice the standard deviation of $\tau_x$ and $\tau_y$. (bottom) Vertical profile of hourly averaged turbulent temperature diffusivity $K_T$ formed by combining all available \(\chi\)pod data in density bins (Section [[sec:profile]]). PDFs as well as means ($\bigtriangleup$) and medians ($\bigcirc$) are shown. Bins are marked by 'ML' (mixed layer), 'BL' (barrier layer) and $\rho-1000$ for deeper bins. Black horizontal line marks the climatological depth of the $S=34.75$ isohaline at 8N estimated using the Argo climatology citep:Roemmich2009.
+#+CAPTION: The seasonal cycle of $K_T$. (top) Basin-wide seasonal averages of daily Tropflux wind stress $\tau$, near-inertial energy input $\Pi$, daily Tropflux net surface heat flux $J_q^0$ and TRMM precipitation $P$. Gray ellipses represent wind stres variability and have widths and heights equal to twice the standard deviation of $\tau_x$ and $\tau_y$. (bottom) Vertical profile of hourly averaged turbulent temperature diffusivity $K_T$ formed by combining all available \(\chi\)pod data in density bins (Section [[sec:profile]]). PDFs as well as means ($\bigtriangleup$) and medians ($\bigcirc$) are shown. Bins are marked by 'ML' (mixed layer), 'BL' (barrier layer) and $\rho-1000$ for deeper bins. Black horizontal line marks the climatological depth of the $S=34.75$ isohaline at 8N estimated using the Argo climatology citep:Roemmich2009. Vertical lines mark standard deviation of measurement depths in each bin --- these OVERLAP!
 file:images/paper1/bay-KT-vert-profile-label.png
 
 *** Figure 4: RAMA 12N time series                                 :ignore:
@@ -1109,7 +1111,7 @@ f.savefig('images/paper1/rama12.pdf')
 #+END_SRC
 #+NAME: fig:rama
 #+ATTR_LATEX: :float multicolumn
-#+CAPTION: A year of observations at RAMA 12N. Time series of daily averaged quantities: (a) locally measured wind stress $\tau$ and locally measured net surface heat flux $J_q^0$; (b) daily averaged $K_T$ and fraction daily coverage; (c) turbulent heat and salt fluxes $J_q^t, J_s^t$. (d) Buoyancy frequency $N^2$ and temperature stratification $T_z$. Background colors mark seasons.
+#+CAPTION: A year of observations at RAMA 12N. Time series of daily averaged quantities: (a) locally measured wind stress $\tau$ and locally measured net surface heat flux $J_q^0$ (positive heats the ocean); (b) daily averaged $K_T$ and fraction daily coverage; (c) turbulent heat and salt fluxes $J_q^t, J_s^t$. (d) Buoyancy frequency $N^2$ and temperature stratification $T_z$. Background colors mark seasons.
 [[file:images/paper1/rama12.pdf]]
 
 *** Figure 5: NRL time series                                      :ignore:
@@ -1253,7 +1255,7 @@ f5.savefig('images/paper1/nrl5.pdf')
 #+CAPTION: A year of observations at NRL5. Time series of daily averaged quantities: (a) Tropflux wind stress and wind-forced near-inertial energy flux; (b) daily averaged $K_T$ and fraction daily coverage; (c) turbulent heat and salt fluxes $J_q^t, J_s^t$; (d) Buoyancy frequency $N^2$ and temperature stratification $T_z$; (e) Weekly running mean of filtered squared WKB-scaled shear magnitude: 6.6 day low pass in black, near-inertial bandpass in green and the residual in orange; (f) Fraction of day where Richardson number $\Ri$ < 5. Background colors mark seasons; white region indicates time period that is subject of Figure [[fig:nrl5-niw]].
 [[file:images/paper1/nrl5.pdf]]
 
-*** Figure 6 : ML scatter plot :ignore:
+*** Figure 6: ML scatter plot :ignore:
 
 #+BEGIN_SRC ipython :session
 subset = (df.where(df.lon == 90)
@@ -1279,10 +1281,10 @@ f.savefig('images/paper1/scatter-ml-bl.pdf')
 #+END_SRC
 #+NAME: fig:mlbl
 #+ATTR_LATEX: :width \columnwidth
-#+CAPTION: Diffusivity in the mixed and barrier layers is proportional to wind stress. Histogram of hourly averaged $K_T$ in the mixed and barrier layers binned by wind stress.
+#+CAPTION: Diffusivity in the mixed and barrier layers is proportional to wind stress. Histogram of hourly averaged $K_T$ in the mixed and barrier layers ($K_T$ values that make up the mixed and barrier layer bins in Figure ref:fig:vert) against friction velocity.
 [[file:images/paper1/scatter-ml-bl.pdf]]
 
-*** Figure 6 : ML scatter plot with ε                              :noexport:ignore:
+*** Figure 6: ML scatter plot with ε                              :noexport:ignore:
 
 #+BEGIN_SRC ipython :session
 # df = bay.nc_to_binned_df(turb)
@@ -1341,9 +1343,124 @@ f.suptitle(title)
 #+CAPTION: Diffusivity in the mixed and barrier layers is proportional to wind stress. Histogram of hourly averaged $K_T$ in the mixed and barrier layers binned by wind stress.
 [[file:images/paper1/scatter-ml-bl.pdf]]
 
-*** Figure 7: NRL scatter plot                                     :ignore:
+*** Figure 7: NRL5 zoom-in                                         :ignore:
+
+#+BEGIN_SRC ipython :session :results none
+trange = slice(nrl5.events['Storm-zoomin'][0],
+               nrl5.events['Storm-zoomin'][1])
+
+f, ax = plt.subplots(2, 1, sharex=True, constrained_layout=True,
+                     gridspec_kw={'height_ratios': [1, 2]})
+f.set_size_inches((6.5, 5))
+
+color = 'C0'
+
+# shear = nrl5.interp_shear('bins')
+# (xfilter.lowpass((shear.sel(time=trange).shear),
+#                  coord='time', freq=1/4, cycles_per='h')
+#  .plot.line(x='time', ax=ax[0], color=color, lw=1))
+# # Jqi = (nrl5.Jq.sel(time=trange).isel(depth=1)
+# (xfilter.lowpass((shear.sel(time=trange).uz),
+#                  coord='time', freq=1/4, cycles_per='h')
+#  .plot.line(x='time', ax=ax[0], color='C1', lw=1))
+# # Jqi = (nrl5.Jq.sel(time=trange).isel(depth=1)
+#        .interpolate_na('time'))
+# Jqi[Jqi < -200] = -200
+# Jqi = Jqi.resample(time='30min').mean('time')
+# ax[0].fill_between(Jqi.time.values, Jqi.values, color=color, alpha=0.2)
+# hjq = (Jqi.plot.line(x='time', ax=ax[0], ylim=[-200, 0],
+#                      add_legend=True, color=color, lw=1))
+# ax[0].set_ylabel('$J_q^t$ [W/m²]')
+# # hjq[0].set_clip_on(False)
+# hjq[0].set_in_layout(False)
+
+(nrl5.KT.sel(time=trange).isel(depth=1).interpolate_na('time')
+ .resample(time='30min', loffset='15min').mean('time')
+ .plot.line(x='time', ax=ax[-2], yscale='log', ylim=[1e-8, 1e-3],
+            add_legend=False, color=color, lw=1))
+ax[0].set_ylabel('$K_T$ [m²/s]')
+
+f0 = nrl5.inertial/86400
+shear = (nrl5.vel.uz.rolling(depth=3, center=True, min_periods=1).mean())
+shear.dc.set_name_units('Zonal shear', '1/s')
+
+(shear.sel(time=trange, depth=slice(90, 300))
+ .plot.contourf(yincrease=False, cmap=mpl.cm.RdYlBu_r, ax=ax[-1],
+                levels=20, vmax=0.01,
+                cbar_kwargs={'orientation': 'horizontal', 'shrink': 0.7,
+                             'ticks': np.arange(-0.01, 0.011, 0.005)}))
+
+(nrl5.ctd['T'].sel(time=trange)
+ .resample(time='H', loffset='30min').mean('time')
+ .plot.contour(levels=np.arange(17, 20.1, 2.5),
+               colors='w', yincrease=False, linewidths=2.5))
+hT = (nrl5.ctd['T'].sel(time=trange)
+      .resample(time='H', loffset='30min').mean('time')
+      .plot.contour(levels=np.arange(17, 20.1, 2.5),
+                    colors='k', yincrease=False, linewidths=1))
+dcpy.plots.contour_label_spines(hT, prefix='$T$=', fmt='%.1f')
+
+(nrl5.zχpod.sel(time=trange).isel(num=1)
+ .plot.line(x='time', ax=ax[-1], color='w', lw=2.5,
+            add_legend=False, _labels=False))
+hz = (nrl5.zχpod.sel(time=trange).isel(num=1)
+      .plot.line(x='time', ax=ax[-1], color='k', lw=1,
+                 add_legend=False, _labels=False))
+ax[-1].set_xlim(trange.start, trange.stop)
+dcpy.plots.annotate_end(hz[0], r'$χ$pod', va='center')
+
+[aa.set_title('') for aa in ax]
+[aa.set_xlabel('') for aa in ax]
+ax[-1].set_ylabel('depth [m]')
+[tt.set_rotation(0) for tt in ax[-1].get_xticklabels()]
+[tt.set_ha('center') for tt in ax[-1].get_xticklabels()]
+ax[-1].set_ylim([250, 90])
+
+dcpy.plots.label_subplots(ax[:-1], x=0.03)
+ax[-1].text(0.03, 0.05, '(b)', transform=ax[-1].transAxes)
+
+# label timescales
+harr = ax[-1].plot((np.datetime64('2014-08-01 05:00'),
+                    np.datetime64('2014-08-01 17:25')),
+                   (205, 205), color='k')
+
+harr = ax[-2].plot((np.datetime64('2014-08-01 05:00'),
+                    np.datetime64('2014-08-01 17:25')),
+                   (2e-7, 2e-7), color='k')
+
+# harr = ax[0].plot((np.datetime64('2014-07-30 12:00'),
+#                    np.datetime64('2014-07-31 00:25')),
+#                    (5e-3, 5e-3), color='k')
+
+ax[-2].text(np.datetime64('2014-08-01 11:00'), 1.5e-7, '$M_2$',
+            ha='center', va='top')
+ax[-1].text(np.datetime64('2014-08-01 11:00'), 208, '$M_2$',
+            ha='center', va='top')
+# ax[0].text(np.datetime64('2014-07-30 18:00'), 4.9e-3, '$M_2$',
+#            ha='center', va='top')
+
+harr = ax[-1].plot((np.datetime64('2014-07-26 20:00'),
+                    np.datetime64('2014-07-30 10:10')),
+                   (205, 205), color='k')
+ax[-1].text(np.datetime64('2014-07-28 15:12'), 208, '$f_0$',
+            ha='center', va='top')
+
+ax[-1].xaxis.set_major_formatter(mpl.dates.DateFormatter('%b-%d'))
+
+f.set_size_inches((6.5, 4))
+
+f.savefig('images/paper1/nrl5-aug-niw-mixing.pdf')
+#+END_SRC
+#+NAME: fig:nrl5-niw
+#+ATTR_LATEX: :float multicolumn
+#+CAPTION: An example of pumping of the near-inertial shear layers past the \(\chi\)pod by the $M_2$ tide at NRL5. The time period of focus is highlighted in white in Figure [[fig:nrl]]. Time series of (a) turbulent diffusivity $K_T$ and (b) zonal shear for a period of high mixing associated with downward propagating near-inertial energy. The depth of the \(\chi\)pod and two isotherms are shown in (b).
+[[file:images/paper1/nrl5-aug-niw-mixing.pdf]]
+
+*** Figure 8: NRL scatter plot                                     :ignore:
 
 #+BEGIN_SRC ipython :session
+limits = np.array([-3.5, 0.5])
+
 import facets
 
 turb = xr.open_dataset('../estimates/bay_merged_hourly.nc')
@@ -1392,7 +1509,7 @@ def _process(ds):
     return (ds.rolling(time=4*24, center=True).mean())
 
 
-# levels = [1e-6, 1e-5, 1e-4]
+levels = [1e-6, 1e-5, 1e-4]
 cmap = sns.light_palette('purple', n_colors=len(levels)+1, as_cmap=True)
 # cmap = mpl.cm.Greys
 norm = mpl.colors.LogNorm(1e-6, 1e-4)  #
@@ -1489,124 +1606,12 @@ hcbar.formatter = mpl.ticker.FuncFormatter(dcpy.plots.pow10Formatter)
 hcbar.update_ticks()
 
 f.savefig('images/paper1/scatter-shear.pdf', bbox_inches='tight')
+f.savefig('images/paper1/png/scatter-shear.png', bbox_inches='tight')
 #+END_SRC
 #+NAME: fig:shearscatter
 #+ATTR_LATEX: :width 27pc :float multicolumn
 #+CAPTION: Drivers of thermocline mixing at the NRL moorings in the south-central Bay: the seasonal cycle of squared shear ($S^2$) and diffusivity $K_T$. Each panel represents one season and shows the two-dimensional distribution of the bin-average of hourly mean $K_T$ (color) against near-inertial squared shear (y-axis) and low-frequency squared shear (x-axis).
 [[file:images/paper1/scatter-shear.pdf]]
-
-*** Figure 8: NRL5 zoom-in                                         :ignore:
-
-#+BEGIN_SRC ipython :session :results none
-trange = slice(nrl5.events['Storm-zoomin'][0],
-               nrl5.events['Storm-zoomin'][1])
-
-f, ax = plt.subplots(2, 1, sharex=True, constrained_layout=True,
-                     gridspec_kw={'height_ratios': [1, 2]})
-f.set_size_inches((6.5, 5))
-
-color = 'C0'
-
-# shear = nrl5.interp_shear('bins')
-# (xfilter.lowpass((shear.sel(time=trange).shear),
-#                  coord='time', freq=1/4, cycles_per='h')
-#  .plot.line(x='time', ax=ax[0], color=color, lw=1))
-# # Jqi = (nrl5.Jq.sel(time=trange).isel(depth=1)
-# (xfilter.lowpass((shear.sel(time=trange).uz),
-#                  coord='time', freq=1/4, cycles_per='h')
-#  .plot.line(x='time', ax=ax[0], color='C1', lw=1))
-# # Jqi = (nrl5.Jq.sel(time=trange).isel(depth=1)
-#        .interpolate_na('time'))
-# Jqi[Jqi < -200] = -200
-# Jqi = Jqi.resample(time='30min').mean('time')
-# ax[0].fill_between(Jqi.time.values, Jqi.values, color=color, alpha=0.2)
-# hjq = (Jqi.plot.line(x='time', ax=ax[0], ylim=[-200, 0],
-#                      add_legend=True, color=color, lw=1))
-# ax[0].set_ylabel('$J_q^t$ [W/m²]')
-# # hjq[0].set_clip_on(False)
-# hjq[0].set_in_layout(False)
-
-(nrl5.ε.sel(time=trange).isel(depth=1).interpolate_na('time')
- .resample(time='30min', loffset='15min').mean('time')
- .plot.line(x='time', ax=ax[-2], yscale='log', ylim=[1e-11, 1e-6],
-            add_legend=False, color=color, lw=1))
-ax[1].set_ylabel('$ε$ [W/kg]')
-
-f0 = nrl5.inertial/86400
-shear = (nrl5.vel.uz.rolling(depth=3, center=True, min_periods=1).mean())
-shear.dc.set_name_units('Zonal shear', '1/s')
-
-(shear.sel(time=trange, depth=slice(90, 300))
- .plot.contourf(yincrease=False, cmap=mpl.cm.RdYlBu_r, ax=ax[-1],
-                levels=20, vmax=0.01,
-                cbar_kwargs={'orientation': 'horizontal', 'shrink': 0.7,
-                             'ticks': np.arange(-0.01, 0.011, 0.005)}))
-
-(nrl5.ctd['T'].sel(time=trange)
- .resample(time='H', loffset='30min').mean('time')
- .plot.contour(levels=np.arange(17, 20.1, 2.5),
-               colors='w', yincrease=False, linewidths=2.5))
-hT = (nrl5.ctd['T'].sel(time=trange)
-      .resample(time='H', loffset='30min').mean('time')
-      .plot.contour(levels=np.arange(17, 20.1, 2.5),
-                    colors='k', yincrease=False, linewidths=1))
-dcpy.plots.contour_label_spines(hT, prefix='$T$=', fmt='%.1f')
-
-(nrl5.zχpod.sel(time=trange).isel(num=1)
- .plot.line(x='time', ax=ax[-1], color='w', lw=2.5,
-            add_legend=False, _labels=False))
-hz = (nrl5.zχpod.sel(time=trange).isel(num=1)
-      .plot.line(x='time', ax=ax[-1], color='k', lw=1,
-                 add_legend=False, _labels=False))
-ax[-1].set_xlim(trange.start, trange.stop)
-dcpy.plots.annotate_end(hz[0], r'$χ$pod', va='center')
-
-[aa.set_title('') for aa in ax]
-[aa.set_xlabel('') for aa in ax]
-ax[-1].set_ylabel('depth [m]')
-[tt.set_rotation(0) for tt in ax[-1].get_xticklabels()]
-[tt.set_ha('center') for tt in ax[-1].get_xticklabels()]
-ax[-1].set_ylim([250, 90])
-
-dcpy.plots.label_subplots(ax[:-1], x=0.03)
-ax[-1].text(0.03, 0.05, '(b)', transform=ax[-1].transAxes)
-
-# label timescales
-harr = ax[-1].plot((np.datetime64('2014-08-01 05:00'),
-                    np.datetime64('2014-08-01 17:25')),
-                   (205, 205), color='k')
-
-harr = ax[-2].plot((np.datetime64('2014-08-01 05:00'),
-                    np.datetime64('2014-08-01 17:25')),
-                   (2e-10, 2e-10), color='k')
-
-# harr = ax[0].plot((np.datetime64('2014-07-30 12:00'),
-#                    np.datetime64('2014-07-31 00:25')),
-#                    (5e-3, 5e-3), color='k')
-
-ax[-2].text(np.datetime64('2014-08-01 11:00'), 1.5e-10, '$M_2$',
-            ha='center', va='top')
-ax[-1].text(np.datetime64('2014-08-01 11:00'), 208, '$M_2$',
-            ha='center', va='top')
-# ax[0].text(np.datetime64('2014-07-30 18:00'), 4.9e-3, '$M_2$',
-#            ha='center', va='top')
-
-harr = ax[-1].plot((np.datetime64('2014-07-26 20:00'),
-                    np.datetime64('2014-07-30 10:10')),
-                   (205, 205), color='k')
-ax[-1].text(np.datetime64('2014-07-28 15:12'), 208, '$f_0$',
-            ha='center', va='top')
-
-ax[-1].xaxis.set_major_formatter(mpl.dates.DateFormatter('%b-%d'))
-
-f.set_size_inches((6.5, 4))
-
-f.savefig('images/paper1/nrl5-aug-niw-mixing.pdf')
-#+END_SRC
-#+NAME: fig:nrl5-niw
-#+ATTR_LATEX: :float multicolumn
-#+CAPTION: An example of pumping of the near-inertial shear layers past the \(\chi\)pod by the $M_2$ tide at NRL5. The time period of focus is highlighted in white in Figure [[fig:nrl]]. Time series of (a) TKE dissipation $\epsilon$ and (b) zonal shear for a period of high mixing associated with downward propagating near-inertial energy. The depth of the \(\chi\)pod and two isotherms are shown in (b).
-[[file:images/paper1/nrl5-aug-niw-mixing.pdf]]
 
 *** Figure 9: 8°N special                                          :ignore:
 
