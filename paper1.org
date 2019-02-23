@@ -1,5 +1,7 @@
 #+LATEX_CLASS: ametsoc
 #+TITLE:  Observations and drivers of the seasonal cycle of upper-ocean mixing in the Bay of Bengal
+#+LATEX_CLASS_OPTIONS: [twocol]
+#+TITLE:  1. Observations and drivers of the seasonal cycle of upper-ocean mixing in the Bay of Bengal \newline 2. The observed seasonal cycle of upper-ocean mixing in the Bay of Bengal \newline 3. Seasonal upper-ocean mixing in the Bay of Bengal
 #+AUTHOR: D.A. Cherian, E.L. Shroyer, J.N. Moum
 #+OPTIONS: author:nil timestamp:t email:nil toc:nil num:2 title:nil H:3 p:nil tasks:todo tags:nil
 #+LATEX_HEADER: \authors{D. A. Cherian\thanks{Current affiliation: National Center for Atmospheric Research, Boulder, Colorado, USA.}\correspondingauthor{Deepak A. Cherian, 104 CEOAS Admin Building, Oregon State University, Corvallis, OR 97333.}, E. L. Shroyer, J. N. Moum}
@@ -7,9 +9,8 @@
 #+LATEX_HEADER: \journal{jpo}
 #+LATEX_HEADER: \email{deepak@cherian.net}
 #+LATEX_HEADER: \input{my-math.tex}
-
-
-# To make illustration as wide as both columns, use \includegraphics[width=\textwidth]{<illustration>} or to make as wide as one column, use \includegraphics[width=\columnwidth]{<illustration>} The terms \textwidth and \columnwidth are perhaps easier to remember than the standard figure sizes: 19pc (one column) and 39 pc (two columns). Two other standard sizes for your illustrations are 27pc and 33pc, for those illustrations that are between one and two columns wide.
+# To make illustration as wide as both columns, use \includegraphics[width=\textwidth]{<illustration>} or to make as wide as one column, use \includegraphics[width=\columnwidth]{<illustration>} The terms \textwidth and \columnwidth are perhaps easier to remember than the standard figure sizes: 19pc (one column) and 39 pc (two columns). Two other standard sizes for your illustrations are 27pc and 33pc, for those illustrations that are between one and two columns wide. For a two-column figure, use star form: \begin{figure*}...\end{figure*}. For a one-column figure: \begin{figure}...\end{figure}
+# 1 in = 6.0225 pc
 
 #+BEGIN_EXPORT latex
 \newcommand{\ML}{_\text{ML}}
@@ -219,7 +220,7 @@ The seasonal cycle from the OMM/WHOI measurements are presented elsewhere citep:
 *** Table 1 : mooring details                                      :ignore:
 
 #+NAME: tab:pods
-#+ATTR_LATEX: :placement [t] :environment tabular* :width \textwidth
+#+ATTR_LATEX: :placement [t] :environment tabular* :width \textwidth :float multicolumn :align @{\extracolsep\fill}llrl
 #+CAPTION: Bay of Bengal χpod deployments described in this paper.
 |---------+---------------+-------------+-------------------------------------|
 |         | Location      |   Depth [m] | Duration of valid data return       |
@@ -728,7 +729,7 @@ for mooring in [nrl1, nrl3, nrl4]:
 [[file:images/paper1/nrl4.pdf]]
 [[file:images/paper1/nrl5.pdf]]
 
-* References
+* References :ignore:
 
 [[bibliography:bibtexLibrary.bib]]
 bibliographystyle:ametsoc2014
