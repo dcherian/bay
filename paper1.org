@@ -1469,6 +1469,10 @@ subset = (turb.where(turb.lon < 89)
           .dropna('lon', how='all')
           .dropna('lat', how='all'))
 
+subset['N2'] = xfilter.lowpass(subset['N2'], coord='time',
+                               freq=6, cycles_per='D',
+                               order=2)
+
 low = (subset[['uz', 'vz', 'wkb_uz', 'wkb_vz']]
        .apply(xfilter.lowpass, coord='time', freq=1/9, cycles_per='D'))
 
@@ -1542,20 +1546,21 @@ axes = dict(zip(bay.seasons, axx))
 for seas in axes:
     ax = axes[seas]
 
-    slo = _select(np.abs(low.wkb_uz + 1j*low.wkb_vz)**2, seas).values.ravel()
-    sni = (_select(_process(np.abs(niw.wkb_uz + 1j*niw.wkb_vz)**2), seas)
+    slo = _select(np.abs(low.uz + 1j*low.vz)**2, seas).values.ravel()
+    sni = (_select(_process(np.abs(niw.uz + 1j*niw.vz)**2), seas)
            .values.ravel())
     sKT = _select(deep.KT, seas).values.ravel()
+    sN2 = _select(deep.N2, seas).values.ravel()
     mask = np.logical_or(np.logical_or(np.isnan(slo), np.isnan(sni)),
                          np.isnan(sKT))
 
-    mappable = ax.hexbin(slo[~mask],
-                         sni[~mask],
+    mappable = ax.hexbin(slo[~mask]/sN2[~mask],
+                         sni[~mask]/sN2[~mask],
                          C=sKT[~mask],
                          reduce_C_function=np.nanmean,
                          xscale='log', yscale='log',
                          gridsize=25, mincnt=10,
-                         extent=[-7, -3, -7, -3],
+                         extent=np.hstack([limits, limits]),
                          cmap=cmap, norm=norm,
                          edgecolors='k', linewidths=0.5)
 
@@ -1583,16 +1588,14 @@ for seas in axes:
     ax.spines['top'].set_visible(True)
     ax.grid(True)
 
-axx[0].set_xlim([10**-6.5, 10**-3.5])
-axx[0].set_ylim([10**-6.5, 10**-3.5])
+axx[0].set_xlim(10**limits)
+axx[0].set_ylim(10**limits)
 
-axx[0].set_ylabel(
-    'WKB near-inertial $S²$ [s$^{-2}$]\n(4-day running mean)')
-axx[2].set_ylabel(
-    'WKB near-inertial $S²$ [s$^{-2}$]\n(4-day running mean)')
+axx[0].set_ylabel('$S²_{niw}/N²$')
+axx[2].set_ylabel('$S²_{niw}/N²$')
 
-axx[2].set_xlabel('WKB low-frequency $S²$ [s$^{-2}$]')
-axx[3].set_xlabel('WKB low-frequency $S²$ [s$^{-2}$]')
+axx[2].set_xlabel('$S²_{low}/N²$')
+axx[3].set_xlabel('$S²_{low}/N²$')
 
 dcpy.plots.label_subplots(axx, y=0.9, labels=bay.seasons)
 
