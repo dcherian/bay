@@ -1613,7 +1613,7 @@ if 'oaflux' not in locals():
          .mean('lon')).load() * 0.01/365/86400
     E.attrs['units'] = 'm/s'
 
-Si = argo8.interp(pres=np.arange(0, argo8.pres.max(), 1))
+Si = argo8.S.interp(pres=np.arange(0, argo8.pres.max(), 1))
 # S0_depth = np.abs(Si - 34.5).argmin('pres')
 # S1_depth = np.abs(Si - 35).argmin('pres')
 S0_depth = np.abs(Si - 34.75).argmin('pres')
@@ -1652,8 +1652,8 @@ time = xr.broadcast(turb8.time, turb8.S)[0]
 mask = (~np.isnan(turb8.Js)).values
 kwargs = dict(alpha=1,
               s=8.0,
-              linewidths=0.05,
-              edgecolors='k',
+              linewidths=0.25,
+              edgecolors='darkgray',
               norm=mpl.colors.LogNorm(vmin=1e-3, vmax=1),
               cmap=mpl.cm.gist_heat_r)
 
@@ -1681,7 +1681,7 @@ hh.set_clip_on(False)
 hh.set_in_layout(False)
 ax[1].set_ylim((35.5, 33))
 ax[1].set_yticks([33, 34, 34.5, 35, 35.5])
-ax[1].set_ylabel('$S$')
+ax[1].set_ylabel('$S$ [psu]')
 
 ax[1].xaxis.set_major_locator(mpl.dates.MonthLocator())
 ax[1].set_xticklabels([])
@@ -1799,7 +1799,7 @@ dcpy.plots.liney(0, ls='-')
 #           .ffill('month'))
 # dcpy.plots.fill_step(Jsclim, 'month', ax=ax[-1], color='gray', zorder=-1)
 
-ax[-1].set_ylabel('Salinity flux [$10^{-6}$ m/s]')
+ax[-1].set_ylabel('Salinity flux [$10^{-6}$ psu m/s]')
 
 ha = ax[-2].annotate("",
                      xy=(12, 4.75), xycoords="data",
@@ -1827,7 +1827,7 @@ ha.set_in_layout(False)
 
 dcpy.plots.label_subplots(ax, x=0.03, y=0.1,
                           labels=['', '',
-                                  '$ρ_0^{-1}$ $J_s^t$ [$10^{-6}$ m/s]',
+                                  '$ρ_0^{-1}$ $J_s^t$ [$10^{-6}$ psu m/s]',
                                   ''], zorder=10)
 ax[-1].set_xticks(np.arange(12) + 0.5)
 ax[-1].set_xticklabels(['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul',
