@@ -181,6 +181,14 @@ def bin_ml_bl_rho(df, bins):
         np.logical_or(mask_ml, mask_bl),
         mask_ml_plus))
 
+    nrl3_ml = np.logical_and(df['moor'] == 'NRL3', df['N2'] < 3e-6)
+    nrl3_bl = np.logical_and(np.logical_and(df['moor'] == 'NRL3',
+                                            df['Tz'] < 2e-3),
+                             df['N2'] > 3e-6)
+
+    mask_ml[nrl3_ml] = True
+    mask_bl[nrl3_bl] = True
+
     df['bin'] = ''
     df.loc[mask_ml, 'bin'] = 'ML'
     df.loc[mask_bl, 'bin'] = 'BL'
