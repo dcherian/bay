@@ -10,9 +10,10 @@ import dcpy.util
 import xarray as xr
 
 region = dict(lon=slice(80, 94), lat=slice(4, 24))
-default_density_bins = [1018, 1021, 1022, 1022.5, 1023, 1023.5, 1024.25, 1029]
+default_density_bins = [1018, 1021.7, 1022.5, 1023, 1023.5, 1024.25, 1029]
 ebob_region = dict(lon=slice(85.5, 88.5), lat=slice(5, 8))
 seasons = ['NE', 'NESW', 'SW', 'SWNE']
+season_months = {'NE': 3, 'NESW': 2, 'SW': 5, 'SWNE': 2}
 splitseasons = ['NE', 'Mar', 'Apr', 'SW', 'SWNE']
 moor_names = {'ra12': 'RAMA 12N',
               'ra15': 'RAMA 15N',
@@ -119,13 +120,16 @@ def make_merged_nc(moorings):
      .to_netcdf('bay_merged_6hourly.nc'))
 
 
-def nc_to_binned_df(filename='bay_merged_hourly.nc',
+def nc_to_binned_df(dataset='bay_merged_hourly.nc',
                     bins=default_density_bins,
                     moor=None):
     ''' reads KT from merged .nc file and returns DataFrame version
         suitable for processing.'''
 
-    turb = xr.open_dataset(filename).load()
+    if isinstance(dataset, str):
+        turb = xr.open_dataset(dataset).load()
+    elif isinstance(dataset, xr.Dataset):
+        turb = dataset.load()
 
     turb['season'] = turb.time.monsoon.labels
 

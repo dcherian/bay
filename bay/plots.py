@@ -1,3 +1,4 @@
+import matplotlib as mpl
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -9,17 +10,17 @@ import dcpy
 import xarray as xr
 from cartopy import feature
 
-from .bay import default_density_bins, nc_to_binned_df
+from .bay import default_density_bins, nc_to_binned_df, season_months
 
 # markers = {'RAMA': 'o', 'NRL': '^', 'OMM/WHOI': 'o'}
 # colors = {'RAMA': '#0074D9', 'NRL': '#3D9970', 'OMM/WHOI': '#FF4136'}
 # colors = {'RAMA': '#1696A3', 'NRL': '#F89B1F', 'OMM/WHOI': '#EA4D5B'}
-colors = {'RAMA': '#1696A3', 'NRL': '#F89B1F', 'OMM/WHOI': '#EA4D5B'}
+colors = {'RAMA': '#1696A3', 'NRL': 'C3', 'OMM/WHOI': 'C7'}
 # colors = {'RAMA': '#1c666e', 'NRL': '#F89B1F', 'OMM/WHOI': '#EA4D5B'}
 # colors = {'RAMA': '#1696A3', 'NRL': '#F89B1F', 'OMM/WHOI': 'gray'}
 
 
-def plot_coastline(ax=None, facecolor="#FEF9E4"):
+def plot_coastline(ax=None, facecolor="#FEF9E4", rivers=True):
 
     if ax is None:
         ax = plt.gca()
@@ -31,14 +32,17 @@ def plot_coastline(ax=None, facecolor="#FEF9E4"):
                                             edgecolor='black',
                                             facecolor=facecolor)
 
-    ax.set_extent([80, 96, 2, 24])
+    ax.set_extent([77, 96, 2, 24])
     ax.add_feature(coastline)
-
-    # ax.coastlines('10m', color='slategray', facecolor='slategray', lw=1)
+    if rivers:
+        rivers = feature.NaturalEarthFeature(
+            category='physical', name='rivers_lake_centerlines',
+            scale='10m', facecolor='none', edgecolor='C0', linewidths=0.5)
+        ax.add_feature(rivers)
 
 
 def make_map(pods, DX=0.6, DY=0.7, add_year=True, highlight=[],
-             ax=None, topo=True):
+             ax=None, topo=True, add_depths=True):
 
     labelargs = {'fontsize': 'small',
                  'bbox': {
@@ -81,57 +85,58 @@ def make_map(pods, DX=0.6, DY=0.7, add_year=True, highlight=[],
                 color=get_color(pod['label'], highlight),
                 label=pod['label'], zorder=10)
 
-        text = ''
-        if add_year:
-            if pod['label'] == 'RAMA' and pod['lat'] == 15:
-                text += 'RAMA 15 / 2015\n'
-            if pod['label'] == 'RAMA' and pod['lat'] == 12:
-                text += 'RAMA 12\n'
+        if add_depths:
+            text = ''
+            if add_year:
+                if pod['label'] == 'RAMA' and pod['lat'] == 15:
+                    text += 'RAMA 15 / 2015\n'
+                if pod['label'] == 'RAMA' and pod['lat'] == 12:
+                    text += 'RAMA 12\n'
+                if pod['label'] == 'OMM/WHOI':
+                    text += '2014-15\n'
+                if 'NRL' in name:
+                    text += name + '\n'
+
+            for z in pod['depths']:
+                text += z
+                if pod['label'] == 'RAMA' and pod['lat'] == 12 and add_year:
+                    text += ' / ' + pod['depths'][z]
+
+                text += '\n'
+
+            text = text[:-1]
+
+            dx = 0
+            dy = 0
+            if pod['ha'] is 'left':
+                dx = DX
+            elif pod['ha'] is 'right':
+                dx = -1 * DX
+            if pod['va'] is 'bottom':
+                dy = DY
+            elif pod['va'] is 'top':
+                dy = - DY
+            if 'RAMA' in name:
+                dy += 0.75 * DY
+
+            if name == 'NRL3':
+                dx += 0.1
+            if name == 'NRL5':
+                dx -= 0.1
+            if name in ['NRL3', 'NRL5']:
+                dy += 0.3
+
             if pod['label'] == 'OMM/WHOI':
-                text += '2014-15\n'
-            if 'NRL' in name:
-                text += name + '\n'
+                dy += 2
 
-        for z in pod['depths']:
-            text += z
-            if pod['label'] == 'RAMA' and pod['lat'] == 12 and add_year:
-                text += ' / ' + pod['depths'][z]
+            labelargs['bbox']['facecolor'] = get_color(pod['label'], highlight)
 
-            text += '\n'
+            ax.text(pod['lon']+dx, pod['lat']+dy, text,
+                    transform=ccrs.PlateCarree(),
+                    ha=pod['ha'], va=pod['va'], color='w',
+                    multialignment='center', **labelargs)
 
-        text = text[:-1]
-
-        dx = 0
-        dy = 0
-        if pod['ha'] is 'left':
-            dx = DX
-        elif pod['ha'] is 'right':
-            dx = -1 * DX
-        if pod['va'] is 'bottom':
-            dy = DY
-        elif pod['va'] is 'top':
-            dy = - DY
-        if 'RAMA' in name:
-            dy += 0.75 * DY
-
-        if name == 'NRL3':
-            dx += 0.1
-        if name == 'NRL5':
-            dx -= 0.1
-        if name in ['NRL3', 'NRL5']:
-            dy += 0.3
-
-        if pod['label'] == 'OMM/WHOI':
-            dy += 2
-
-        labelargs['bbox']['facecolor'] = get_color(pod['label'], highlight)
-
-        ax.text(pod['lon']+dx, pod['lat']+dy, text,
-                transform=ccrs.PlateCarree(),
-                ha=pod['ha'], va=pod['va'], color='w',
-                multialignment='center', **labelargs)
-
-        ax.set_facecolor(None)
+            ax.set_facecolor(None)
 
     return ax, colors
 
@@ -184,7 +189,8 @@ def _get_color_from_hdl(hdl):
     return facecolor[:-1]
 
 
-def plot_distrib(ax, plotkind, var, zloc, zstd, width=12, percentile=False):
+def plot_distrib(ax, plotkind, var, zloc, zstd, width=12, percentile=False,
+                 color=None):
     ''' Actually plot the distribution '''
 
     base_marker_size = 5
@@ -205,12 +211,21 @@ def plot_distrib(ax, plotkind, var, zloc, zstd, width=12, percentile=False):
         if percentile:
             var = var.where(var < prc)
 
-        hdl = ax.violinplot(var[~np.isnan(var)], positions=[zloc],
+        hdl = ax.violinplot(var[~np.isnan(var)],
+                            positions=[zloc],
                             widths=[width],
-                            vert=False, showmedians=False)
+                            vert=False,
+                            showmedians=False)
 
         for pc in hdl['bodies']:
-            pc.set_alpha(0.7)
+            pc.set_alpha(0.8)
+
+        if color is not None:
+            for pc in hdl['bodies']:
+                pc.set_color(color)
+
+            hdl['cbars'].set_color(color)
+            hdl['cmins'].set_color(color)
 
         trim_horiz_violin(hdl)
         hdl['cmaxes'].set_visible(False)
@@ -223,7 +238,7 @@ def plot_distrib(ax, plotkind, var, zloc, zstd, width=12, percentile=False):
     elif plotkind is 'hist':
         hdl = ax.hist(var, bottom=zloc, density=True)
 
-    color = _get_color_from_hdl(hdl)
+    # color = _get_color_from_hdl(hdl)
 
     ax.plot(median, zloc, 'o',
             color=color, zorder=12, ms=base_marker_size-1)
@@ -238,17 +253,8 @@ def plot_distrib(ax, plotkind, var, zloc, zstd, width=12, percentile=False):
     return hdl, median, mean
 
 
-def vert_distrib(df, bins, varname='KT', kind='distribution',
-                 pal=None, f=None, ax=None,
-                 label_moorings=True, label_bins=True, adjust_fig=True,
-                 width=12, percentile=False, add_offset=True, **kwargs):
-    '''
-        Function to make vertical distribution plot when provided with
-        appropriately formatted DataFrame.
-    '''
-    import cycler
+def get_pal_dist(bins):
 
-    plotkind = 'violin'
     nadd = 2  # number of extra colors to generate
     pal_dist = sns.color_palette("GnBu_d", n_colors=len(bins.unique())+nadd)
     pal_dist.reverse()
@@ -264,8 +270,22 @@ def vert_distrib(df, bins, varname='KT', kind='distribution',
             pal_dist[-2, :] = pal_dist[-1, :]
             pal_dist[-1, :] = temp
 
+    return pal_dist
+
+
+def vert_distrib(df, bins, varname='KT', kind='distribution',
+                 pal=None, f=None, ax=None,
+                 label_moorings=True, label_bins=True, adjust_fig=True,
+                 width=12, percentile=False, add_offset=True, **kwargs):
+    '''
+        Function to make vertical distribution plot when provided with
+        appropriately formatted DataFrame.
+    '''
+
+    plotkind = 'violin'
+
     if pal is None:
-        pal = pal_dist
+        pal = get_pal_dist(bins)
 
     if f is None:
         f, axx = plt.subplots(1, 4, sharex=True, sharey=True)
@@ -277,7 +297,7 @@ def vert_distrib(df, bins, varname='KT', kind='distribution',
     if varname is 'KT':
         title = '$\\log_{10}$ hourly averaged $K_T$ [m²/s]'
         xlim = kwargs.pop('xlim', [-7.5, 2])
-        xlines = kwargs.pop('xlines', [-5, -4])
+        xlines = kwargs.pop('xlines', [-6, -5, -4, -3])
     else:
         title = varname
         xlim = kwargs.pop('xlim', None)
@@ -286,9 +306,12 @@ def vert_distrib(df, bins, varname='KT', kind='distribution',
     months = {'NE': 'Dec-Feb', 'NESW': 'Mar-Apr',
               'SW': 'May-Sep', 'SWNE': 'Oct-Nov'}
 
+    coverage_levels = np.array([0.5, 1, 1.5, 2])
+    coverage_pal = sns.cubehelix_palette(len(coverage_levels), as_cmap=True)
+
     for seas in ax:
         aa = ax[seas]
-        aa.set_prop_cycle(cycler.cycler('color', pal))
+        # aa.set_prop_cycle(cycler.cycler('color', pal))
         aa.set_title(seas + '\n(' + months[seas] + ')')
         if xlim is not None:
             aa.set_xlim(xlim)
@@ -305,10 +328,10 @@ def vert_distrib(df, bins, varname='KT', kind='distribution',
 
     # seaborn treats things as categoricals booo...
     # do things the verbose matplotlib way
-    for index, (label, df) in enumerate(df.groupby([bins, 'season'])):
+    for index, (label, ddff) in enumerate(df.groupby([bins, 'season'])):
         interval = label[0]
         season = label[1]
-        zloc = sp.stats.trim_mean(df.z, 0.1)
+        zloc = sp.stats.trim_mean(ddff.z, 0.1)
 
         if add_offset:
             if type(interval) != str and interval.mid < 1020:
@@ -326,19 +349,27 @@ def vert_distrib(df, bins, varname='KT', kind='distribution',
                     if isinstance(interval, pd.Interval)
                     else interval)
 
-        var = df[varname]
+        var = ddff[varname]
         if varname == 'ρ':
             var -= 1000
 
         if kind == 'distribution':
-            for mm in df['moor'].unique():
-                if (len(df['moor'].where(df.moor == mm).dropna())/len(df)
+            for mm in ddff['moor'].unique():
+                if (len(ddff['moor'].where(ddff.moor == mm).dropna())/len(ddff)
                     <= 0.10):
-                    df = df.loc[df['moor'] != mm]
+                    ddff = ddff.loc[ddff['moor'] != mm]
+
+            fraction_coverage = var.count() / (30 * 24 * season_months[season])
+
+            # at least half season covered by 1 χpod
+            if fraction_coverage < 0.5:
+                continue
+
+            color = coverage_pal(fraction_coverage / coverage_levels.max())
 
             hdl, median, mean = plot_distrib(ax[season], plotkind, var,
-                                             zloc, df.z.std(), width,
-                                             percentile)
+                                             zloc, ddff.z.std(), width,
+                                             percentile, color)
 
             zvec[season].append(zloc)
             mdnvec[season].append(median)
@@ -348,8 +379,8 @@ def vert_distrib(df, bins, varname='KT', kind='distribution',
             color = _get_color_from_hdl(hdl)
 
         elif kind == 'mean_ci_profile':
-            mean = np.log10(df[varname].values)
-            err = np.abs(mean - np.log10(df.ci.values[0]))[:, np.newaxis]
+            mean = np.log10(ddff[varname].values)
+            err = np.abs(mean - np.log10(ddff.ci.values[0]))[:, np.newaxis]
             hdl = ax[season].errorbar(mean, zloc,
                                       xerr=err, fmt='^')
 
@@ -364,12 +395,31 @@ def vert_distrib(df, bins, varname='KT', kind='distribution',
                             fontsize=7)
         if label_moorings:
             ax[season].text(-0.75, ytxt,
-                            format_moor_names(df['moor'].unique()),
+                            format_moor_names(ddff['moor'].unique()),
                             color=color, ha='left',
                             va='center', fontsize=6)
 
     ax['NE'].set_ylabel('depth [m]')
     ax['NE'].set_ylim([120, 0])
+
+    axins = ax['NE'].inset_axes([-6, 110, 5, 5],
+                                zorder=100,
+                                transform=ax['NE'].transData)
+    # axins = f.add_axes([0.1, 0.1, 0.7, 0.1], facecolor='lightgray', zorder=5)
+    axins.pcolormesh(
+        np.array(coverage_levels).reshape(1, len(coverage_levels)),
+        cmap=coverage_pal, edgecolors='w', linewidths=2)
+    axins.set_clip_on(False)
+    axins.set_in_layout(False)
+    axins.set_yticks([])
+    axins.set_yticklabels([])
+    axins.spines['left'].set_visible(False)
+    axins.spines['bottom'].set_visible(False)
+    axins.set_xticklabels(coverage_levels.astype('str'))
+    axins.set_xticks(np.arange(len(coverage_levels)))
+    axins.tick_params(length=0)
+    # axins.set_xlabel('Coverage\n[instrument-seasons]')
+
     # ax['NE'].set_yticks(np.arange(120,0,-20))
     # ax['NE'].set_yticklabels(np.arange(120,0,-10).astype('str'))
 
@@ -380,9 +430,8 @@ def vert_distrib(df, bins, varname='KT', kind='distribution',
         #                 np.array(zvec[season])[idx], **args)
         # ax[season].plot(np.array(meanvec[season])[idx],
         #                 np.array(zvec[season])[idx], **args)
-        aa = ax[season]
         for xx in xlines:
-            aa.axvline(xx, lw=0.5, ls='dotted', zorder=-50, color='gray')
+            ax[season].axvline(xx, lw=1, ls='-', zorder=2, color='w')
 
     if adjust_fig:
         sns.despine(fig=f, left=False, bottom=False, trim=True)
@@ -450,7 +499,7 @@ def make_vert_distrib_plot(varname,
                  percentile=True, **kwargs)
 
 
-def make_labeled_map(ax=None):
+def make_labeled_map(ax=None, add_depths=True):
 
     pods = {
         'RAMA12':
@@ -501,7 +550,7 @@ def make_labeled_map(ax=None):
                  '105 m': '2014'}},
     }
 
-    ax, colors = make_map(pods, add_year=True,
+    ax, colors = make_map(pods, add_year=True, add_depths=add_depths,
                           highlight=['RAMA', 'NRL', 'OMM/WHOI'], ax=ax)
 
     ax.text(87, 6.8, 'EBoB\n(2014)',
@@ -510,39 +559,39 @@ def make_labeled_map(ax=None):
             color=colors['OMM/WHOI'], ha='right', va='center')
     ax.text(90, 13.5, 'RAMA',
             color=colors['RAMA'], ha='left', va='center')
-    ax.set_xticks([80, 82, 84, 85.5, 87, 88.5, 90, 92, 94, 96])
+    ax.set_xticks([78, 80, 82, 84, 85.5, 87, 88.5, 90, 92, 94, 96])
     ax.set_yticks([2, 4, 5, 8, 12, 15, 18, 20, 22, 24])
 
 
 def mark_χpod_depths_on_clim(ax=[], orientation='horizontal'):
 
-    argoT = xr.open_dataset('~/datasets/argoclim/RG_ArgoClim_Temperature_2016.nc',
-                            decode_times=False)
-    argoS = xr.open_dataset('~/datasets/argoclim/RG_ArgoClim_Salinity_2016.nc',
-                            decode_times=False)
+    argo = dcpy.oceans.read_argo_clim()
 
     def mark_range(ax, top, middle, bottom, color=colors['NRL']):
-        xlim = ax.get_xlim()
-        ax.fill_between([xlim[0], xlim[1]], bottom, top,
-                        facecolor=color, alpha=0.1, zorder=-5)
+        ax.fill_between([0, 1], bottom, top,
+                        facecolor=color, alpha=0.1, zorder=-5,
+                        transform=ax.get_yaxis_transform('grid'))
         dcpy.plots.liney(middle, ax=ax,
                          color=colors['NRL'], linestyle='-')
 
     def plot_profiles(ax, lon, lat, color):
 
-        region = {'LATITUDE': lat, 'LONGITUDE': lon, 'method': 'nearest'}
+        region = {'lat': lat, 'lon': lon, 'method': 'nearest'}
 
-        ax.plot(argoT.ARGO_TEMPERATURE_MEAN.sel(**region).squeeze(),
-                argoT.PRESSURE, color=color, lw=2)
+        Tmean = argo.Tmean.sel(**region).sel(pres=slice(0, 150)).squeeze()
+        Smean = argo.Smean.sel(**region).sel(pres=slice(0, 150)).squeeze()
+
         ax2 = ax.twiny()
-        ax2.plot(argoS.ARGO_SALINITY_MEAN.sel(**region).squeeze(),
-                 argoS.PRESSURE, '--', color=color, lw=2)
+
+        Tmean.plot(y='pres', ax=ax, color=color, lw=2, _labels=False)
+        Smean.plot(y='pres', ax=ax2, ls='--', color=color, lw=2, _labels=False)
 
         ax2.spines['top'].set_visible(True)
-        ax.set_xlim([23, 30])
+        Slim = np.array([32, 35])
+        ax2.set_xlim(Slim)
+        ax2.spines['right'].set_visible(True)
+        ax.set_xlim(18 + np.array([0, np.diff(Slim) * 7.6e-4/1.7e-4]))
         ax.set_ylabel('Pressure')
-        ax.text(29, 10, 'T', color=color)
-        ax.text(23.75, 10, 'S', color=color)
         # ax.text(25.5, 114, 'Argo clim.', color='black',
         #         ha='center', fontsize=12)
 
@@ -556,7 +605,13 @@ def mark_χpod_depths_on_clim(ax=[], orientation='horizontal'):
             _, ax = plt.subplots(2, 1, sharey=True, constrained_layout=True)
 
     plot_profiles(ax[0], 90, 12, color=colors['RAMA'])
+    ax[0].text(29.5, 10, 'T', color=colors['RAMA'])
+    ax[0].text(20, 10, 'S', color=colors['RAMA'])
+
     plot_profiles(ax[1], 85.5, 5, color=colors['NRL'])
+    ax[1].text(29.5, 10, 'T', color=colors['NRL'])
+    ax[1].text(26.5, 10, 'S', color=colors['NRL'])
+
     mark_range(ax[1], 55, 60, 100)
     mark_range(ax[1], 75, 80, 115)
     mark_range(ax[1], 28, 32, 78)
@@ -821,3 +876,101 @@ def mark_seasons(ax=None, zorder=-20):
 
     ax.set_xlim(xlim)
     ax.set_ylim(ylim)
+
+
+def plot_nrl(mooring):
+
+    from dcpy.plots import set_axes_color
+
+    shear, low_shear, _, niw_shear, _ = mooring.filter_interp_shear(
+        wkb_scale=True)
+
+    f5, axx5 = plt.subplots(6, 1, sharex=True, constrained_layout=True)
+    f5.set_constrained_layout_pads(hspace=0.001, h_pad=0)
+    f5.set_size_inches((8, 8))
+
+    residual = shear.shear - niw_shear - low_shear
+
+    N = np.sqrt(mooring.N2.isel(depth=1)
+                .resample(time='M').mean('time')
+                .interp(time=niw_shear.time))
+    hniw = ((niw_shear.rolling(time=7*24).reduce(dcpy.util.ms) * 1e5)
+            .sel(time='2014')
+            .plot(ax=axx5[-2], _labels=False, color='g', lw=1.5))
+    hlow = ((np.abs(low_shear)**2 * 1e5)
+            .sel(time='2014')
+            .plot(ax=axx5[-2], _labels=False, color='k', lw=1.5))
+    hres = ((residual.rolling(time=7*24).reduce(dcpy.util.ms) * 1e5)
+            .sel(time='2014')
+            .plot(ax=axx5[-2], _labels=False, color='C1', lw=1.5))
+    # annotate_end(hlow[0], 'low pass', va='top')
+    # annotate_end(hniw[0], '  near\n  inertial', va='center')
+    # annotate_end(hres[0], '  residual', va='center')
+
+    trgrid = axx5[-2].get_xaxis_transform('grid')
+    axx5[-2].text('2014-08-12', 0.8, 'near-inertial',
+                  color=hniw[0].get_color(), transform=trgrid)
+    axx5[-2].text('2014-10-06', 0.8, 'low-frequency',
+                  color=hlow[0].get_color(), transform=trgrid)
+    axx5[-2].text('2014-12-02', 0.8, 'residual',
+                  color=hres[0].get_color(), transform=trgrid)
+    hniw[0].set_clip_on(False)
+    hniw[0].set_in_layout(False)
+    hlow[0].set_clip_on(False)
+    hlow[0].set_in_layout(False)
+    mooring.MarkSeasonsAndEvents(events='Storm-zoomin', ax=axx5[-2])
+    axx5[-2].set_ylabel('Squared WKB shear\n[$10^{-5}$ s$^{-2}$]')
+
+    axmooring = plot_moor(mooring, idepth=1,
+                          axx=axx5, events='Storm-zoomin')
+
+    # fill in the 20m gap with linear interpolation
+    # then interpolate velocity to CTD depths
+    # then difference to get shear
+    zinterp = mooring.ctd.depth.isel(z=slice(1, 3))
+    vel_interp = (mooring.vel[['u', 'v']].interpolate_na('depth')
+                  .interp(time=zinterp.time, depth=zinterp.drop('depth')))
+    shear_interp = (np.hypot(vel_interp.u.diff('z')/15,
+                             vel_interp.v.diff('z')/15)
+                    .squeeze())
+
+    N2 = ((9.81/1025 * mooring.ctd.ρ.diff('z')/mooring.ctd.depth.diff('z'))
+          .isel(z=1))
+    Ri = (N2.where(N2 > 0)/shear_interp**2).sel(time='2014')
+
+    axmooring['ri'] = axx5[-1]
+    ((Ri.where(Ri < 5).resample(time='D').count()/144)
+     .plot(ax=axmooring['ri'], label='< 10', _labels=False, color='k'))
+    axmooring['ri'].set_ylabel('Fraction of day\nwith Ri < 5')
+    mooring.MarkSeasonsAndEvents(events='Storm-zoomin', ax=axmooring['ri'])
+
+    axmooring['depth'] = axmooring['ri'].twinx()
+    (mooring.zχpod.sel(num=1).resample(time='D').mean('time')
+     .plot(ax=axmooring['depth'], _labels=False, color='C0', lw=1.2))
+    set_axes_color(axmooring['depth'], 'C0', spine='right')
+    axmooring['depth'].set_ylabel('$χ$pod depth [m]')
+
+    axmooring['input'] = axmooring['met'].twinx()
+    axmooring['input'].plot(mooring.niw.time, mooring.niw.true_flux*1000,
+                            color='C0')
+    axmooring['input'].set_ylabel('Near-inertial input\n$\Pi$[mW/m²]')
+    set_axes_color(axmooring['input'], 'C0', spine='right')
+
+    dcpy.plots.label_subplots(axx5, x=0.025, y=0.83)
+
+    [tt.set_rotation(0) for tt in axx5[-1].get_xticklabels()]
+    [tt.set_ha('center') for tt in axx5[-1].get_xticklabels()]
+
+    if mooring.name == 'NRL3':
+        axx5[-2].set_ylim([0, 40])
+
+    if mooring.name == 'NRL4':
+        axx5[-2].set_ylim([0, 25])
+
+    if mooring.name == 'NRL5':
+        axmooring['depth'].set_ylim([60, 140])
+        axx5[-2].set_ylim([0, 10])
+        axmooring['jq'].set_ylim([-20, 0])
+        axmooring['js'].set_ylim([0, 0.5])
+
+    return f5, axmooring
