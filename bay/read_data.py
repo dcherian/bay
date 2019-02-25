@@ -34,12 +34,12 @@ def read_ra12(minimal=False):
     ra12.AddChipod(812, 45, 'mm2w', 'Turb.mat', dir='../rama/RAMA14/')
     ra12.ReadMet('../rama/data/met12n90e_10m.cdf', WindType='pmel')
     ra12.ReadMet(FluxType='pmel')
+    ra12.ReadVel('../rama/data/cur12n90e_30m.cdf', FileType='pmel')
 
     if not minimal:
         # ra12.ReadMet('../rama/data/jq0_12n90e_hr.mat', FluxType='merged')
         ra12.ReadMet(FluxType='precip')
         ra12.ReadTropflux('../rama/tropflux/')
-        ra12.ReadVel('../rama/data/cur12n90e_30m.cdf', FileType='pmel')
 
     # ra12.ReadMet('../rama/data/qnet12n90e_hr.cdf', FluxType='pmel')
     ra12.ReadCTD('../rama/RamaPrelimProcessed/RAMA13-corrected.mat',
@@ -74,10 +74,11 @@ def read_ra15(minimal=False):
     # ra15.AddChipod(814, 30, 'mm1w', 'Turb.mat')
     ra15.ReadMet('../rama/data/met15n90e_10m.cdf', WindType='pmel')
     ra15.ReadMet(FluxType='pmel')
+    ra15.ReadVel('../rama/data/cur15n90e_30m.cdf', FileType='pmel')
+
     if not minimal:
         ra15.χpod[813].load_pitot()
         # ra15.χpod[814].load_pitot()
-        ra15.ReadVel('../rama/data/cur15n90e_30m.cdf', FileType='pmel')
 
     ra15.ReadCTD('../rama/RamaPrelimProcessed/RAMA14-15N.mat', 'ramaprelim')
 
