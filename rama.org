@@ -516,14 +516,12 @@ ax = ra12.Plotχpods(event='Hudhud', filter_len=3600.0, filt='hann')
 :END:
 *** Freshwater filaments?
 
-#+BEGIN_SRC ipython :session :ipyfile images/ra12-FW1.png
+#+BEGIN_SRC ipython :session :results none
 ax = ra12.Plotχpods(event='FW1', filter_len=3600.0, filt='hann')
+plt.gcf().savefig('images/ra12-FW1.png')
 #+END_SRC
-
-#+RESULTS:
-:RESULTS:
+#+CAPTION: Irrawady fresh water pulse.
 [[file:images/ra12-FW1.png]]
-:END:
 
 #+BEGIN_SRC ipython :session :ipyfile images/ra12-FW2.png
 ax = ra12.Plotχpods(met='tropflux', event='FW2',

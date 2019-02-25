@@ -167,11 +167,12 @@ def bin_ml_bl_rho(df, bins):
 
     error_depth = 5
 
-    depth_minus_mld = (df.z - df.mld)
-    depth_minus_ild = (df.z - df.ild)
+    depth_minus_mld = df.z - df.mld
+    depth_minus_ild = df.z - df.ild
     mask_ml = depth_minus_mld <= error_depth
     mask_bl = np.logical_and(np.logical_not(mask_ml),
                              depth_minus_ild <= error_depth)
+
     mask_ml_plus = np.logical_and(
         np.logical_not(np.logical_or(mask_ml, mask_bl)),
         depth_minus_mld <= 15)
@@ -313,7 +314,7 @@ def calc_wind_input(kind='merra2'):
     wind_input.mld.attrs['description'] = 'MIMOC mixed layer depth'
 
     wind_input.to_netcdf('~/bay/estimates/' + windshortstr
-                         + '-wind-power-input-2014.nc')
+                         + '-wind-power-input.nc')
 
 
 def bin_and_to_dataframe(KTm, ρbins=None, Sbins=None):
@@ -382,7 +383,7 @@ def seasonal_mean(data, split=False):
     return (data.groupby(labels).apply(mean))
 
 
-def calc_isohaline_depth(data=None, S0=34.75, split=False):
+def calc_isohaline_depth(S0=34.75, data=None, split=False):
 
     if data is None:
         data = (dcpy.oceans.read_argo_clim()
