@@ -961,7 +961,7 @@ with plt.rc_context({'font.size': 11,
     f.savefig('images/paper1/png/map.png', bbox_inches='tight')
 #+END_SRC
 #+NAME: fig:map
-#+ATTR_LATEX: :width \columnwidth
+#+ATTR_LATEX: :width 0.5\textwidth
 #+ATTR_HTML: :style width:50%
 #+CAPTION: 2014, 2015 \(\chi\)pod deployment in the Bay. (a) Locations of moorings with \(\chi\)pods. (b, c) \(\chi\)pod deployment depths marked using horizontal lines on mean T-S profiles from the Argo climatology for RAMA and EBoB moorings, respectively. The EBoB moorings in the south-central Bay experienced significant blowdown. The depth range covered by \(\chi\)pods on these moorings are shaded in (c) with horizontal lines marking median depth. Temperature and salinity axes (lower and upper x-axes) are scaled such that axis limits represent equal jumps in density.
 [[file:images/paper1/map.pdf]]
@@ -989,10 +989,11 @@ taustd = (tropflux.groupby(tropflux.time.monsoon.labels)
           .rename({'taux': 'taux_std', 'tauy': 'tauy_std'}))
 netflux['heat'] = netflux.netflux.where(netflux.netflux > 0)
 netflux['cool'] = netflux.netflux.where(netflux.netflux < 0)
-netflux = (netflux.groupby(netflux.time.monsoon.labels)
-            .mean(xr.ALL_DIMS))
 
-tflux_merged = xr.merge([tau, netflux, taustd])
+tflux_merged = xr.merge([tau,
+                         taustd,
+                         (netflux.groupby(netflux.time.monsoon.labels)
+                          .mean(xr.ALL_DIMS))])
 
 moors = ['RAMA12', 'RAMA15', 'NRL1', 'NRL2', 'NRL3', 'NRL4', 'NRL5']
 
@@ -1049,7 +1050,7 @@ for ss in ax:
 
     ylabel = -2.5
     ax[ss].text(0, ylabel, '$τ$', **labelargs)
-    ax[ss].text(1, ylabel, '$\Pi$', **labelargs)
+    ax[ss].text(1, ylabel, r'$\Pi$', **labelargs)
     ax[ss].text(2, ylabel, '$J_q^0$', **labelargs)
     ax[ss].text(3, ylabel, '$P$', **labelargs)
 
@@ -1059,29 +1060,30 @@ axx[0, 0].set_ylabel('Basin-wide\nseasonal\naverages',
 ax[ss].set_xlim([-2, 4])
 ax[ss].set_ylim([-2, 2])
 
+Scolor = 'C0'
 for ii in range(4):
     axx[0, ii].set_title(axx[1, ii].get_title())
     axx[1, ii].set_title('')
     axx[1, ii].set_xlim([-7, -1.5])
-    axx[1, ii].plot([-5, -3.9], [S0_z_argo[ii], S0_z_argo[ii]],
-                    'k-', lw=2)
-    axx[1, ii].text(-3.75, S0_z_argo[ii], r'$S$ = 34.75',
-                    ha='left', va='center', fontsize=8)
+    axx[1, ii].plot([-6, -3.9], [S0_z_argo[ii], S0_z_argo[ii]],
+                    '-', lw=4, color=Scolor)
+    axx[1, ii].text(-3.75, S0_z_argo[ii], r' $S$ = 34.75',
+                    ha='left', va='center', fontsize=8, color=Scolor)
 
 plt.subplots_adjust(wspace=0.22, hspace=0.1)
 f.set_size_inches(7, 8.5)
 f.suptitle('$\\log_{10}$ hourly averaged $K_T$ (m²/s)', y=0.075)
 
-plt.savefig('images/vert-profile.svg', bbox_inches='tight')
-plt.savefig('images/paper1/bay-KT-vert-profile.pdf', bbox_inches='tight')
-plt.savefig('images/bay-KT-vert-profile.png', bbox_inches='tight')
-import subprocess
-subprocess.run(['bash', 'add-legend-vert-profile.bash'], cwd='images/paper1/')
+# plt.savefig('images/vert-profile.svg', bbox_inches='tight')
+# plt.savefig('images/paper1/bay-KT-vert-profile.pdf', bbox_inches='tight')
+# plt.savefig('images/paper1/bay-KT-vert-profile.png', bbox_inches='tight')
+# import subprocess
+# subprocess.run(['bash', 'add-legend-vert-profile.bash'], cwd='images/paper1/')
 #+END_SRC
 #+NAME: fig:vert
 #+ATTR_LATEX: :float multicolumn
-#+CAPTION: The seasonal cycle of $K_T$. (top) Basin-wide seasonal averages of daily Tropflux wind stress $\tau$, near-inertial energy input $\Pi$, daily Tropflux net surface heat flux $J_q^0$ and TRMM precipitation $P$. Gray ellipses represent wind stres variability and have widths and heights equal to twice the standard deviation of $\tau_x$ and $\tau_y$. (bottom) Vertical profile of hourly averaged turbulent temperature diffusivity $K_T$ formed by combining all available \(\chi\)pod data in density bins (Section [[sec:profile]]). PDFs as well as means ($\bigtriangleup$) and medians ($\bigcirc$) are shown. Bins are marked by 'ML' (mixed layer), 'BL' (barrier layer) and $\rho-1000$ for deeper bins. Black horizontal line marks the climatological depth of the $S=34.75$ isohaline at 8N estimated using the Argo climatology citep:Roemmich2009. Vertical lines mark standard deviation of measurement depths in each bin --- these OVERLAP!
-file:images/paper1/bay-KT-vert-profile-label.png
+#+CAPTION: \small The seasonal cycle of $K_T$. (top) Basin-wide seasonal averages of daily Tropflux wind stress $\tau$, near-inertial energy input $\Pi$, daily Tropflux net surface heat flux $J_q^0$ and TRMM precipitation $P$. Gray ellipses represent wind stres variability and have widths and heights equal to twice the standard deviation of $\tau_x$ and $\tau_y$. (bottom) Vertical profile of hourly averaged turbulent temperature diffusivity $K_T$ formed by combining all available \(\chi\)pod data in density bins (Section [[sec:profile]]). PDFs as well as means ($\bigtriangleup$) and medians ($\bigcirc$) are shown. Bins are marked by 'ML' (mixed layer), 'BL' (barrier layer) and $\rho-1000$ for deeper bins. Blue horizontal line marks the climatological depth of the $S=34.75$ isohaline at 8N estimated using the Argo climatology citep:Roemmich2009. Vertical lines mark standard deviation of measurement depths in each bin --- these lines tend to overlap each other. Finally each PDF is colored according to data coverage: a value of 1 means that there is at one hourly $K_T$ estimate for every hour in the season.
+file:images/paper1/bay-KT-vert-profile-label.pdf
 
 *** Figure 4: RAMA 12N time series                                 :ignore:
 
@@ -1117,95 +1119,7 @@ f.savefig('images/paper1/rama12.pdf')
 *** Figure 5: NRL time series                                      :ignore:
 
 #+BEGIN_SRC ipython :session
-def plot_nrl(mooring):
-
-    shear, low_shear, _, niw_shear, _ = mooring.filter_interp_shear('bins')
-
-    from dcpy.plots import annotate_end, set_axes_color
-
-    f5, axx5 = plt.subplots(6, 1, sharex=True, constrained_layout=True)
-    f5.set_constrained_layout_pads(hspace=0.001, h_pad=0)
-    f5.set_size_inches((8, 8))
-
-    # niw_shear = xfilter.bandpass(shear.shear, 'time',
-    #                              freq=np.array([1/2, 2])*mooring.inertial.values,
-    #                              cycles_per='D')
-    # low_shear = xfilter.lowpass(shear.shear, 'time', freq=0.1, cycles_per='D')
-
-    residual = shear.shear - niw_shear - low_shear
-
-    N = np.sqrt(mooring.N2.isel(depth=1)
-                .resample(time='M').mean('time')
-                .interp(time=niw_shear.time))
-    hniw = ((niw_shear.rolling(time=7*24).reduce(dcpy.util.ms)* 1e5)
-            .sel(time='2014')
-            .plot(ax=axx5[-2], _labels=False, color='g', lw=1.5))
-    hlow = ((np.abs(low_shear)**2 * 1e5)
-            .sel(time='2014')
-            .plot(ax=axx5[-2], _labels=False, color='k', lw=1.5))
-    hres = ((residual.rolling(time=7*24).reduce(dcpy.util.ms) * 1e5)
-            .sel(time='2014')
-            .plot(ax=axx5[-2], _labels=False, color='C1', lw=1.5))
-    # annotate_end(hlow[0], 'low pass', va='top')
-    # annotate_end(hniw[0], '  near\n  inertial', va='center')
-    # annotate_end(hres[0], '  residual', va='center')
-
-    axx5[-2].text('2014-08-12', 7.5, 'near-inertial', color=hniw[0].get_color())
-    axx5[-2].text('2014-10-06', 7.5, 'low-frequency', color=hlow[0].get_color())
-    axx5[-2].text('2014-12-02', 7.5, 'residual', color=hres[0].get_color())
-    hniw[0].set_clip_on(False)
-    hniw[0].set_in_layout(False)
-    hlow[0].set_clip_on(False)
-    hlow[0].set_in_layout(False)
-    mooring.MarkSeasonsAndEvents(events='Storm-zoomin', ax=axx5[-2])
-    axx5[-2].set_ylabel('Squared WKB shear\n[$10^{-5}$ s$^{-2}$]')
-    axx5[-2].set_ylim([0, 10])
-
-    axmooring = bay.plots.plot_moor(mooring, idepth=1,
-                                    axx=axx5, events='Storm-zoomin')
-    axmooring['jq'].set_ylim([-20, 0])
-    axmooring['js'].set_ylim([0, 0.5])
-
-    # fill in the 20m gap with linear interpolation
-    # then interpolate velocity to CTD depths
-    # then difference to get shear
-    zinterp = mooring.ctd.depth.isel(z=slice(1, 3))
-    vel_interp = (mooring.vel[['u', 'v']].interpolate_na('depth')
-                  .interp(time=zinterp.time, depth=zinterp.drop('depth')))
-    shear_interp = (np.hypot(vel_interp.u.diff('z')/15, vel_interp.v.diff('z')/15)
-                    .squeeze())
-
-    N2 = ((9.81/1025 * mooring.ctd.ρ.diff('z')/mooring.ctd.depth.diff('z'))
-          .isel(z=1))
-    Ri = (N2.where(N2 > 0)/shear_interp**2).sel(time='2014')
-
-    axmooring['ri'] = axx5[-1]
-    ((Ri.where(Ri < 5).resample(time='D').count()/144)
-     .plot(ax=axmooring['ri'], label='< 10', _labels=False, color='k'))
-    axmooring['ri'].set_ylabel('Fraction of day\nwith Ri < 5')
-    mooring.MarkSeasonsAndEvents(events='Storm-zoomin', ax=axmooring['ri'])
-
-    axmooring['depth'] = axmooring['ri'].twinx()
-    (mooring.zχpod.sel(num=1).resample(time='D').mean('time')
-     .plot(ax=axmooring['depth'], _labels=False, color='C0', lw=1.2))
-    set_axes_color(axmooring['depth'], 'C0', spine='right')
-    axmooring['depth'].set_ylabel('$χ$pod depth [m]')
-    axmooring['depth'].set_ylim([60, 140])
-
-    axmooring['input'] = axmooring['met'].twinx()
-    axmooring['input'].plot(mooring.niw.time, mooring.niw.true_flux*1000, color='C0')
-    axmooring['input'].set_ylabel('Near-inertial input\n$\Pi$[mW/m²]')
-    set_axes_color(axmooring['input'], 'C0', spine='right')
-
-    dcpy.plots.label_subplots(axx5, x=0.025, y=0.83)
-
-    [tt.set_rotation(0) for tt in axx5[-1].get_xticklabels()]
-    [tt.set_ha('center') for tt in axx5[-1].get_xticklabels()]
-
-    return f5, axmooring
-
-
-f5, _ = plot_nrl(nrl5)
+f5, _ = bay.plots.plot_nrl(nrl5)
 
 f5.savefig('images/paper1/nrl5.pdf')
 
@@ -1258,30 +1172,40 @@ f5.savefig('images/paper1/nrl5.pdf')
 *** Figure 6: ML scatter plot :ignore:
 
 #+BEGIN_SRC ipython :session
+
+df = bay.nc_to_binned_df(turb)
+
 subset = (df.where(df.lon == 90)
           .dropna())
 
+ustar = (subset.tau/1025)**(1/2)
+
 f, ax = plt.subplots(1, 1, constrained_layout=True)
-mappable = ax.hexbin((subset.tau/1025)**(1/2), (subset.KT),
+mappable = ax.hexbin(ustar**2
+                     / np.sqrt(dcpy.oceans.coriolis(subset.lat)
+                               ,* np.sqrt(subset.N2)),
+                     (subset.KT),
                      gridsize=40, mincnt=5,
-                     cmap=mpl.cm.Blues, vmin=0, vmax=45,
-                     extent=[0, 0.02, -6, -2],
-                     yscale='log', edgecolors='k', linewidths=0.25)
-ax.set_xlabel('Friction velocity $u_{*} = (τ/ρ_0)^{1/2}$ [m s$^{-1}$]')
+                     cmap=mpl.cm.Blues, vmin=0, vmax=90,
+                     # extent=[0, 0.02, -6, -2],
+                     xscale='log', yscale='log',
+                     edgecolors='k', linewidths=0.25)
+# ax.set_xlabel('Friction velocity $u_{*} = (τ/ρ_0)^{1/2}$ [m s$^{-1}$]')
+ax.set_xlabel(r'$K_T^{PRT} = u_{*}^2/\sqrt{fN}$ [m$^2$ s$^{-1}$]')
 f.colorbar(mappable, ax=ax, extend='max', label='count')
 # ax.set_xlabel('Wind stress $τ$ [N m$^{-2}$]')
 ax.set_ylabel('$K_T$ [m² s$^{-1}$]')
 
 ax.grid(True)
-ax.set_xlim([0, 0.02])
-ax.set_ylim([1e-6, 1e-2])
+# ax.set_xlim([0, 0.02])
+# ax.set_ylim([1e-6, 1e-2])
 f.set_size_inches(4, 3.3)
 
 f.savefig('images/paper1/scatter-ml-bl.pdf')
 #+END_SRC
 #+NAME: fig:mlbl
 #+ATTR_LATEX: :width \columnwidth
-#+CAPTION: Diffusivity in the mixed and barrier layers is proportional to wind stress. Histogram of hourly averaged $K_T$ in the mixed and barrier layers ($K_T$ values that make up the mixed and barrier layer bins in Figure ref:fig:vert) against friction velocity.
+#+CAPTION: Diffusivity in the mixed and barrier layers is proportional to wind stress. Histogram of hourly averaged $K_T$ in the mixed and barrier layers ($K_T$ values that make up the mixed and barrier layer bins in Figure ref:fig:vert) against a mixing length estimate using friction velocity $u_{*}$ and depth scale of mixing $u_{*}/\sqrt{fN}$ citep:Pollard1972.
 [[file:images/paper1/scatter-ml-bl.pdf]]
 
 *** Figure 6: ML scatter plot with ε                              :noexport:ignore:
@@ -1591,11 +1515,11 @@ for seas in axes:
 axx[0].set_xlim(10**limits)
 axx[0].set_ylim(10**limits)
 
-axx[0].set_ylabel('$S²_{niw}/N²$')
-axx[2].set_ylabel('$S²_{niw}/N²$')
+axx[0].set_ylabel('$S²_{niw}/N^2$')
+axx[2].set_ylabel('$S²_{niw}/N^2$')
 
-axx[2].set_xlabel('$S²_{low}/N²$')
-axx[3].set_xlabel('$S²_{low}/N²$')
+axx[2].set_xlabel('$S²_{low}/N^2$')
+axx[3].set_xlabel('$S²_{low}/N^2$')
 
 dcpy.plots.label_subplots(axx, y=0.9, labels=bay.seasons)
 
@@ -1858,6 +1782,25 @@ f.savefig('images/paper1/8N-binned-avg-js-ep.png', bbox_to_inches='tight')
 #+CAPTION: Turbulent salt flux $J_s^t$ at 8N. (a, b) Scatter plots of hourly averaged $J_s^t$ in depth and salinity spaces respectively. Points with larger $J_s^t$ are plotted over points with lower $J_q^t$ so that high flux events are prominent. (c) Monthly averaged turbulent $J_s^t$ through salinity surfaces $S=34.25, 34.75$ and $35.5$. These are estimated by bin averaging the values in (b) in bins with edges [34, 34.5, 35, 36]. Bins with less than one instrument-month of data are not shown. Those with less than two instrument months of data are grayed out. (d) Monthly averaged surface salinity flux $S_0 (E-P)$ estimated using evaporation from OAFlux and precipitation from TRMM. $S_0$ is assumed to be 32. In orange is $J_s^t$ through $S=34.75$ from (c) with bootstrap error bars.
 [[file:images/paper1/8N-binned-avg-js-ep.png]]
 
+*** Supplementary Figures S1, S2, S4 :ignore:
+#+BEGIN_SRC ipython :session
+for mooring in [nrl1, nrl3, nrl4]:
+    f, axmooring = bay.plots.plot_nrl(mooring)
+    f.savefig('images/paper1/' + mooring.name.lower() + '.pdf')
+#+END_SRC
+
+#+ATTR_LATEX: :float multicolumn
+#+CAPTION: Supplementary Figure S1: Same as Figure [[fig:nrl]] but for NRL1.
+[[file:images/paper1/nrl1.pdf]]
+
+#+ATTR_LATEX: :float multicolumn
+#+CAPTION: Supplementary Figure S2: Same as Figure [[fig:nrl]] but for NRL3.
+[[file:images/paper1/nrl3.pdf]]
+
+#+ATTR_LATEX: :float multicolumn
+#+CAPTION: Supplementary Figure S3: Same as Figure [[fig:nrl]] but for NRL4.
+[[file:images/paper1/nrl4.pdf]]
+
 * A comparison of near-surface and thermocline mixing :noexport:
 <<sec:ramanrl>>
 
@@ -1916,7 +1859,7 @@ f.set_size_inches((8, 5))
 f.savefig('images/paper1/rama12.pdf')
 #+END_SRC
 #+NAME: fig:rama
-#+CAPTION: A year of observations at RAMA 12N. Time series of daily averaged quantities: (a) locally measured wind stress $τ$ and locally measured net surface heat flux $J_q^0$; (b) daily averaged $K_T$ and fraction daily coverage; (c) turbulent heat and salt fluxes $J_q^t, J_s^t$. (d) Buoyancy frequency $N²$ and temperature stratification $T_z$. Background colors mark seasons.
+#+CAPTION: A year of observations at RAMA 12N. Time series of daily averaged quantities: (a) locally measured wind stress $τ$ and locally measured net surface heat flux $J_q^0$; (b) daily averaged $K_T$ and fraction daily coverage; (c) turbulent heat and salt fluxes $J_q^t, J_s^t$. (d) Buoyancy frequency $N^2$ and temperature stratification $T_z$. Background colors mark seasons.
 [[file:images/paper1/rama12.pdf]]
 ** Thermocline mixing: NRL5 8°N, 88.5E, 105m
 <<sec:nrl>>
