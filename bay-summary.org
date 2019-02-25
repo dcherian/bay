@@ -1948,6 +1948,33 @@ plt.legend()
 * Diffusivity scatter plots
 Looks like there's some work on scattering $ε$ against $N$ : cite:Gargett1984.
 
+** RAMA wind stress
+
+#+BEGIN_SRC ipython :session
+# df = (bay.nc_to_binned_df('bay_merged_10min.nc'))
+subset = (df.where(df.lon == 90)
+          .where((df.bin == 'ML') | (df.bin == 'BL'))
+          .where(df.tau < 0.3)
+          .dropna())
+
+f, ax = plt.subplots(1, 1, constrained_layout=True)
+plt.hexbin(subset.tau, (subset.KT), gridsize=35, mincnt=5,
+           cmap=mpl.cm.Blues, vmin=0, vmax=45,
+           extent=[0, 0.25, -6, -2],
+           yscale='log', edgecolors='lightgray', linewidths=0.5)
+plt.colorbar(extend='max')
+plt.xlabel('Wind stress $τ$ [N m$^{-2}$]')
+plt.ylabel(r'$\log_{10}$ $K_T$ [m² s$^{-1}$]')
+plt.title('RAMA moorings | ML + BL bins')
+ax.set_aspect(1, adjustable='box')
+
+f.savefig('images/scatter-ml.png')
+#+END_SRC
+#+CAPTION:
+[[file:images/scatter-ml.png]]
+
+
+*** old
 #+BEGIN_SRC ipython :session
 f, ax = plt.subplots(1, 2, constrained_layout=True)
 
