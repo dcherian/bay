@@ -6,8 +6,8 @@ import scipy as sp
 import seaborn as sns
 
 import cartopy.crs as ccrs
-import dcpy
 import xarray as xr
+import dcpy
 from cartopy import feature
 
 from .bay import default_density_bins, nc_to_binned_df, season_months
@@ -218,14 +218,17 @@ def plot_distrib(ax, plotkind, var, zloc, zstd, width=12, percentile=False,
                             showmedians=False)
 
         for pc in hdl['bodies']:
-            pc.set_alpha(0.8)
+            pc.set_alpha(1)
 
         if color is not None:
             for pc in hdl['bodies']:
                 pc.set_color(color)
+                pc.set_edgecolor('w')
 
             hdl['cbars'].set_color(color)
+            hdl['cbars'].set_zorder(hdl['bodies'][0].get_zorder())
             hdl['cmins'].set_color(color)
+            hdl['cmins'].set_zorder(20)
 
         trim_horiz_violin(hdl)
         hdl['cmaxes'].set_visible(False)
@@ -293,6 +296,10 @@ def vert_distrib(df, bins, varname='KT', kind='distribution',
         axx = ax
 
     ax = {'NE': axx[0], 'NESW': axx[1], 'SW': axx[2], 'SWNE': axx[3]}
+
+    df.bin.cat.reorder_categories(
+        ['ML', 'BL'] + list(df.bin.cat.categories[:-2]),
+        inplace=True)
 
     if varname is 'KT':
         title = '$\\log_{10}$ hourly averaged $K_T$ [m²/s]'
@@ -953,7 +960,7 @@ def plot_nrl(mooring):
     axmooring['input'] = axmooring['met'].twinx()
     axmooring['input'].plot(mooring.niw.time, mooring.niw.true_flux*1000,
                             color='C0')
-    axmooring['input'].set_ylabel('Near-inertial input\n$\Pi$[mW/m²]')
+    axmooring['input'].set_ylabel(r'Near-inertial input\n$\Pi$[mW/m²]')
     set_axes_color(axmooring['input'], 'C0', spine='right')
 
     dcpy.plots.label_subplots(axx5, x=0.025, y=0.83)

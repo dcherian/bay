@@ -6705,7 +6705,161 @@ f.savefig('images/gm-diffusivity.png')
 [[file:images/gm-diffusivity.png]]
 
 ** spectral models
-#+BEGIN_SRC ipython :session
+
+#+BEGIN_SRC jupyter-python :session
+import scipy as sp
+
+class gm:
+    def __init__(self, kind='gm76', N=2.5e-3, b=1300, f0=7.3e-5,
+                 jmax=100, nfreq=401, nk=201, nkz=1000):
+        '''
+        Inputs
+        ------
+        b : float
+            e-folding scale of N(z)
+        N : float
+            buoyancy frequency
+        jmax : int (optional)
+            maximum number of vertical modes
+        nfreq, nk, nkz : int (optional)
+            number of log-spaced frequencies, wavenumbers
+        '''
+
+        self.b = b
+        self.N = N
+        self.f0 = f0
+        self.N0 = 5.2e-3
+        self.E0 = 6.3e-5
+
+        self.kzmax = 0.1
+        self.Ef = 0  # if non-zero do rolloff
+
+        self.kind = kind
+
+        # parameters
+        if kind.lower() == 'gm76':
+            self.s = 2
+            self.t = 2
+            self.jp = 0
+            self.jstar = 3
+
+        if kind.lower() == 'gm75':
+            self.s = 2
+            self.t = 2.5
+            self.jp = 0
+            self.jstar = 6
+
+        if kind.lower() == 'gk91':
+            self.s = 1
+            self.t = 2
+            self.jp = 0
+            self.jstar = 3
+
+        if kind.lower() == 'iwex':
+            raise NotImplementedError('IWEX params not implemented!')
+
+        # Get normalization constant I
+        self.I = (self.s * sp.special.gamma(self.t/self.s)
+                  / sp.special.gamma(1/self.s)
+                  / sp.special.gamma((self.t - 1) / self.s))
+
+        # frequency
+        omg = xr.DataArray(np.logspace(np.log10(1.01*self.f0),
+                                       np.log10(self.N),
+                                       nfreq),
+                           dims='ω', attrs={'units': 'rad/s'})
+        self.ω = omg.assign_coords(ω=omg)
+
+        # horizontal wavenumber
+        k = xr.DataArray(np.logspace(-6, -2, nk),
+                         dims='k', attrs={'units': 'cpm'}, name='k')
+        self.k = k.assign_coords(k=k)
+
+        # vertical wavenumber
+        kz = xr.DataArray(np.logspace(-4, 0, nkz),
+                          dims=['kz'], attrs={'units': 'cpm'}, name='kz')
+        self.kz = kz.assign_coords(kz=kz)
+
+        # mode number
+        j = xr.DataArray(np.arange(1, jmax), dims='j', name='j')
+        self.j = j.assign_coords(j=j)
+
+    def __repr__(self):
+        return (('{0}: b = {1}, N = {2}, f0 = {3}')
+                .format(self.kind.upper(), self.b, self.N, self.f0))
+
+    def B(self, ω=None):
+        ''' Frequency part of spectrum. '''
+
+        if ω is None:
+            ω = self.ω
+
+        return (2/np.pi * self.f0 / ω) / np.sqrt(ω**2 - self.f0**2)
+
+    def A(self, trimlow=False, trimhigh=False):
+        ''' Vertical wavenumber part of spectrum. '''
+
+        δ = self.jp * self.N/self.N0/2/self.b
+        kstar = self.jstar * self.N/self.N0/2/self.b
+
+        A = ((1 / kstar) * self.I *
+             (1 + ((self.kz - δ) / kstar)**self.s)**(-self.t/self.s))
+
+        if trimlow:
+            j0 = 1
+            k0 = j0 * self.N/self.N0/2/self.b
+            A = A.where(self.kz > k0, A, xr.zeros_like(A))
+
+        if trimhigh:
+            A = A.where(self.kz < self.kzmax, A, xr.zeros_like(A))
+
+        return A
+
+    def _maybe_integrate(self, S, kind):
+        if kind == 'ω' or kind == 'freq':
+            return xrsp.integrate.trapz(S, 'j')
+
+        if kind == 'kz' or kind == 'k':
+            return xrsp.integrate.trapz(S, 'ω')
+
+    def shear(self, kind='kz'):
+
+        if kind == 'kz':
+            # do transformation
+            Nphi = 1000
+            eps = self.f0 / self.N
+            phi = (np.arange(Nphi) + 1) * (np.arccos(eps)) / (Nphi+1)
+            ω = xr.DataArray(self.f0 * 1 / np.cos(phi),
+                             dims='ω',
+                             name='ω')
+            ω = ω.assign_coords(ω=ω)
+
+        else:
+            ω = self.ω
+
+        R = ((2 * np.pi * self.kz)**2
+             ,* (self.b**2 * self.N0 * self.N
+                ,* (ω**2 + self.f0**2) / ω**2))
+
+        spec = self._maybe_integrate(self.E0 * self.A() * self.B(ω) * R,
+                                     'kz')
+        spec.attrs['name'] = r'$\Phi_{u_z}$'
+        spec.attrs['units'] = 's$^{-2}$ (cpm)$^{-1}$'
+
+        return spec
+
+test = gm(N=5.2e-3, f0=dcpy.oceans.coriolis(30))
+print(test)
+
+test.shear().plot(xscale='log', yscale='log',
+                  ylim=[1e-6, 1e-3], xlim=[1e-4, 1])
+f.savefig('images/gm-test.png')
+#+END_SRC
+#+CAPTION:
+[[file:images/gm-test.png]]
+
+
+#+BEGIN_SRC jupyter-python :session
 import numpy as np
 import xarray as xr
 import xrscipy as xrsp
