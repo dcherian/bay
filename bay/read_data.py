@@ -11,27 +11,27 @@ moor = importlib.reload(moor)
 chipy = importlib.reload(chipy)
 
 
-def read_all_moorings(minimal=False):
+def read_all_moorings(minimal=False, avoid_wda=False):
     print('Reading all moorings...')
-    ra12 = read_ra12(minimal)
-    ra15 = read_ra15(minimal)
-    nrl1 = read_nrl1(minimal)
-    nrl2 = read_nrl2(minimal)
-    nrl3 = read_nrl3(minimal)
-    nrl4 = read_nrl4(minimal)
-    nrl5 = read_nrl5(minimal)
+    ra12 = read_ra12(minimal, avoid_wda=avoid_wda)
+    ra15 = read_ra15(minimal, avoid_wda=avoid_wda)
+    nrl1 = read_nrl1(minimal, avoid_wda=avoid_wda)
+    nrl2 = read_nrl2(minimal, avoid_wda=avoid_wda)
+    nrl3 = read_nrl3(minimal, avoid_wda=avoid_wda)
+    nrl4 = read_nrl4(minimal, avoid_wda=avoid_wda)
+    nrl5 = read_nrl5(minimal, avoid_wda=avoid_wda)
 
     return [ra12, ra15, nrl1, nrl2, nrl3, nrl4, nrl5]
 
 
-def read_ra12(minimal=False):
+def read_ra12(minimal=False, avoid_wda=False):
 
     ra12 = moor.moor(90, 12, 'RAMA 12N', 'ra12', 'rama', '../rama/RAMA13/')
-    ra12.AddChipod(526, 15, 'mm1w', 'Turb.mat')
-    ra12.AddChipod(527, 30, 'mm1w', 'Turb.mat')
-    ra12.AddChipod(810, 15, 'mmw', 'Turb.mat', dir='../rama/RAMA14/')
-    ra12.AddChipod(811, 30, 'mm1w', 'Turb.mat', dir='../rama/RAMA14/')
-    ra12.AddChipod(812, 45, 'mm2w', 'Turb.mat', dir='../rama/RAMA14/')
+    ra12.AddChipod(526, 15, 'mm1w', 'Turb.mat', avoid_wda=avoid_wda)
+    ra12.AddChipod(527, 30, 'mm1w', 'Turb.mat', avoid_wda=avoid_wda)
+    ra12.AddChipod(810, 15, 'mmw', 'Turb.mat', dir='../rama/RAMA14/', avoid_wda=avoid_wda)
+    ra12.AddChipod(811, 30, 'mm1w', 'Turb.mat', dir='../rama/RAMA14/', avoid_wda=avoid_wda)
+    ra12.AddChipod(812, 45, 'mm2w', 'Turb.mat', dir='../rama/RAMA14/', avoid_wda=avoid_wda)
     ra12.ReadMet('../rama/data/met12n90e_10m.cdf', WindType='pmel')
     ra12.ReadMet(FluxType='pmel')
     ra12.ReadVel('../rama/data/cur12n90e_30m.cdf', FileType='pmel')
@@ -67,11 +67,11 @@ def read_ra12(minimal=False):
     return ra12
 
 
-def read_ra15(minimal=False):
+def read_ra15(minimal=False, avoid_wda=False):
 
     ra15 = moor.moor(90, 15, 'RAMA 15N', 'ra15', 'rama', '../rama/RAMA14/')
-    ra15.AddChipod(813, 15, 'pmw', 'Turb.mat')
-    # ra15.AddChipod(814, 30, 'mm1w', 'Turb.mat')
+    ra15.AddChipod(813, 15, 'pmw', 'Turb.mat', avoid_wda=avoid_wda)
+    # ra15.AddChipod(814, 30, 'mm1w', 'Turb.mat', avoid_wda=avoid_wda)
     ra15.ReadMet('../rama/data/met15n90e_10m.cdf', WindType='pmel')
     ra15.ReadMet(FluxType='pmel')
     ra15.ReadVel('../rama/data/cur15n90e_30m.cdf', FileType='pmel')
@@ -106,11 +106,11 @@ def read_ra15(minimal=False):
     return ra15
 
 
-def read_nrl1(minimal=False):
+def read_nrl1(minimal=False, avoid_wda=False):
     nrl1 = moor.moor(85.5, 5.0, 'NRL1', 'nrl1', 'ebob', '../ebob/')
     nrl1.ReadCTD('NRL1', FileType='ebob')
-    nrl1.AddChipod(500, depth=56, best='mm', fname='Turb.mat')
-    nrl1.AddChipod(501, depth=76, best='mm1', fname='Turb.mat')
+    nrl1.AddChipod(500, depth=56, best='mm', fname='Turb.mat', avoid_wda=avoid_wda)
+    nrl1.AddChipod(501, depth=76, best='mm1', fname='Turb.mat', avoid_wda=avoid_wda)
 
     nrl1.ReadVel('NRL1', FileType='ebob')
 
@@ -126,11 +126,11 @@ def read_nrl1(minimal=False):
     return nrl1
 
 
-def read_nrl2(minimal=False):
+def read_nrl2(minimal=False, avoid_wda=False):
 
     nrl2 = moor.moor(85.5, 6.5, 'NRL2', 'nrl2', 'ebob', '../ebob/')
     nrl2.ReadCTD('NRL2', FileType='ebob')
-    nrl2.AddChipod(504, 69, 'mm', 'Turb.mat')
+    nrl2.AddChipod(504, 69, 'mm', 'Turb.mat', avoid_wda=avoid_wda)
     nrl2.ReadVel('NRL2', FileType='ebob')
 
     nrl2 = __common(nrl2, minimal)
@@ -138,12 +138,12 @@ def read_nrl2(minimal=False):
     return nrl2
 
 
-def read_nrl3(minimal=False):
+def read_nrl3(minimal=False, avoid_wda=False):
 
     nrl3 = moor.moor(85.5, 8, 'NRL3', 'nrl3', 'ebob', '../ebob/')
     nrl3.ReadCTD('NRL3', FileType='ebob')
-    nrl3.AddChipod(505, 28, 'mm', 'Turb.mat')
-    nrl3.AddChipod(511, 48, 'mm', 'Turb.mat')
+    nrl3.AddChipod(505, 28, 'mm', 'Turb.mat', avoid_wda=avoid_wda)
+    nrl3.AddChipod(511, 48, 'mm', 'Turb.mat', avoid_wda=avoid_wda)
     nrl3.AddEvents('SLD', '2014-06-01', '2014-09-01')
     # this period has salinity gap that I filled in using TS fits.
     nrl3.AddEvents('Sal gap', '2014-03-14', '2014-09-29')
@@ -157,12 +157,12 @@ def read_nrl3(minimal=False):
     return nrl3
 
 
-def read_nrl4(minimal=False):
+def read_nrl4(minimal=False, avoid_wda=False):
 
     nrl4 = moor.moor(87, 8, 'NRL4', 'nrl4', 'ebob', '../ebob/')
     nrl4.ReadCTD('NRL4', FileType='ebob')
-    nrl4.AddChipod(514, 55, 'mm1', 'Turb.mat')
-    nrl4.AddChipod(516, 75, 'mm2', 'Turb.mat')
+    nrl4.AddChipod(514, 55, 'mm1', 'Turb.mat', avoid_wda=avoid_wda)
+    nrl4.AddChipod(516, 75, 'mm2', 'Turb.mat', avoid_wda=avoid_wda)
     nrl4.AddEvents('SLD', '2014-06-01', '2014-09-01')
     nrl4.ReadVel('NRL4', FileType='ebob')
 
@@ -179,12 +179,12 @@ def read_nrl4(minimal=False):
     return nrl4
 
 
-def read_nrl5(minimal=False):
+def read_nrl5(minimal=False, avoid_wda=False):
 
     nrl5 = moor.moor(88.5, 8, 'NRL5', 'nrl5', 'ebob', '../ebob/')
     nrl5.ReadCTD('NRL5', FileType='ebob')
-    nrl5.AddChipod(518, depth=84, best='mm', fname='Turb.mat')
-    nrl5.AddChipod(519, depth=104, best='mm1', fname='Turb.mat')
+    nrl5.AddChipod(518, depth=84, best='mm', fname='Turb.mat', avoid_wda=avoid_wda)
+    nrl5.AddChipod(519, depth=104, best='mm1', fname='Turb.mat', avoid_wda=avoid_wda)
     # 519 mm2 reads low frequently
     nrl5.AddEvents('Storm+IW', '2014-07-17', '2014-08-07')
     nrl5.AddEvents('Storm-zoomin', '2014-07-25', '2014-08-07 11:59')

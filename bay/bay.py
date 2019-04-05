@@ -37,12 +37,13 @@ loc = {
 }
 
 
-def make_merged_nc(moorings):
+def make_merged_nc(moorings, fileprefix='bay_merged'):
     ''' Makes merged netCDF files with turbulence info.
 
     Inputs
     ------
     moorings: A list of mooring objects
+    filename: output filename
 
     Outputs
     -------
@@ -112,15 +113,16 @@ def make_merged_nc(moorings):
     Turb.attrs['data_originator'] = 'Shroyer and Moum'
     Turb.attrs['chief_scientist'] = 'Emily L. Shroyer'
 
+    fileprefix = '../estimates/' + fileprefix
     print('Writing to file.')
-    Turb.to_netcdf('bay_merged_10min.nc')
+    Turb.to_netcdf(fileprefix + '_10min.nc')
     (Turb.resample(time='1H').mean(dim='time')
-     .to_netcdf('bay_merged_hourly.nc'))
+     .to_netcdf(fileprefix + '_hourly.nc'))
     (Turb.resample(time='6H').mean(dim='time')
-     .to_netcdf('bay_merged_6hourly.nc'))
+     .to_netcdf(fileprefix + '_6hourly.nc'))
 
 
-def nc_to_binned_df(dataset='bay_merged_hourly.nc',
+def nc_to_binned_df(dataset='../estimates/bay_merged_sorted_hourly.nc',
                     bins=default_density_bins,
                     moor=None):
     ''' reads KT from merged .nc file and returns DataFrame version
