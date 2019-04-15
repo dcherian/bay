@@ -191,30 +191,9 @@ Correlations of estimated turbulence quantities with wind-stress and local shear
 
 * Observations
 
-** χpod
-<<sec:pod>>
-
-All presented turbulence quantities were obtained using χpods: self-contained instruments each consisting of two fast-response FP-07 thermistors, a pitot-static tube for high-frequency speed measurements, a pressure sensor, a compass, and accelerometers citep:Moum2009a,Moum2015.
-Refinement over many years has resulted in a system that can return records of turbulent temperature fluctuations for up to a year or more.
-The two thermistors on the χpod record temperature fluctuations at 100Hz.
-Temperature gradient spectra are computed using 1 second data intervals and are fit to the theoretical spectrum of cite:Kraichnan1968 in the viscous-convective range using an iterative procedure citep:Moum2009a.
-This process yields the turbulence dissipation rate of temperature variance $χ$ after using a relationship between the turbulence dissipation rate of kinetic energy $ε$ and $χ$ obtained by assuming $K_T = K_ρ$ i.e. that the turbulent diffusivities of temperature and density are equal, and that mixing efficiency $Γ = 0.2$ for stratified turbulence citep:Moum2009a.
-Despite these assumptions, /in-situ/ comparisons between χpod estimates and more ``standard'' estimates from vertical microstructure profiles are favorable under stably-stratified sheared conditions citep:Perlin2012,Pujiana2018.
-Turbulence temperature diffusivity $K_T$, turbulence heat flux $J_q^t$ and turbulence salt flux $J_s^t$ are estimated from a time series of $χ$ using
-\begin{equation}
-        K_T = \frac{χ/2}{T_z^2}; \quad J_q^t = - ρ_0\, c_p\, K_T\, T_z; \quad J_s^t = ρ_0 \, K_T \, S_z
-\end{equation}
-where $T_z, S_z$ are background temperature and salinity gradients obtained from nearby CTDs on the moorings (subscript $z$ indicates \(z\)-derivative).
-Again, we have assumed that high Reynolds number geophysical turbulence mixes all scalars at the same rate so that $K_T = K_S$.
-Inferring $K_T$ and $J_q$ when temperature stratification $T_z$ is small can be problematic since these quantities are inversely proportional to $T_z^2$ and $T_z$ respectively.
-Such behaviour is especially problematic in the Bay where salinity often dominates near-surface stratification, unlike in the equatorial cold tongues where χpods are most commonly deployed.
-Our standard procedure is to mask out $χ$ estimates when $\abs{T_z} < \SI{1e-3}{\celsius\per\metre}$ and $N^2 \le \SI{1e-6}{\per\s\square}$ which can occur frequently with near surface χpods on RAMA moorings that are frequently in the mixed layer.
-When temperature gradients are low, the inferred heat fluxes can be quite large.
-For χpods on the surface pumped RAMA moorings we adapt the procedure described in cite:Winters1996 for χpod data and use a sorted temperature gradient to estimate diffusivity and heat flux (Appendix C).
-
 ** The 2014-2015 Bay of Bengal deployment
 
-As part of the U.S. Office of Naval Research's Air Sea Interaction Regional Initiative (ASIRI), Naval Research Laboratory's (NRL) Effects of Bay of Bengal Freshwater Flux on Indian Ocean Monsoon (EBoB) and the Indian government's Ocean Mixing and Monsoons (OMM) projects, a number of χpods were deployed on moorings throughout the Bay (Figure ref:fig:map and Table ref:tab:pods).
+As part of the U.S. Office of Naval Research's Air Sea Interaction Regional Initiative (ASIRI), Naval Research Laboratory's (NRL) Effects of Bay of Bengal Freshwater Flux on Indian Ocean Monsoon (EBoB) and the Indian government's Ocean Mixing and Monsoons (OMM) projects, a number of moored mixing meters named χpods citep:Moum2009a were deployed on moorings throughout the Bay (Figure ref:fig:map and Table ref:tab:pods).
 On the Research Moored Array for African-Asian-Australian Monsoon Analysis and Prediction (RAMA) moorings at 12°N and 15°N, χpods were deployed at 15 m, 30 m (2014, 2015) and 45 m (2015 only) depths.
 These units were usually either in or near the base of the mixed or barrier layers and recorded the wind-forced near-surface cycle of turbulence (Figure [[fig:map]]).
 
@@ -256,6 +235,47 @@ This location is relatively unique because it experiences significant freshwater
 | NRL5    | 88.5E, 8N   |          85 | 21 Dec 2013 - 30 Jan 2015           |
 |         |             |         105 | \phantom{21 Dec 2013 -} 22 Feb 2015 |
 |---------+-------------+-------------+-------------------------------------|
+
+
+** χpod
+<<sec:pod>>
+
+All presented turbulence quantities were obtained using χpods: self-contained instruments each consisting of two fast-response FP-07 thermistors, a pitot-static tube for high-frequency speed measurements, a pressure sensor, a compass, and accelerometers citep:Moum2009a,Moum2015.
+Refinement over many years has resulted in a system that can return records of turbulent temperature fluctuations for up to a year or more.
+The two thermistors on the χpod record temperature fluctuations at 100Hz.
+Temperature gradient spectra are computed using 1 second data intervals and are fit to the theoretical spectrum of cite:Kraichnan1968 in the viscous-convective range using an iterative procedure citep:Moum2009a.
+This process yields the turbulence dissipation rate of temperature variance $χ$ after using a relationship between the turbulence dissipation rate of kinetic energy $ε$ and $χ$ obtained by assuming $K_T = K_ρ$ i.e. that the turbulent diffusivities of temperature and density are equal, and that mixing efficiency $Γ = 0.2$ for stratified turbulence citep:Moum2009a.
+Despite these assumptions, /in-situ/ comparisons between χpod estimates and more ``standard'' estimates from vertical microstructure profiles are favorable under stably-stratified sheared conditions citep:Perlin2012,Pujiana2018.
+Total temperature diffusivity $K_T$, heat flux $J_q^t$ and salt flux $J_s^t$ are estimated from a time series of $χ$ using
+\begin{equation}
+        K_T = κ_T(S,T,P) + \frac{χ/2}{T_z^2}; \quad J_q^t = - ρ_0\, c_p\, K_T\, T_z; \quad J_s^t = ρ_0 \, K_T \, S_z
+\end{equation}
+where $κ_T$ is the molecular diffusivity of water and $T_z, S_z$ are background temperature and salinity gradients (usually obtained by differencing nearby CTDs on the moorings --- ``mooring gradients''; subscript $z$ indicates \(z\)-derivative).
+Again, we have assumed that high Reynolds number geophysical turbulence mixes all scalars at the same rate so
+that $K_T = K_S$.
+
+*** Weak background gradients
+
+Inferring $K_T$ and $J_q$ when temperature stratification $T_z$ is small can be challenging since these quantities are inversely proportional to $T_z^2$ and $T_z$ respectively.
+Such behaviour is especially problematic in the Bay where salinity often dominates near-surface stratification and temperature inversions are common (for e.g. citealp:Shroyer2016), unlike in the equatorial cold tongues where χpods are most commonly deployed (e.g. citealp:Moum2009b).
+Our standard procedure is to mask out $χ$ estimates when $\abs{T_z} < \SI{1e-3}{\celsius\per\metre}$ and $N^2 \le \SI{1e-6}{\per\s\square}$ which can occur frequently with near surface χpods on RAMA moorings that are frequently in the mixed layer.
+For χpods on the surface pumped RAMA moorings we adapt the procedure described in cite:Winters1996 for χpod data and use a sorted local temperature gradient to estimate diffusivity and heat flux (Appendix C).
+Uncertainty in sign of the temperature gradient results in additional uncertainty: stable temperature inversions are common in the Bay and the sorting procedure cannot recover the sign of the gradient.
+Instead we use the sign of the mooring gradient smoothed using a two-hour running median.
+- something about means in table.
+
+*** Weak turbulence
+
+A second challenge with analyzing χpods deployed in the Bay's thermocline is the frequent occurrence of weakly turbulent and near-laminar flow for extended periods of time as has been recorded with microstructure measurements in the Arctic citep:Scheifele2018 and the Aegean Sea citep:Gregg2012.
+Analyzing microstructure measurements in such environments is challenging given that the usual assumptions of isotropy, steadiness and homogeneity break down citep:Rohr1988,Itsweire1993.
+During such time periods, the χpod records ``bit noise'' and such behaviour is detectable using knowledge of the circuits involved (Appendix D).
+When the recorded temperature variance is within an aribitrary factor of 1.5 of the inferred noise variance, we set $ε, χ$ to 0 resulting in total diffusivity $K_T$  being floored to molecular diffusivity $κ_T$ and the resulting heat flux $J_q^t$ being that due to molecular diffusion.
+We do so following cite:Gregg2012 with the understanding that choosing a value other than zero seems unjustifiable.
+Further, our focus is on characterizing $K_T$ and $J_q^t$, and so our priority is to represent those values properly.
+
+DNS of turbulence has shown that overturning turbulence ceases to exist at low values of buoyancy Reynolds number $Re_b = ε/(νN^2)$.
+Exact values of a threshold $Re_b$ for this parameter shift after debated but range from 7 citep:Shih2005, 10 citep:Salehipour2015 to 16 citep:Rohr1988.
+So guided, we conservatively set $ε, χ$ to zero again when buoyancy Reynolds number $Re_b = ε/νN²$  < 20.
 
 
 * A seasonally varying vertical profile of diffusivity $K_T$
@@ -407,11 +427,12 @@ The transition months of March and April are a time of relatively weak near-iner
 Similar periods of low to negligible mixing are evident at other χpods --- /median/  $K_T \le \SI{1e-6}{\m\squared\per\s}$ in most thermocline density bins (deeper distributions in Figure ref:fig:vert).
 This observation is consistent with /in-situ/ finestructure- and microstructure-based profiles of turbulence quantities in the Bay.
 Finestructure estimates of dissipation estimated using LADCP shear profiles for the I01 section at approximately 10°N in the Bay of Bengal yield $K_ρ \approx \SI{1e-6}{\m\squared\per\s}$ citep:Kunze2006.
-cite:Jinadasa2016 report vertical profiles of $N^2$ and turbulent kinetic energy dissipation rate $ε$ from which we infer minimum diffusivity
+cite:Jinadasa2016 report vertical profiles of $N^2$ and turbulent kinetic energy dissipation rate $ε$ from which we infer minimum diffusivity at \SI{30}{m}
 \begin{equation}
 K_ρ^\text{min} = \frac{Γε^\text{min}}{N^2} \approx \frac{0.2 \times \SI{1e-9}{\W\per\kg}}{\SI{1e-3}{\per\s\squared}}  \approx\SI{2e-7}{\m\squared\per\s},
 \end{equation}
 assuming again that mixing efficiency $Γ = 0.2$ citep:Gregg2018.
+Similarly, cite:St.Laurent2017 too infer $K_ρ \approx \SI{1e-6}{\m\square\per\s}$ for depths between 40m and 120m by combining a mean vertical profile of $ε$ and mean $N$ collected by glider-based sensors over seven days.
 Low thermocline diffusivities are predicted by the finestructure internal-wave scaling of cite:Henyey1986 and have been observed previously at low latitudes: $K_ρ \approx (1\mhyph 3) \times \SI{1e-6}{\square\m\per\s}$ for latitudes south of 10°N in cite:Gregg2003.
 However, our lowest observed values during March, April at approximately \SIrange{80}{100}{m} depths are frequently lower than those observations (Figure ref:fig:vert).
 Low values of $K_T$ are perhaps not surprising given the observations of cite:Jinadasa2016 and cite:Kunze2006 but these χpod observations are the first to show that extremely low mixing persists for multiple weeks at multiple locations in the south-central Bay (Figure ref:fig:vert).
@@ -631,11 +652,10 @@ Again, we see the combination of near-inertial waves and internal nonlinear inte
 - do I need to add a figure showing time series of $J_q^t, J_s^t, |u_z|$ + one panel showing rotary velocity, shear spectrum with shifted peaks?
 
 
-* Questions:
+* Questions: :ignore:
 
 - Add Hemantha as last co-author? current version spends a lot of time discussing shear...
 - I feel that the figures have become quite complicated. Suggestions on panels / quantities that could be removed would be very helpful.
-
 
 * Acknowledgments :ignore:
 
@@ -834,28 +854,45 @@ print(tabulate.tabulate(medianKT,
 
 * Appendix C: Estimating sorted gradients for surface-pumped χpods
 
-- do I need yet another figure to illustrate this?
-
 This section describes a method adapted from \citet[their Section 7]{Winters1996} to estimate sorted temperature gradients from a χpod deployed on a mooring with a surface expression that is pumped by surface gravity waves.
-Consider a 10 minute chunk of data that has been processed using the fitting procedure of cite:Moum2009a to yield a 1 second time series of $χ$.
-1. Once $χ$ has been estimated, we have $χ(t) \equiv χ(T_1)$, $T_1$ is the 1-second averaged temperature time series.
+Consider a chunk of data that has been processed using the fitting procedure of cite:Moum2009a to yield a \SI{1}{\Hz} time series of $χ$ (Figure [[fig:wda]]d).
+For illustration purposes Figure [[fig:wda]] shows a two minute chunk; we use a ten minute chunk for results shown in this paper.
+1. Determine the vertical displacement by double integrating the accelerometer time series (Figure [[fig:wda]]a).
 
-2. We can divide the temperature time series into $M$ quantiles, bin the $χ$ estimates in these temperature bins and then average them to get $\langle  χ \rangle \equiv χ(δ\Tbins)$. $δ\Tbins$ represents the bins between bin edges $\Tbins$. Every $χ$ estimate made between two isothermal surfaces is averaged together --- termed ``isoscalar averaging'' by \cite{Winters1996}.
+2. Combine the temperature $T$ (sampled at \SI{50}{\Hz}) and the derivative $dT/dt$ (sampled at \SI{100}{\Hz}) time series (Figure [[fig:wda]]c) using the method of cite:Mudge1994 to determine the ``enhanced'' \SI{100}{\Hz} temperature time series (Figure [[fig:wda]]b).
 
-3. We estimate a gradient by determining the average distance between the isothermal surfaces $\Tbins$. The relative depth of isothermal surfaces is estimated using the vertical displacement time series that is estimated by double integrating the \SI{100}{Hz} accelerometer data.
+3. Once $χ$ has been estimated, we have $χ(t) \equiv χ(T_1)$, $T_1$ is the \SI{1}{\Hz} averaged enhanced temperature time series. Figure [[fig:wda]]f shows a scatter plot of $χ$ against $T_1$.
+
+4. We divide $T_1$ into ten quantiles to determine temperature bin edges $\Tbins$; indicated by \(x\)-ticks and vertical grid lines in Figure [[fig:wda]]e,g. We then bin the $χ$ estimates in these temperature bins and average to get $\langle χ \rangle \equiv χ(δ\Tbins)$. Using quantiles results in roughly equal number of $χ$ estimates in each bin. $δ\Tbins$ represents the bins between bin edges $\Tbins$ (Figure [[fig:wda]]e).
+
+5. We can estimate a gradient by determining the average distance between the isothermal surfaces $\Tbins$. The relative depth of isothermal surfaces is estimated using the vertical displacement time series in Figure [[fig:wda]]a.
    a. Determine the start and end of ``up-'' and ``down-''casts using the double integrated accelerometer time series.
-   b. Sort the temperature associated with each ``up-'' and ``down-cast'' individually.
-   c. Find the location of the chosen isotherms ($\Tbins$) in the sorted profiles and difference them to get $Δz(δ\Tbins)$ in each profile --- this is an estimate of the distance between the chosen two isotherms in each sorted profile.
-   d. Average $Δz(δ\Tbins)$ in isothermal space to get $\langle Δz \rangle$; i.e. average every $Δz$ measurement for each temperature bin. $\langle Δz \rangle$ is the average distance between the isotherms represented by the bin edges $\Tbins$.
-   e. $\langle Δz \rangle/Δ\Tbins$ is the necessary gradient for each bin that may be used to estimate diffusivity and heat flux within that bin; $Δ\Tbins$ is the distance between the bin edges.
+   b. Profiles with less than \SI{10}{cm} displacement are discarded.
+   c. Sort the enhanced temperature associated with each ``up-'' and ``down-cast'' individually (shown in Figure [[fig:wda]]e).
+   d. Find the location of the chosen bin edges in the sorted profiles and difference them to get $Δz(δ\Tbins)$ in each profile --- this is an estimate of the distance between the chosen two isotherms in each sorted profile.
+   e. Average every $Δz$ measurement for each temperature bin to get $\langle Δz \rangle$ --- the average distance between the isotherms represented by the bin edges $\Tbins$.
+   f. $\langle Δz \rangle/Δ\Tbins$ is the necessary gradient for each bin that may be used to estimate diffusivity and heat flux within that bin; $Δ\Tbins$ is the distance between the bin edges (Figure [[fig:wda]]e).
+   g. For illustration we can integrate $\langle Δz \rangle$ to get an average sorted vertical profile (solid black line in Figure [[fig:wda]]e,g).
 
-4. Estimate $J_q^t$ using
+6. Estimate $J_q^t$ using
    \begin{equation}
-     J_q^t = - \frac 12 \frac{\langle Δz \rangle}{Δ\Tbins} \; \langle χ \rangle
+     J_q^t = - \frac 12 \frac{\langle Δz \rangle}{Δ\Tbins} \; \langle χ \rangle.
    \end{equation}
 
-5. We now have a $J_q^t$ estimate for each temperature bin. Depth-average these values to get the volume-average $J_q^t$ in the volume sampled by the χpod in the 10 minute chunk of data.
+7. We now have a $J_q^t$ estimate for each temperature bin i.e. a vertical profile of $J_q^t$. Depth-average these values to get the volume-average $J_q^t$ in the volume sampled by the χpod in the 10 minute chunk of data.
 
+As reference we show two other estimates of background gradients in Figure [[fig:wda]]e,g: a ``CTD'' estimate obtained by differencing
+two CTD sensors on the χpod (dashed line) as well as a straight line fit to the unsorted profiles ($T_z^{\text{fit}}$ dash-dot line).
+In general, we find that the sorted gradient is larger than the CTD estimate by a factor of two to ten when gradients are on the order of \SI{1e-3}{\celsius\per\m}.
+When gradient is on the order of \SI{1e-2}{\celsius\per\m} or more, all three estimates generally agree to within a factor of two.
+
+* Appendix D: Detecting weak turbulence
+
+The voltage recorded by the FP-07 temperature sensor in the χpod is differentiated by an analog differentiator circuit and then digitized using an analog-to-digital converter (ADC) whose noise level is 6 voltage levels peak-to-peak.
+We can then estimate the spectral energy level of the discretized white noise time series of that amplitude, combine it with the instrument calibration coefficients citep:Becherer2017 to get a dimensional spectral energy level that would result when the ADC records ``bit noise''.
+Multiplying this noise energy level by frequency bandwidth gives an estimate of the instrument's ``noise floor'' i.e. an estimate of the recorded variance when the data recorded is bit noise.
+
+# 4.096V using 16 bit quantization i.e. $2^{16}$ voltage levels.
 
 * Supplementary Information
 
@@ -1914,6 +1951,13 @@ f.savefig('images/paper1/8N-binned-avg-js-ep.png', bbox_to_inches='tight')
 #+ATTR_LATEX: :float multicolumn
 #+CAPTION: Turbulent salt flux $J_s^t$ at 8N. (a, b) Scatter plots of hourly averaged $J_s^t$ in depth and salinity spaces respectively. Points with larger $J_s^t$ are plotted over points with lower $J_q^t$ so that high flux events are prominent. (c) Monthly averaged turbulent $J_s^t$ through salinity surfaces $S=34.25, 34.75$ and $35.5$. These are estimated by bin averaging the values in (b) in bins with edges [34, 34.5, 35, 36]. Bins with less than one instrument-month of data are not shown. Those with less than two instrument months of data are grayed out. (d) Monthly averaged surface salinity flux $S_0 (E-P)$ estimated using evaporation from OAFlux and precipitation from TRMM. $S_0$ is assumed to be 32. In orange is $J_s^t$ through $S=34.75$ from (c) with bootstrap error bars.
 [[file:images/paper1/8N-binned-avg-js-ep.png]]
+
+** Figure 9: Sorted estimate :ignore:
+
+#+NAME: fig:wda
+#+ATTR_LATEX: :float multicolumn
+#+CAPTION: Thorpe sorting applied to \(\chi\)pod data. On the left are time-series for a two minute subset of data: (a) vertical displacement (b) ``enhanced'' temperature (c) temperature gradient $dT/dt$ (d) χ. Panels (e, g) show sorted and unsorted vertical profiles of temperature with depth respectively along with three estimates of a background gradient: the averaged sorted gradient (thick black), difference between two CTD sensors (dashed) and a linear fit to the unsorted profiles (dash-dot). Panel (f) shows χ as a function of temperature. \(x\)-ticks and grid lines on panels e, f show the temperature bins $\Tbins$. Colors indicate individual up- and down-casts determined using the displacement timeseries (panel a).
+[[file:images/paper1/wda-label.pdf]]
 
 ** Supplementary Figures S1, S2, S4                                 :ignore:
 #+BEGIN_SRC jupyter-python :session py
