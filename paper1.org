@@ -1,13 +1,14 @@
 #+LATEX_CLASS: ametsoc
-#+TITLE:  1. Observations and drivers of the seasonal cycle of upper-ocean mixing in the Bay of Bengal \newline 2. The observed seasonal cycle of upper-ocean mixing in the Bay of Bengal \newline 3. Seasonal upper-ocean mixing in the Bay of Bengal
+#+TITLE:  Seasonal upper-ocean mixing in the Bay of Bengal
 #+AUTHOR: D.A. Cherian, E.L. Shroyer, J.N. Moum
 #+OPTIONS: author:nil timestamp:t email:nil toc:nil num:2 title:nil H:3 p:nil tasks:todo tags:nil
 #+PROPERTY: header-args :eval never :exports none
-#+LATEX_HEADER: \authors{D. A. Cherian\thanks{Current affiliation: National Center for Atmospheric Research, Boulder, Colorado, USA.}\correspondingauthor{Deepak A. Cherian, 104 CEOAS Admin Building, Oregon State University, Corvallis, OR 97333.}, E. L. Shroyer, J. N. Moum}
+#+LATEX_HEADER: \authors{D. A. Cherian\thanks{Current affiliation: National Center for Atmospheric Research, Boulder, Colorado, USA.}\correspondingauthor{Deepak A. Cherian, NCAR, P.O. Box 3000, Boulder, CO 80307-3000.}, E. L. Shroyer, J. N. Moum}
 #+LATEX_HEADER: \affiliation{College of Earth, Ocean and Atmospheric Sciences, Oregon State University, Corvallis, Oregon, USA}
 #+LATEX_HEADER: \journal{jpo}
 #+LATEX_HEADER: \email{deepak@cherian.net}
 #+LATEX_HEADER: \input{my-math.tex}
+
 # To make illustration as wide as both columns, use \includegraphics[width=\textwidth]{<illustration>} or to make as wide as one column, use \includegraphics[width=\columnwidth]{<illustration>} The terms \textwidth and \columnwidth are perhaps easier to remember than the standard figure sizes: 19pc (one column) and 39 pc (two columns). Two other standard sizes for your illustrations are 27pc and 33pc, for those illustrations that are between one and two columns wide. For a two-column figure, use star form: \begin{figure*}...\end{figure*}. For a one-column figure: \begin{figure}...\end{figure}
 # 1 in = 6.0225 pc
 
@@ -667,7 +668,7 @@ We also acknowledge expert engineering and technical contributions from Pavan Vu
 Many of these discussions were facilitated by the International Center for Theoretical Sciences, Tata Institute of Fundamental Research, Bangalore (ICTS/Prog-ommbob/2019/02).
 - something about data embargo / availability
 The evaporation product was provided by the WHOI OAFlux project (http://oaflux.whoi.edu) funded by the NOAA Climate Observations and Monitoring (COM) program.
-
+Analysis was greatly helped by the use of the xarray Python package cite:Hoyer2017.
 
 * Appendix A: Near-inertial input calculation
 
@@ -1170,8 +1171,13 @@ f, axx = plt.subplots(2, 4, sharex='row', sharey='row',
                      gridspec_kw={'height_ratios': [1, 6]})
 ax = dict(zip(bay.seasons, axx[0, :]))
 
-bay.make_vert_distrib_plot('KT', label_moorings=False, f=f, ax=axx[1, :],
+bay.make_vert_distrib_plot('KT', '../estimates/bay_merged_sorted_hourly.nc',
+                           label_moorings=False, f=f, ax=axx[1, :],
                            adjust_fig=False)
+
+# bay.make_vert_distrib_plot('KT',
+#                            label_moorings=False, f=f, ax=axx[1, :],
+#                            adjust_fig=False, trim_keep='bottom', label_bins=False)
 
 barargs = dict(width=0.5)
 labelargs = dict(ha='center', va='baseline')
@@ -1260,12 +1266,22 @@ file:images/paper1/bay-KT-vert-profile-label.pdf
 if 'ra12' not in locals():
     ra12 = bay.read_ra12()
 
+if 'n12' not in locals():
+    mooring = xr.open_dataset('../estimates/bay_merged_mooring_10min.nc')
+    n12 = mooring.sel(lat=12, lon=90, depth=15).load()
+
 f, axx = plt.subplots(4, 1, sharex=True, constrained_layout=True)
 f.set_constrained_layout_pads(hspace=0.001, h_pad=0)
 
 ax12 = bay.plots.plot_moor(ra12, idepth=0, axx=axx)
+# n12.KT.sel(time='2014').resample(time='D').mean('time').plot(ax=ax12['KT'],
+#                                                              color='gray',
+#                                                              _labels=False)
+# n12.Jq.sel(time='2014').resample(time='D').mean('time').plot(ax=ax12['jq'],
+#                                                              color='gray',
+#                                                              _labels=False)
 ax12['jq'].set_ylim([-50, 50])
-ax12['Tz'].set_ylim([-0.1, 0.2])
+ax12['N2'].set_ylim([-1, 5])
 ax12['N2'].set_zorder(0)
 # ax12['js'].set_ylim([-1e-2, 2e-1])
 
@@ -1278,18 +1294,19 @@ dcpy.plots.label_subplots(axx, y=0.85)
 
 f.set_size_inches((8, 5))
 
-f.savefig('images/paper1/rama12.pdf')
+# f.savefig('images/paper1/rama12.pdf')
 #+END_SRC
 #+NAME: fig:rama
 #+ATTR_LATEX: :float multicolumn
-#+CAPTION: A year of observations at RAMA 12N. Time series of daily averaged quantities: (a) locally measured wind stress $\tau$ and locally measured net surface heat flux $J_q^0$ (positive heats the ocean); (b) daily averaged $K_T$ and fraction daily coverage; (c) turbulent heat and salt fluxes $J_q^t, J_s^t$. (d) Buoyancy frequency $N^2$ and temperature stratification $T_z$. Background colors mark seasons.
+#+CAPTION: A year of observations at RAMA 12N. Time series of daily averaged quantities: (a) locally measured wind stress $\tau$ and locally measured net surface heat flux $J_q^0$ (positive heats the ocean); (b) daily averaged $K_T$ and fraction daily coverage; (c) turbulent heat and salt fluxes $J_q^t, J_s^t$. (d) Buoyancy frequency $N^2$ and temperature contribution to $N²$, $g \alpha T_z$. Background colors mark seasons.
 [[file:images/paper1/rama12.pdf]]
 
 ** Figure 5: NRL time series                                        :ignore:
 
 #+BEGIN_SRC jupyter-python :session py
-f5, _ = bay.plots.plot_nrl(nrl5)
+f5, ax = bay.plots.plot_nrl(nrl5)
 
+ax['N2'].set_ylim([0, 6])
 f5.savefig('images/paper1/nrl5.pdf')
 
 # shear_interp = (mooring.vel.shear
@@ -1335,7 +1352,7 @@ f5.savefig('images/paper1/nrl5.pdf')
 #+END_SRC
 #+NAME: fig:nrl
 #+ATTR_LATEX: :float multicolumn
-#+CAPTION: A year of observations at NRL5. Time series of daily averaged quantities: (a) Tropflux wind stress and wind-forced near-inertial energy flux; (b) daily averaged $K_T$ and fraction daily coverage; (c) turbulent heat and salt fluxes $J_q^t, J_s^t$; (d) Buoyancy frequency $N^2$ and temperature stratification $T_z$; (e) Weekly running mean of filtered squared WKB-scaled shear magnitude: 6.6 day low pass in black, near-inertial bandpass in green and the residual in orange; (f) Fraction of day where Richardson number $\Ri$ < 5. Background colors mark seasons; white region indicates time period that is subject of Figure [[fig:nrl5-niw]].
+#+CAPTION: A year of observations at NRL5. Time series of daily averaged quantities: (a) Tropflux wind stress and wind-forced near-inertial energy flux; (b) daily averaged $K_T$ and fraction daily coverage; (c) turbulent heat and salt fluxes $J_q^t, J_s^t$; (d) Buoyancy frequency $N^2$ and temperature contribution to $N^2$ $g \alpha T_z$; (e) Weekly running mean of filtered squared WKB-scaled shear magnitude: 6.6 day low pass in black, near-inertial bandpass in green and the residual in orange; (f) Fraction of day where Richardson number $\Ri$ < 5. Background colors mark seasons; white region indicates time period that is subject of Figure [[fig:nrl5-niw]].
 [[file:images/paper1/nrl5.pdf]]
 
 ** Figure 6: ML scatter plot                                        :noexport:ignore:
