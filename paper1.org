@@ -665,14 +665,92 @@ However, since TropFlux data is available at daily resolution one cannot calcula
 (setq ob-jupyter-python-show-mime-types nil)
 #+END_SRC
 
+#+BEGIN_SRC jupyter-python :session py :exports results :results replace  drawer :eval never-export :display text/plain
+import tabulate
+
+def parse_interval(value):
+    import re
+    val = [float(ff)
+           for ff in re.sub(' +', ' ', value[1:-1].strip()).split(' ')]
+
+    return val
+
+
+kwargs = dict(usecols=[1, 2, 3, 4, 5, 6, 7],
+              converters={'ci_mean': parse_interval,
+                          'ci_median': parse_interval})
+
+sortcsv = pd.read_csv('~/bay/estimates/mean_median_KT_sorted.csv', **kwargs)
+moorcsv = pd.read_csv('~/bay/estimates/mean_median_KT_mooring.csv', **kwargs)
+
+table = moorcsv.copy()[['season', 'bin']]
+table['KT_sort_median'] = '-'
+table['KT_moor_median'] = ''
+table['KT_sort_mean'] = '-'
+table['KT_moor_mean'] = ''
+
+factor = 1e5
+
+for index, row in moorcsv.iterrows():
+    table['KT_moor_mean'].iloc[index] = (f"{row.KT_mean*factor:.1f}"
+                                         f"_{{{row.ci_mean[0]*factor:.2f}}}"
+                                         f"^{{{row.ci_mean[1]*factor:.2f}}}")
+    table['KT_moor_median'].iloc[index] = (f"{row.KT_median*factor:.1f}"
+                                           f"_{row.ci_median[0]*factor:.2f}"
+                                           f"^{row.ci_median[1]*factor:.2f}")
+
+for index, row in sortcsv.iterrows():
+    if row.z > 50:
+        continue
+
+    table['KT_sort_mean'].iloc[index] = (f"{row.KT_mean*factor:.1f}"
+                                         f"_{row.ci_mean[0]*factor:.2f}"
+                                         f"^{row.ci_mean[1]*factor:.2f}")
+    table['KT_sort_median'].iloc[index] = (f"{row.KT_median*factor:.1f}"
+                                           f"_{row.ci_median[0]*factor:.2f}"
+                                           f"^{row.ci_median[1]*factor:.2f}")
+
+neat_table = (pd.pivot_table(table,
+                             index=['bin'],
+                             columns='season',
+                             aggfunc=lambda x: x)
+              [['KT_sort_median', 'KT_moor_median', 'KT_sort_mean', 'KT_moor_mean']]
+              .reindex(['ML', 'BL'] + list(sortcsv.bin.unique()[:-2])))
+
+(neat_table.rename(columns={'KT_sort_median': 'median (sorted)',
+                            'KT_sort_mean': 'mean (sorted)',
+                            'KT_moor_median': 'median (mooring)',
+                            'KT_moor_mean': 'mean (mooring)'})
+ .to_latex(escape=False,
+           column_format='@{\extracolsep\\fill}r|ssss|ssss|ssss|ssss',
+           multicolumn_format='c'))
+# h = ([neat_table.index.names[0]
+#       + '/'
+#       + neat_table.columns.names[1]]
+#       + list(map('\n'.join, neat_table.columns.tolist())))
+# print('#+ATTR_LATEX: :align r')
+# print(r'#+CAPTION: Seasonal mean and median \(K_T\) (\SI{1e-5}{\m\square\per\s}) from Figure ref:fig:vert')
+# print(tabulate.tabulate(neat_table,
+#                         headers=['', 'a', 'b', 'c', 'd'],
+#                         tablefmt='orgtbl'))
+
+#+END_SRC
+
+#+RESULTS:
+: \begin{tabular}{@{\extracolsep\fill}r|ssss|ssss|ssss|ssss}\n\toprule\n{} & \multicolumn{4}{c}{median (sorted)} & \multicolumn{4}{c}{median (mooring)} & \multicolumn{4}{c}{mean (sorted)} & \multicolumn{4}{c}{mean (mooring)} \\\nseason &              NE &           NESW &                SW &           SWNE &                NE &             NESW &                SW &             SWNE &                 NE &              NESW &                SW &             SWNE &                       NE &                      NESW &                       SW &                    SWNE \\\nbin              &                 &                &                   &                &                   &                  &                   &                  &                    &                   &                   &                  &                          &                           &                          &                         \\\n\midrule\nML               &   7.7_7.32^8.07 &  1.1_1.00^1.26 &  13.1_12.60^13.52 &  2.5_2.33^2.67 &  54.7_49.10^60.19 &    3.3_2.56^4.16 &  37.1_35.35^38.79 &  10.2_8.78^11.56 &  88.3_78.21^100.52 &  24.1_16.58^36.13 &  50.3_46.59^55.29 &  11.4_9.97^13.04 &  611.7_{543.53}^{703.93} &   423.1_{330.10}^{556.86} &  199.6_{175.53}^{251.17} &  101.3_{80.94}^{131.62} \\\nBL               &   2.4_2.30^2.58 &  1.8_1.56^2.03 &     6.5_6.00^7.00 &  0.9_0.85^1.05 &     5.2_4.73^5.79 &  10.0_8.15^12.36 &     5.1_4.38^5.63 &    0.9_0.75^1.01 &   44.5_38.49^51.82 &  49.0_39.95^61.36 &  44.8_40.91^49.62 &   7.5_6.06^10.24 &  450.9_{377.02}^{556.47} &  972.4_{800.85}^{1189.04} &  174.9_{145.28}^{219.32} &  112.8_{71.26}^{184.37} \\\n(1018.0, 1021.7] &   1.7_1.47^1.92 &  0.7_0.65^0.71 &     0.8_0.74^0.79 &  0.6_0.57^0.68 &     2.6_2.17^3.10 &    1.4_1.28^1.47 &     0.6_0.57^0.66 &    0.7_0.58^0.79 &   22.2_18.30^27.50 &   11.5_8.63^16.94 &   13.7_9.45^21.69 &    2.6_2.15^3.35 &  255.6_{159.73}^{462.57} &   373.2_{320.21}^{442.03} &     36.2_{26.02}^{66.49} &    16.1_{11.31}^{25.14} \\\n(1021.7, 1022.5] &               - &              - &                 - &              - &     0.3_0.23^0.29 &    0.1_0.11^0.16 &     0.5_0.50^0.59 &    0.4_0.36^0.52 &                  - &                 - &                 - &                - &     38.7_{27.79}^{59.83} &         1.9_{1.24}^{4.40} &       9.3_{7.49}^{15.08} &     15.3_{8.81}^{34.19} \\\n(1022.5, 1023.0] &               - &              - &                 - &              - &     0.1_0.05^0.06 &    0.0_0.03^0.04 &     0.5_0.44^0.57 &    1.0_0.84^1.23 &                  - &                 - &                 - &                - &        3.1_{2.55}^{4.23} &         0.2_{0.22}^{0.28} &        5.0_{4.07}^{6.74} &       3.9_{3.44}^{4.54} \\\n(1023.0, 1023.5] &               - &              - &                 - &              - &     0.0_0.02^0.02 &    0.0_0.03^0.04 &     0.1_0.11^0.14 &    1.1_0.91^1.32 &                  - &                 - &                 - &                - &        1.2_{0.88}^{2.04} &         0.2_{0.15}^{0.20} &        2.6_{2.18}^{3.60} &      7.8_{5.67}^{11.95} \\\n(1023.5, 1024.2] &               - &              - &                 - &              - &     0.0_0.02^0.02 &    0.0_0.02^0.02 &     0.1_0.08^0.09 &    0.0_0.02^0.02 &                  - &                 - &                 - &                - &        0.6_{0.48}^{0.82} &         0.1_{0.05}^{0.08} &        2.1_{1.81}^{2.71} &       0.8_{0.56}^{1.77} \\\n(1024.2, 1029.0] &               - &              - &                 - &              - &     0.0_0.02^0.02 &    0.0_0.02^0.02 &     0.0_0.02^0.02 &    0.0_0.03^0.04 &                  - &                 - &                 - &                - &        0.5_{0.21}^{1.08} &         0.0_{0.02}^{0.03} &        0.4_{0.29}^{0.66} &       0.8_{0.51}^{1.49} \\\n\bottomrule\n\end{tabular}\n
+
+
+*** old :noexport:
 #+BEGIN_SRC jupyter-python :session py :exports results :results replace output drawer :cache yes :eval never-export
 import tabulate
 
 # mmkt = bay.generate_mean_median_dataframe()
-if 'mmkt' not in locals():
-    mmkt = pd.read_csv('~/bay/estimates/mean_median_KT.csv')
+if 'sortcsv' not in locals():
+      sortcsv = pd.read_csv('~/bay/estimates/mean_median_KT_sorted.csv')
+if 'moorcsv' not in locals():
+      moorcsv = pd.read_csv('~/bay/estimates/mean_median_KT_mooring.csv')
 
-meanKT = ((mmkt.pivot('bin', 'season', 'KT_mean') * 1e5)
+meanKT = ((sortcsv.pivot('bin', 'season', 'KT_mean') * 1e5)
           .reindex(['ML', 'BL'] + list(mmkt.bin.unique()[:-2])))
 
 print('#+ATTR_LATEX: :align rrrrr')
@@ -683,23 +761,21 @@ print(tabulate.tabulate(meanKT,
                         tablefmt='orgtbl'))
 #+END_SRC
 
-#+RESULTS[8f8c7cc6e982539c95fbf92a794de58588997da7]:
-:results:
-#+ATTR_LATEX: :align rrrrr
-#+CAPTION: Seasonal mean \(K_T\) (\SI{1e-5}{\m\squared\per\s}) from Figure ref:fig:vert
+#+RESULTS[36d2cd9f47e65a085f3404f36575d6aee668459b]:
+#+begin_example
+,#+ATTR_LATEX: :align rrrrr
+,#+CAPTION: Seasonal mean \(K_T\) (\SI{1e-5}{\m\square\per\s}) from Figure ref:fig:vert
 | bin              |    NE |   NESW |    SW |   SWNE |
 |------------------+-------+--------+-------+--------|
-| ML               | 85.41 |  22.72 | 50.12 |  11.54 |
-| BL               | 43.79 |  48.28 | 42.83 |   6.99 |
-| (1018.0, 1021.0] |  5.43 |   3.54 | 11.72 |   2.26 |
-| (1021.0, 1022.0] | 19.64 |  14.19 |  8.53 |   2.49 |
-| (1022.0, 1022.5] | 12.81 |   0.50 |  8.40 |  19.31 |
-| (1022.5, 1023.0] |  2.99 |   0.23 |  5.14 |   3.88 |
-| (1023.0, 1023.5] |  1.15 |   0.16 |  2.39 |   7.48 |
-| (1023.5, 1024.2] |  0.58 |   0.06 |  2.04 |   0.83 |
-| (1024.2, 1029.0] |  0.44 |   0.02 |  0.42 |   0.80 |
-
-:end:
+| ML               | 88.25 |  24.09 | 50.28 |  11.38 |
+| BL               | 44.51 |  48.95 | 44.77 |   7.50 |
+| (1018.0, 1021.7] | 22.21 |  11.51 | 13.73 |   2.64 |
+| (1021.7, 1022.5] | 14.41 |   1.17 |  8.84 |  15.30 |
+| (1022.5, 1023.0] |  3.09 |   0.24 |  5.02 |   3.91 |
+| (1023.0, 1023.5] |  1.20 |   0.18 |  2.61 |   7.82 |
+| (1023.5, 1024.2] |  0.61 |   0.06 |  2.06 |   0.83 |
+| (1024.2, 1029.0] |  0.48 |   0.02 |  0.40 |   0.80 |
+#+end_example
 
 #+BEGIN_SRC jupyter-python :session py :exports results :results replace output drawer :cache yes :eval never-export
 import tabulate
