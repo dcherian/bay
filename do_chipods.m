@@ -3,6 +3,7 @@
 
 clear
 
+rootdir = '/home/deepak/bay/scripts/'
 pod.dirs = {'../rama/RAMA13/data/'; ...
             '../rama/RAMA14/data/'; ...
             '../ebob/data/'; };
@@ -21,14 +22,14 @@ do_units = [];
 
 force = 0;
 
-for dd = 3 %:length(pod.dirs)
+for dd = 1:length(pod.dirs)
     for uu = 1:size(pod.units{dd}, 1)
         redo_combine = 0;
 
         if isempty(do_units) | ...
                 (~isempty(do_units) & ismember(pod.units{dd}(uu), do_units))
 
-            dirname = ['~/' pod.dirs{dd} num2str(pod.units{dd}(uu)) '/mfiles/'];
+            dirname = [rootdir pod.dirs{dd} num2str(pod.units{dd}(uu)) '/mfiles/'];
             cd(dirname)
             addpath(genpath('./chipod_gust/'))
             hash = githash('driver/combine_turbulence.m');
@@ -54,14 +55,19 @@ for dd = 3 %:length(pod.dirs)
                 end
                 % save state because combine_turbulence calls
                 % "clear all"
-                save('~/do-chipods-state.mat', 'pod', 'dd', 'uu', 'do_units', 'force')
+                save('~/do-chipods-state.mat', 'pod', 'dd', 'uu', 'rootdir', ...
+                     'do_units', 'force')
                 try
+                    system('sed -i ''s/on/off/'' combine_turbulence.m')
                     combine_turbulence;
                 catch ME
+                    system('sed -i ''s/off/on/'' combine_turbulence.m')
                     disp(ME)
                     load('~/do-chipods-state.mat')
                     pod.errors = [pod.errors; pod.units{dd}(uu)]
                 end
+                system('sed -i ''s/off/on/'' combine_turbulence.m')
+
                 disp('--------------------------------------')
                 disp(' ')
                 % restore state if necessary
