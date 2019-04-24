@@ -430,13 +430,13 @@ def calc_isohaline_depth(S0=34.75, data=None, split=False):
     return isodepth
 
 
-def generate_mean_median_dataframe():
+def generate_mean_median_dataframe(dataset, out):
 
     print('Generating table of means & medians')
 
     import scikits.bootstrap as bs
 
-    turb = nc_to_binned_df()
+    turb = nc_to_binned_df(dataset)
 
     dflist = []
     for (season, name), group in tqdm.tqdm(
@@ -457,6 +457,6 @@ def generate_mean_median_dataframe():
     df['season'] = df.season.astype('category')
     df['bin'] = df['bin'].astype('category')
 
-    df.to_csv('~/bay/estimates/mean_median_KT.csv')
+    df.to_csv(out)
 
     return df
