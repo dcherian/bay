@@ -20,7 +20,7 @@ colors = {'RAMA': '#1696A3', 'NRL': 'C3', 'OMM/WHOI': 'C7'}
 # colors = {'RAMA': '#1696A3', 'NRL': '#F89B1F', 'OMM/WHOI': 'gray'}
 
 
-def plot_coastline(ax=None, facecolor="#FEF9E4", rivers=True):
+def plot_coastline(ax=None, facecolor="#FEF9E4", rivers=True, **kwargs):
 
     if ax is None:
         ax = plt.gca()
@@ -30,14 +30,16 @@ def plot_coastline(ax=None, facecolor="#FEF9E4", rivers=True):
                                             category='physical',
                                             scale='50m',
                                             edgecolor='black',
-                                            facecolor=facecolor)
+                                            facecolor=facecolor,
+                                            **kwargs)
 
     ax.set_extent([77, 96, 2, 24])
     ax.add_feature(coastline)
     if rivers:
         rivers = feature.NaturalEarthFeature(
             category='physical', name='rivers_lake_centerlines',
-            scale='10m', facecolor='none', edgecolor='C0', linewidths=0.5)
+            scale='10m', facecolor='none', edgecolor='C0', linewidths=0.5,
+            **kwargs)
         ax.add_feature(rivers)
 
 
