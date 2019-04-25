@@ -127,34 +127,6 @@ if 'turb' not in locals():
 
 #+END_SRC
 
-* To do list: :noexport:
-
-1. RAMA vs. NRL figure
-   - [ ] bootstrap error bars on K_T
-2. [ ] Describe sorted estimate algorithm
-3. [ ] Add stratification to NRL1
-4. [X] Should I add depth of 34.75 isohaline as time-series at 8N? or seasonal average?
-5. [X] Could describe annual mean values in table and sort-of compare to cite:Zhang1998
-6. [X] Make scatter plots for NRL
-7. [X] Need citation for paper with low turbulence measurements in the thermocline.
-8. [X] Need citation for Ritabrata's paper
-9. [X] Add basin-wide mean wind stress, ∫near-inertial input, ± heat flux
-10. cite:Sardessai2007
-11. [ ] cite:Vinayachandran2003 say that Ekman pumping pumps up nutrients to force a bloom during the NE monsoon. Maybe I can estimate this flux climatologically?
-12. [ ] Need to look at climatological Chl-a. Observations are not in the right place for the bloom reported in cite:Vinayachandran2003,Vinayachandran2005
-
-
-
-* intro outline                                                    :noexport:
-
-1. Importance of mixing (and long-term mixing measurements) in the bay
-   1. Something about OMZ
-   2. Nutrient fluxes & seasonal cycle of Chl-A
-   3. near-surface connections to MISOs
-   4. Cyclones and heat-extraction from the Bay.
-
-2. cite:Vinayachandran2003: Primary production in the Bay is limited by nutrients, not light. (McGill 1973, Gomes et al 2000). The blooms in this paper are west of the EBoB array. There doesn't seem to be much action by the EBoB array but I need Chl-a data to really know.
-
 * Introduction
 
 The Bay of Bengal is the eastern semi-enclosed basin of the north Indian Ocean.
@@ -2568,3 +2540,27 @@ We leave a more detailed examination of the mesoscale, the near-inertial wave fi
 #+ATTR_HTML: :style width:90%
 #+CAPTION: (a) Wind stress $τ$ and net surface heat flux $J_q^0$  at RAMA 12N. (b, d) Turbulent heat and salt fluxes $J_q^t, J_s^t$ at RAMA 12N, 15m and NRL5 8N, 105m respectively. (c) Turbulent diffusivity at RAMA 12N, 15m and NRL5 8N, 105m. (e) Wind stress $τ$ and near-inertial energy input $\Pi$ at NRL5 8N. (f) Fraction of day where we have good turbulence observations. (g, h) Daily average temperature stratification $∂T/∂z$ and salinity $S$ respectively. (i) Shear variance in near-inertial, $M_2$ and $M_4$ frequency bands at NRL5, 8N.
 [[file:images/paper1/rama12.pdf]]
+* To do list: :noexport:
+
+1. RAMA vs. NRL figure
+   - [ ] bootstrap error bars on K_T
+2. [ ] Add stratification to NRL1
+3. [X] Describe sorted estimate algorithm
+4. [X] Should I add depth of 34.75 isohaline as time-series at 8N? or seasonal average?
+5. [X] Could describe annual mean values in table and sort-of compare to cite:Zhang1998
+6. [X] Make scatter plots for NRL
+7. [X] Need citation for paper with low turbulence measurements in the thermocline.
+8. [X] Need citation for Ritabrata's paper
+9. [X] Add basin-wide mean wind stress, ∫near-inertial input, ± heat flux
+10. cite:Sardessai2007
+11. [ ] cite:Vinayachandran2003 say that Ekman pumping pumps up nutrients to force a bloom during the NE monsoon. Maybe I can estimate this flux climatologically?
+12. [ ] Need to look at climatological Chl-a. Observations are not in the right place for the bloom reported in cite:Vinayachandran2003,Vinayachandran2005
+* intro outline                                                    :noexport:
+
+1. Importance of mixing (and long-term mixing measurements) in the bay
+   1. Something about OMZ
+   2. Nutrient fluxes & seasonal cycle of Chl-A
+   3. near-surface connections to MISOs
+   4. Cyclones and heat-extraction from the Bay.
+
+2. cite:Vinayachandran2003: Primary production in the Bay is limited by nutrients, not light. (McGill 1973, Gomes et al 2000). The blooms in this paper are west of the EBoB array. There doesn't seem to be much action by the EBoB array but I need Chl-a data to really know.
