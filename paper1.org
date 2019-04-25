@@ -1670,7 +1670,7 @@ for seas in axes:
                          C=sKT[~mask],
                          reduce_C_function=np.nanmean,
                          xscale='log', yscale='log',
-                         gridsize=25, mincnt=10,
+                         gridsize=25, mincnt=12,
                          extent=np.hstack([limits, limits]),
                          cmap=cmap, norm=norm,
                          edgecolors='k', linewidths=0.5)
@@ -1708,7 +1708,9 @@ axx[2].set_ylabel('$S²_{niw}/N^2$')
 axx[2].set_xlabel('$S²_{low}/N^2$')
 axx[3].set_xlabel('$S²_{low}/N^2$')
 
-dcpy.plots.label_subplots(axx, y=0.9, labels=bay.seasons)
+months = ['Dec-Feb', 'Mar-Apr', 'Jun-Sep', 'Oct-Nov']
+titles = [f'{ss} ({mm})' for (ss, mm) in zip(bay.seasons, months)]
+dcpy.plots.label_subplots(axx, y=0.9, labels=titles)
 
 hcbar = f.colorbar(mappable,
                    cax=cax,
@@ -1724,7 +1726,7 @@ f.savefig('images/paper1/png/scatter-shear.png', bbox_inches='tight')
 #+END_SRC
 #+NAME: fig:shearscatter
 #+ATTR_LATEX: :width 27pc :float multicolumn
-#+CAPTION: Drivers of thermocline mixing at the NRL moorings in the south-central Bay: the seasonal cycle of squared shear ($S^2$) and diffusivity $K_T$. Each panel represents one season and shows the two-dimensional distribution of the bin-average of hourly mean $K_T$ (color) against near-inertial squared shear (y-axis) and low-frequency squared shear (x-axis).
+#+CAPTION: Drivers of thermocline mixing at the NRL moorings in the south-central Bay: the seasonal cycle of squared shear ($S^2$) and diffusivity $K_T$. Each panel represents one season and shows the two-dimensional distribution of the bin-average of hourly mean $K_T$ (color) against hourly mean near-inertial squared shear (y-axis $S^2\niw$) and low-frequency squared shear (x-axis, $S^2\low$). There are at least twelve hourly observations in each bin.
 [[file:images/paper1/scatter-shear.pdf]]
 
 ** Figure 8: 8°N special                                            :ignore:
