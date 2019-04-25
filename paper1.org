@@ -18,6 +18,10 @@
 \newcommand{\low}{_\text{low}}
 \newcommand{\wkb}{^\text{wkb}}
 \newcommand{\Tbins}{T_\text{bins}}
+\newcommand{\sort}{^\text{sort}}
+\newcommand{\moor}{^\text{moor}}
+\newcommand{\local}{_\text{local}}
+\newcommand{\slab}{_\text{slab}}
 \newcommand{\zs}{z_{*}}
 
 \abstract{
@@ -653,27 +657,23 @@ Again, we see the combination of near-inertial waves and internal nonlinear inte
 - do I need to add a figure showing time series of $J_q^t, J_s^t, |u_z|$ + one panel showing rotary velocity, shear spectrum with shifted peaks?
 
 
-* Questions: :ignore:
-
-- Add Hemantha as last co-author? current version spends a lot of time discussing shear...
-- I feel that the figures have become quite complicated. Suggestions on panels / quantities that could be removed would be very helpful.
-
 * Acknowledgments :ignore:
 
 \acknowledgments
-We acknowledge support from the Office of Naval Research's Young Investigator Program as well as the Air-Sea Interaction Regional Initiative (NEED GRANT NUMBERS).
+- *something about data embargo / availability*
+
+This work was supported under US Office of Naval Research grant numbers N00014-15-1-2634 and N00014-17-2472.
 We thank NOAA/PMEL and the Naval Research Laboratory for deploying χpods on their moorings.
 Sonya Brown (PMEL) graciously provided support and answered many questions about data collected by instruments on the RAMA moorings.
-We also acknowledge expert engineering and technical contributions from Pavan Vutukur, Kerry Latham and Craig van Appledorn, as well as many stimulating discussions with Johannes Becherer, Sally Warner, Eric D'Asaro and Jennifer MacKinnon.
+We also acknowledge expert engineering and technical contributions from Pavan Vutukur, Kerry Latham and Craig van Appledorn, as well as many stimulating discussions with Johannes Becherer, Alexis Kaminski, Sally Warner, Eric D'Asaro and Jennifer MacKinnon.
 Many of these discussions were facilitated by the International Center for Theoretical Sciences, Tata Institute of Fundamental Research, Bangalore (ICTS/Prog-ommbob/2019/02).
-- something about data embargo / availability
 The evaporation product was provided by the WHOI OAFlux project (http://oaflux.whoi.edu) funded by the NOAA Climate Observations and Monitoring (COM) program.
-Analysis was greatly helped by the use of the xarray Python package cite:Hoyer2017.
+Analysis was greatly helped by the use of the xarray Python package citep:Hoyer2017.
 
-* Appendix A: Near-inertial input calculation
+* Appendix A: Near-inertial input ($Π\slab$) calculation
 
-Near-inertial energy input $Π$ is calculated following [[cite:Alford2003]]'s spectral solution of the cite:Pollard1970 slab ocean mixed layer using wind speeds from the MERRA-2 reanalysis citep:Gelaro2017 and monthly mean mixed layer depth from the MIMOC climatology citep:Schmidtko2013.
-There are flaws associated with this calculation citep:Plueddemann2006 but we believe Figure ref:fig:spatial captures the qualitative large-scale spatial and seasonal variation of $Π$.
+Near-inertial energy input $Π\slab$ is calculated following [[cite:Alford2003]]'s spectral solution of the cite:Pollard1970 slab ocean mixed layer using wind speeds from the MERRA-2 reanalysis citep:Gelaro2017 and monthly mean mixed layer depth from the MIMOC climatology citep:Schmidtko2013.
+There are flaws associated with this calculation citep:Plueddemann2006 but we believe Figure ref:fig:spatial captures the qualitative large-scale spatial and seasonal variation of the true near-inertial input $Π$.
 Another source of errors is that MERRA-2 does not capture the large wind stresses evident in the TropFlux compilation citep:Kumar2012.
 However, since TropFlux data is available at daily resolution one cannot calculate the near-inertial input north of approximately 10N, where the inertial period nears 2 days, the Nyquist frequency of the TropFlux winds.
 
