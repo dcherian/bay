@@ -1637,6 +1637,11 @@ hcbar = f.colorbar(mappable,
 hcbar.formatter = mpl.ticker.FuncFormatter(dcpy.plots.pow10Formatter)
 hcbar.update_ticks()
 
+xx = np.array([0.002, 0.5])
+h1 = axx[2].plot(xx, xx/4, color='w', lw=2, ls='--')
+h2 = axx[2].plot(xx, xx/4, color='k', lw=1, ls='--')
+htxt = axx[2].text(xx[0], xx[0]/4, '    factor of 4')
+
 f.savefig('images/paper1/scatter-shear.pdf', bbox_inches='tight')
 f.savefig('images/paper1/png/scatter-shear.png', bbox_inches='tight')
 #+END_SRC
