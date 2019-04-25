@@ -238,7 +238,7 @@ We construct average diffusivity profiles as follows (Figure ref:fig:vert):
 3) All measurements are then binned by `ML', `BL' or by density with bin edges [1018, 1021, 1022, 1022.5, 1023, 1023.5, 1024.25, 1029] \SI{}{kg/m^3}.
 4) For each season, we construct a PDF of $K_T$ in each bin and calculate the mean and standard deviation of the depths of measurement.
 5) The PDFs are presented at the mean depth of the density bin as a vertical profile (Figure ref:fig:vert). Each PDF is also labelled with either `ML', `BL', or the mean density in each bin as appropriate. The vertical bars indicate the standard deviation of depths of observation; these frequently overlap each other. Circles and triangles indicate medians and means respectively. The horizontal line at the base of each PDF spans the range between the minimum observed value and the $99^{\text{th}}$ percentile. The PDFs are colored so as to indicate amount of data in each bin (see caption).
-6) For the `ML', `BL' and `19.9' bins, we present summaries of $K_T$ estimates calculated using both $T_z\moor$ and $T_z\sort$ as PDFs above and below the baseline with colored and white markers respectively.
+6) For the `ML', `BL' and `19.9' bins, we present summaries of $K_T$ estimates calculated using both $T_z\moor$ and $T_z\sort$ as PDFs above and below the baseline with colored and white markers respectively (see legend of Figure ref:fig:vert).
 
 # Third, our thermocline estimates of mean diffusivity are likely over-estimates of the basin-wide mean between January and April since near-inertial input is significantly larger south of 10N during this period assuming that the slab model prediction in Figure ref:fig:spatial is a good qualitative estimate of seasonal near-inertial flux input.
 
@@ -266,12 +266,12 @@ Here we examine the drivers of the observed seasonal cycle in turbulent mixing d
 # For a broad perspective, we will explore the variation of near-surface mixing (bins `ML', `BL' in Figure ref:fig:vert) with seasonally-varying wind stress, and the variation of thermocline mixing (deeper density bins) with the seasonal cycle in both low-frequency and near-inertial shear fields.
 We begin by contrasting two year-long mixing records that are representative of the shallowest two and the deepest two bins in Figure ref:fig:vert by presenting averaged turbulence quantities as well as daily-averaged surface forcing quantities for the RAMA 12N (12N, 90E) mooring at 15m and the other from the NRL5 mooring (8°N, 88.5E) at 104m (Figures ref:fig:rama and ref:fig:nrl).
 
-Frequent flagging of inferred $K_T, J_q^t, J_s^t$ when the χpod is in mixed layer means that the term ``daily averages'' is not entirely accurate when applied to the $K_T$ time series in Figure [[fig:rama]]b (Section ref:sec:pod).
+Frequent flagging of inferred $K_T, J_q^t$ and $J_s^t$ when the χpod is in mixed layer means that the term ``daily averages'' is not entirely accurate when applied to the $K_T$ time series in Figure [[fig:rama]]b (Section [[sec:obs]]ref:sec:pod).
 Consider data from the RAMA 12N mooring in the month of February (Figure [[fig:rama]]b).
 At night during weak wind periods the 15m χpod appears to be within the night-time convective boundary layer whereas during the daytime, solar heating builds up stratification at 15m.
-At such times we can only estimate $K_T$ during the day.
+At such times we can only estimate $K_T$ during the day when $T_z > \SI{1e-3}{\celsius\per\m}$.
 The ``daily average'' is really a ``daytime average'' estimate of $K_T$ and fraction daily coverage is approximately 50%.
-Accordingly we show the fraction of the day with valid $K_T$ estimates (blue lines in Figures [[fig:rama]]b and [[fig:nrl]]b).
+Accordingly we show the fraction of the day with valid $K_T$ estimates (Figures [[fig:rama]]e and [[fig:nrl]]b).
 In general, the ``daily average'' turbulence quantities presented in Figure [[fig:rama]] are overestimates.
 
 ** Near-surface mixing at the RAMA moorings
@@ -279,13 +279,14 @@ In general, the ``daily average'' turbulence quantities presented in Figure [[fi
 The 15m χpod at RAMA 12N recorded a distinct seasonal cycle in daily averaged diffusivity $K_T$ (Figure [[fig:rama]]b) that mirrors the seasonal cycle in surface wind stress (Figure [[fig:rama]]a).
 cite:Warner2016 summarized this record previously and so we limit ourselves to a brief description here.
 The general patterns described below are repeated at 12°N and 15°N in 2015 (Supplementary Information).
+Panels b--f in Figure [[fig:rama]] present two estimates in each panel: one using $T_z\sort$ (black) and another using $T_z\moor$ (blue).
 
-During the northeast monsoon, wind stress $τ$ of approximately \SI{0.1}{\N\per\m\squared} forced turbulence with a daily averaged value of $K_T \approxeq \SI{1e-4}{\m\squared\per\s}$.
+During the northeast monsoon, wind stress $τ$ of approximately \SI{0.1}{\N\per\m\squared} forced turbulence with a daily averaged value of $K_T \approxeq \SI{1e-4}{\m\squared\per\s}$ (calculated using $T_z\sort$; sorted) and $\SI{1e-3}{\m\squared\per\sec}$ (calculated using $T_z\moor$; mooring).
 By mid-February a fresh water pulse arrived at the mooring and the mixed layer shallowed to approximately \SI{10}{m}.
 Such freshwater pulses in February are common in the historic RAMA 12°, 15°N records and surface salinity maps suggest the source to be the Irrawady river.
-Increased turbulence fluxes $J_q^t$ and $J_s^t$ were inferred at \SI{15}{m} during this period (Figure [[fig:rama]]c) but no such enhancement was inferred from the deeper χpod at 30m (in the barrier layer).
-In March, the weakening wind stress field along with intense surface heating built up near-surface stratification (Figure [[fig:rama]]d), the mixed layer shoaled to a depth shallower than 15m, the \SI{15}{m} χpod recorded weak turbulent fluctuations and $K_T$ decreased to \SI{1e-5}{\m\squared\per\s} associated with near-negligible fluxes $J_q^t$ and $J_s^t$.
-Between May and September, the strong winds of the SW monsoon forced high mixing, a deeper mixed layer, a hundredfold increase in $K_T$ at \SI{15}{m} and significant increases in $J_q^t$ and $J_s^t$.
+Increased turbulence fluxes $J_q^t$ and $J_s^t$ were inferred at \SI{15}{m} during this period (Figure [[fig:rama]]c) but no such enhancement was inferred from the deeper χpod at 30m (in the barrier layer; not shown).
+In March, the weakening wind stress field along with intense surface heating built up near-surface stratification (Figure [[fig:rama]]f), the mixed layer shoaled to a depth shallower than 15m, the \SI{15}{m} χpod recorded weak turbulent fluctuations and $K_T$ decreased to \SI{1e-5}{\m\squared\per\s} (both estimates) associated with near-negligible fluxes $J_q^t$ and $J_s^t$.
+Between May and September, the strong winds of the SW monsoon forced high mixing, a deeper mixed layer, a hundredfold increase in both estimates of $K_T$ and significant increases in $J_q^t$ and $J_s^t$.
 Tropical cyclones and storms during the months of October & November drive a brief 2-3 order of magnitude increase in diffusivity; for e.g. Tropical Cyclone Hudhud (October 6-10) in Figure [[fig:rama]]a.
 Such cyclone-forced mixing can have important consequences for productivity in the Bay: for an analysis of Tropical Cyclone Hudhud see cite:Girishkumar2019.
 The arrival of the Ganga-Brahmaputra-Meghna river plume in August at 18°N shuts down mixing even at \SI{65}{m} depth at 18°N  citep:Thakur2019.
@@ -1164,14 +1165,18 @@ f, axx = plt.subplots(2, 4, sharex='row', sharey='row',
                      gridspec_kw={'height_ratios': [1, 6]})
 ax = dict(zip(bay.seasons, axx[0, :]))
 
-bay.make_vert_distrib_plot('KT', '../estimates/bay_merged_sorted_hourly.nc',
+bay.make_vert_distrib_plot('KT', '../estimates/bay_merged_mooring_hourly.nc',
                            label_moorings=False, f=f, ax=axx[1, :],
                            adjust_fig=False)
+bay.make_vert_distrib_plot('KT', '../estimates/bay_merged_sorted_hourly.nc',
+                           label_moorings=False, f=f, ax=axx[1, :],
+                           trim_keep='bottom',
+                           adjust_fig=False,
+                           label_bins=False,
+                           markers={'mean': 'd', 'median': 'v'},
+                           overlay=True)
 
-# bay.make_vert_distrib_plot('KT',
-#                            label_moorings=False, f=f, ax=axx[1, :],
-#                            adjust_fig=False, trim_keep='bottom', label_bins=False)
-
+axx[1, 1].set_ylim([120, -1])
 barargs = dict(width=0.5)
 labelargs = dict(ha='center', va='baseline')
 for ss in ax:
@@ -1232,7 +1237,7 @@ Scolor = 'orangered'
 for ii in range(4):
     axx[0, ii].set_title(axx[1, ii].get_title())
     axx[1, ii].set_title('')
-    axx[1, ii].set_xlim([-7, -1.5])
+    axx[1, ii].set_xlim([-7, -0.9])
     axx[1, ii].plot([-6, -3.9], [S0_z_argo[ii], S0_z_argo[ii]],
                     '-', lw=4, color=Scolor)
     axx[1, ii].text(-3.75, S0_z_argo[ii], r' $S$ = 34.75',
@@ -1250,7 +1255,7 @@ plt.savefig('images/paper1/bay-KT-vert-profile.png', bbox_inches='tight')
 #+END_SRC
 #+NAME: fig:vert
 #+ATTR_LATEX: :float multicolumn
-#+CAPTION: \small The seasonal cycle of $K_T$. (top) Basin-wide seasonal averages of daily Tropflux wind stress $\tau$, near-inertial energy input $\Pi$, daily Tropflux net surface heat flux $J_q^0$ and TRMM precipitation $P$. Gray ellipses represent wind stres variability and have widths and heights equal to twice the standard deviation of $\tau_x$ and $\tau_y$. (bottom) Vertical profile of hourly averaged turbulent temperature diffusivity $K_T$ formed by combining all available \(\chi\)pod data in density bins (Section [[sec:profile]]). PDFs as well as means ($\bigtriangleup$) and medians ($\bigcirc$) are shown. Bins are marked by 'ML' (mixed layer), 'BL' (barrier layer) and $\rho-1000$ for deeper bins. Blue horizontal line marks the climatological depth of the $S=34.75$ isohaline at 8N estimated using the Argo climatology citep:Roemmich2009. Vertical lines mark standard deviation of measurement depths in each bin --- these lines tend to overlap each other. Finally each PDF is colored according to data coverage: a value of 1 means that there is at least one hourly $K_T$ estimate for every hour in the season.
+#+CAPTION: \small The seasonal cycle of $K_T$. (top) Basin-wide seasonal averages of daily Tropflux wind stress $\tau$, near-inertial energy input $\Pi$, daily Tropflux net surface heat flux $J_q^0$ and TRMM precipitation $P$. Wind stres variability is represented by gray ellipses with widths and heights equal to twice the standard deviation of $\tau_x$ and $\tau_y$. (bottom) Vertical profile of hourly averaged $K_T$ formed by combining all estimates in density bins (Section [[sec:profile]]). PDFs as well as means and medians are shown. Bins are marked by 'ML' (mixed layer), 'BL' (barrier layer) and $\rho-1000$ for deeper bins. PDFs of both moored and sorted estimates are shown for the upper three bins (above and below the baseline respectively). Orange horizontal line marks the climatological depth of the $S=34.75$ isohaline at 8N estimated using the Argo climatology. Vertical lines mark standard deviation of measurement depths in each bin --- these lines tend to overlap each other. Each PDF is colored according to data coverage: one means that there is at least one hourly estimate for every hour in the season.
 file:images/paper1/bay-KT-vert-profile-label.pdf
 
 ** Figure 4: RAMA 12N time series                                   :ignore:
@@ -1263,17 +1268,42 @@ if 'n12' not in locals():
     mooring = xr.open_dataset('../estimates/bay_merged_mooring_10min.nc')
     n12 = mooring.sel(lat=12, lon=90, depth=15).load()
 
-f, axx = plt.subplots(4, 1, sharex=True, constrained_layout=True)
+f, axx = plt.subplots(6, 1, sharex=True, constrained_layout=True)
 f.set_constrained_layout_pads(hspace=0.001, h_pad=0)
 
-ax12 = bay.plots.plot_moor(ra12, idepth=0, axx=axx)
-# n12.KT.sel(time='2014').resample(time='D').mean('time').plot(ax=ax12['KT'],
-#                                                              color='gray',
-#                                                              _labels=False)
-# n12.Jq.sel(time='2014').resample(time='D').mean('time').plot(ax=ax12['jq'],
-#                                                              color='gray',
-#                                                              _labels=False)
-ax12['jq'].set_ylim([-50, 50])
+ax12 = bay.plots.plot_rama(ra12, idepth=0, axx=axx)
+for var, axis in zip(['KT', 'Js', 'Tz'],
+                     ['KT', 'js', 'N2']):
+
+    if var == 'Tz':
+        plot_var = n12['Tz'] * 9.81 * 1.7e-4/1e-4
+    else:
+        plot_var = n12[var]
+
+    hh = (plot_var.sel(time='2014')
+          .resample(time='D').mean('time')
+          .plot(ax=ax12[axis], color='C0', _labels=False))
+
+    if var == 'KT':
+        dcpy.plots.annotate_end(hh[0], 'mooring')
+
+
+t=  n12.time.resample(time='D').mean('time').values
+ax12['jq'].bar(t,
+               n12.Jq.where(n12.Jq > 0).resample(time='D').mean('time'),
+               color='none',
+               edgecolor='k')
+ax12['jq'].bar(t,
+               n12.Jq.where(n12.Jq < 0).resample(time='D').mean('time'),
+               color='none',
+               edgecolor='k')
+
+fraction = (n12.KT.sel(time='2014')
+            .groupby(n12.time.sel(time='2014').dt.floor('D'))
+            .count()/144)
+fraction.plot(ax=ax12['coverage'], color='C0', _labels=False)
+
+ax12['jq'].set_ylim([-200, 200])
 ax12['N2'].set_ylim([-1, 5])
 ax12['N2'].set_zorder(0)
 # ax12['js'].set_ylim([-1e-2, 2e-1])
@@ -1285,13 +1315,20 @@ ax12['flux'].spines['right'].set_visible(True)
 ax12['flux'].set_ylabel('Daily avg. net surface\nheat flux [W/m²]')
 dcpy.plots.label_subplots(axx, y=0.85)
 
-f.set_size_inches((8, 5))
+ax12['N2'].legend(labels=['$gαT_z^{sort}$', '$N^2$', '$gαT_z^{moor}$'], ncol=3)
+ax12['N2'].axhline(0, color='gray', ls='--', zorder=-1, lw=0.5)
+
+f.set_size_inches((8, 8))
+
+axx[-1].xaxis.set_major_formatter(mpl.dates.DateFormatter('%b'))
+[tt.set_rotation(0) for tt in axx[-1].get_xticklabels()]
+[tt.set_ha('center') for tt in axx[-1].get_xticklabels()]
 
 # f.savefig('images/paper1/rama12.pdf')
 #+END_SRC
 #+NAME: fig:rama
 #+ATTR_LATEX: :float multicolumn
-#+CAPTION: A year of observations at RAMA 12N. Time series of daily averaged quantities: (a) locally measured wind stress $\tau$ and locally measured net surface heat flux $J_q^0$ (positive heats the ocean); (b) daily averaged $K_T$ and fraction daily coverage; (c) turbulent heat and salt fluxes $J_q^t, J_s^t$. (d) Buoyancy frequency $N^2$ and temperature contribution to $N²$, $g \alpha T_z$. Background colors mark seasons.
+#+CAPTION: A year of observations at RAMA 12N, 15m. Time series of daily averaged quantities: (a) locally measured wind stress $\tau$ and locally measured net surface heat flux $J_q^0$ (positive heats the ocean); (b) $K_T$; (c) $J_q^t$; (d) $J_s^t$; (e) fraction daily coverage; (f) buoyancy frequency $N^2$ and temperature contribution to $N²$ using $g \alpha T_z$. In panels (b--f) the estimate using the sorted gradient is in black while that using the mooring gradient is in blue. Background colors mark seasons.
 [[file:images/paper1/rama12.pdf]]
 
 ** Figure 5: NRL time series                                        :ignore:
