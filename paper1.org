@@ -327,8 +327,12 @@ Shear is estimated by central differencing the velocity over three \SI{8}{m} wid
 We account for seasonal as well as spatial variability in $N^2$ by WKB scaling the shear as $u_z\wkb = u_z (\tilde{N}(t)/N_0)^{3/2}$ using $\tilde{N}(t)$  calculated as the 30-day low-passed filtered $N$ and $N_0$ calculated as the annual mean $N$.
 /Eulerian/ variance-preserving rotary spectra of the WKB-scaled shear time-series at all NRL moorings were dominated by a broad peak at $-f_0$ with secondary peaks at $-f_0 \pm ω_{M2}$ ($ω_{M2}$ is the $M_2$ tidal frequency).
 These secondary peaks are a sign of vertical pumping of near-inertial shear by the internal $M_2$ tide which Doppler-shifts some spectral energy from $-f_0$ to $-f_0 \pm ω_{M2}$ citep:Alford2001a.
-An example of such pumping will be discussed later (Figure [[ref:fig:nrl5-niw]]).
-The spectra also indicated significant energy at frequencies $\le \SI{20}{days}$ especially at NRL3, reflecting meanders of the Summer Monsoon Current.
+
+We present an example of pumping of shear layers and resulting modulation of $K_T$ at $M_2$ period in Figure [[ref:fig:nrl5-niw]] for July 23 -- August 7, when maximum mixing is observed at NRL5 (highlighted in white in Figure [[fig:nrl]]b,c).
+A particularly strong set of near-inertial wave packets forced significantly enhanced turbulence at the χpod's depth during this time period, and coincided with a set of $M_2$ internal tide packets that vertically displaced isotherms and shear layers (Figure [[ref:fig:nrl5-niw]]b).
+We interpret the apparent modulation of $K_T$ at near-$M_2$ frequency (Figure [[fig:nrl5-niw]]a) as a result of the $M_2$ internal tide heaving near-inertial shear layers past the χpod, and not mixing forced by tidal shear.
+
+The Eulerian shear spectra also indicated significant energy at frequencies $\le \SI{20}{days}$ especially at NRL3, reflecting meanders of the Summer Monsoon Current.
 Guided by the spectrum, we use a second-order Butterworth filter applied forwards and backwards to split the WKB-scaled shear time series into two components: (a) low-frequency shear $S\low$ (lowpass with half power point 9 days) and (b) near-inertial shear $S\niw$ (bandpass between half power points 7 days and 2 days respectively).
 The effect of tidal pumping could be substantially reduced by performing the filtering in isopycnal space (for e.g. citealp:Alford2017) and isopycnal rotary spectra do show substantially weakened secondary peaks at $-f_0 \pm ω_{M2}$ as in cite:Alford2001a.
 However sparse sampling of $T$ and $S$ on these moorings results in large gaps when mapping the shear time series to isopycnal space.
@@ -411,12 +415,6 @@ Also evident are a few high mixing events associated with bursts of elevated nea
 Median thermocline diffusivities during the SW monsoon are larger relative to the NE monsoon by a factor of 5 -- 10 (deeper bins  in Figure ref:fig:vert and Table B2).
 The medians also tend to be closer to the means during the SW monsoon, and the shapes of the distributions are significantly different (Figure ref:fig:vert).
 Could the difference in medians and distribution shapes result from the large difference in $S\low$ between the two seasons?
-
-# #+LATEX: \note{describe one near-inertial event in detail Figure \ref{fig:nrl5-niw}}
-The maximum observed values of $K_T, J_q^t$ and $J_s^t$ at NRL5 occur during the SW monsoon and are associated with a particularly strong set of near-inertial wave packets that forced significantly enhanced turbulence at the χpod's depth (July 23 -- August 7, highlighted in white in Figure [[fig:nrl]]b,c).
-Diffusivity $K_T$ and zonal shear from this period of intense mixing are shown in Figure ref:fig:nrl5-niw.
-This period of elevated mixing coincides with the passage of a set of $M_2$ internal tide packets that vertically displace isotherms and shear layers (Figure [[ref:fig:nrl5-niw]]b).
-Hence we interpret the apparent modulation of $K_T$ at near-$M_2$ frequency (Figure [[fig:nrl5-niw]]a) as a result of the $M_2$ internal tide heaving near-inertial shear layers past the χpod, and not mixing forced by tidal shear.
 
 *** Post-monsoon
 
@@ -1483,7 +1481,121 @@ f.suptitle(title)
 #+CAPTION: Diffusivity in the mixed and barrier layers is proportional to wind stress. Histogram of hourly averaged $K_T$ in the mixed and barrier layers binned by wind stress.
 [[file:images/paper1/scatter-ml-bl.pdf]]
 
-** Figure 6: NRL scatter plot                                       :ignore:
+** Figure 6: NRL5 zoom-in                                           :ignore:
+
+#+BEGIN_SRC jupyter-python :session py :results none
+trange = slice(nrl5.events['Storm-zoomin'][0],
+               nrl5.events['Storm-zoomin'][1])
+
+f, ax = plt.subplots(2, 1, sharex=True, constrained_layout=True,
+                     gridspec_kw={'height_ratios': [1, 2]})
+f.set_size_inches((6.5, 5))
+
+color = 'C0'
+
+# shear = nrl5.interp_shear('bins')
+# (xfilter.lowpass((shear.sel(time=trange).shear),
+#                  coord='time', freq=1/4, cycles_per='h')
+#  .plot.line(x='time', ax=ax[0], color=color, lw=1))
+# # Jqi = (nrl5.Jq.sel(time=trange).isel(depth=1)
+# (xfilter.lowpass((shear.sel(time=trange).uz),
+#                  coord='time', freq=1/4, cycles_per='h')
+#  .plot.line(x='time', ax=ax[0], color='C1', lw=1))
+# # Jqi = (nrl5.Jq.sel(time=trange).isel(depth=1)
+#        .interpolate_na('time'))
+# Jqi[Jqi < -200] = -200
+# Jqi = Jqi.resample(time='30min').mean('time')
+# ax[0].fill_between(Jqi.time.values, Jqi.values, color=color, alpha=0.2)
+# hjq = (Jqi.plot.line(x='time', ax=ax[0], ylim=[-200, 0],
+#                      add_legend=True, color=color, lw=1))
+# ax[0].set_ylabel('$J_q^t$ [W/m²]')
+# # hjq[0].set_clip_on(False)
+# hjq[0].set_in_layout(False)
+
+(nrl5.KT.sel(time=trange).isel(depth=1).interpolate_na('time')
+ .resample(time='30min', loffset='15min').mean('time')
+ .plot.line(x='time', ax=ax[-2], yscale='log', ylim=[1e-8, 1e-3],
+            add_legend=False, color=color, lw=1))
+ax[0].set_ylabel('$K_T$ [m²/s]')
+
+f0 = nrl5.inertial/86400
+shear = (nrl5.vel.uz.rolling(depth=3, center=True, min_periods=1).mean())
+shear.dc.set_name_units('Zonal shear', '1/s')
+
+(shear.sel(time=trange, depth=slice(90, 300))
+ .plot.contourf(yincrease=False, cmap=mpl.cm.RdYlBu_r, ax=ax[-1],
+                levels=20, vmax=0.01,
+                cbar_kwargs={'orientation': 'horizontal', 'shrink': 0.7,
+                             'ticks': np.arange(-0.01, 0.011, 0.005)}))
+
+(nrl5.ctd['T'].sel(time=trange)
+ .resample(time='H', loffset='30min').mean('time')
+ .plot.contour(levels=np.arange(17, 20.1, 2.5),
+               colors='w', yincrease=False, linewidths=2.5))
+hT = (nrl5.ctd['T'].sel(time=trange)
+      .resample(time='H', loffset='30min').mean('time')
+      .plot.contour(levels=np.arange(17, 20.1, 2.5),
+                    colors='k', yincrease=False, linewidths=1))
+dcpy.plots.contour_label_spines(hT, prefix='$T$=', fmt='%.1f')
+
+(nrl5.zχpod.sel(time=trange).isel(num=1)
+ .plot.line(x='time', ax=ax[-1], color='w', lw=2.5,
+            add_legend=False, _labels=False))
+hz = (nrl5.zχpod.sel(time=trange).isel(num=1)
+      .plot.line(x='time', ax=ax[-1], color='k', lw=1,
+                 add_legend=False, _labels=False))
+ax[-1].set_xlim(trange.start, trange.stop)
+dcpy.plots.annotate_end(hz[0], r'$χ$pod', va='center')
+
+[aa.set_title('') for aa in ax]
+[aa.set_xlabel('') for aa in ax]
+ax[-1].set_ylabel('depth [m]')
+[tt.set_rotation(0) for tt in ax[-1].get_xticklabels()]
+[tt.set_ha('center') for tt in ax[-1].get_xticklabels()]
+ax[-1].set_ylim([250, 90])
+
+dcpy.plots.label_subplots(ax[:-1], x=0.03)
+ax[-1].text(0.03, 0.05, '(b)', transform=ax[-1].transAxes)
+
+# label timescales
+harr = ax[-1].plot((np.datetime64('2014-08-01 05:00'),
+                    np.datetime64('2014-08-01 17:25')),
+                   (205, 205), color='k')
+
+harr = ax[-2].plot((np.datetime64('2014-08-01 05:00'),
+                    np.datetime64('2014-08-01 17:25')),
+                   (2e-7, 2e-7), color='k')
+
+# harr = ax[0].plot((np.datetime64('2014-07-30 12:00'),
+#                    np.datetime64('2014-07-31 00:25')),
+#                    (5e-3, 5e-3), color='k')
+
+ax[-2].text(np.datetime64('2014-08-01 11:00'), 1.5e-7, '$M_2$',
+            ha='center', va='top')
+ax[-1].text(np.datetime64('2014-08-01 11:00'), 208, '$M_2$',
+            ha='center', va='top')
+# ax[0].text(np.datetime64('2014-07-30 18:00'), 4.9e-3, '$M_2$',
+#            ha='center', va='top')
+
+harr = ax[-1].plot((np.datetime64('2014-07-26 20:00'),
+                    np.datetime64('2014-07-30 10:10')),
+                   (205, 205), color='k')
+ax[-1].text(np.datetime64('2014-07-28 15:12'), 208, '$f_0$',
+            ha='center', va='top')
+
+ax[-1].xaxis.set_major_formatter(mpl.dates.DateFormatter('%b-%d'))
+
+f.set_size_inches((6.5, 4))
+
+f.savefig('images/paper1/nrl5-aug-niw-mixing.pdf')
+f.savefig('images/paper1/png/nrl5-aug-niw-mixing.png', transparent=False)
+#+END_SRC
+#+NAME: fig:nrl5-niw
+#+ATTR_LATEX: :float multicolumn
+#+CAPTION: An example of pumping of the near-inertial shear layers past the \(\chi\)pod by the $M_2$ tide at NRL5. The time period of focus is highlighted in white in Figure [[fig:nrl]]. Time series of (a) turbulent diffusivity $K_T$ and (b) zonal shear for a period of high mixing associated with downward propagating near-inertial energy. The depth of the \(\chi\)pod and two isotherms are shown in (b).
+[[file:images/paper1/nrl5-aug-niw-mixing.pdf]]
+
+** Figure 7: NRL scatter plot                                       :ignore:
 
 #+BEGIN_SRC jupyter-python :session py
 limits = np.array([-3.5, 0.5])
@@ -1649,120 +1761,6 @@ f.savefig('images/paper1/png/scatter-shear.png', bbox_inches='tight')
 #+ATTR_LATEX: :width 27pc :float multicolumn
 #+CAPTION: Drivers of thermocline mixing at the NRL moorings in the south-central Bay: the seasonal cycle of squared shear ($S^2$) and diffusivity $K_T$. Each panel represents one season and shows the two-dimensional distribution of the bin-average of hourly mean $K_T$ (color) against hourly mean near-inertial squared shear (y-axis $S^2\niw$) and low-frequency squared shear (x-axis, $S^2\low$). There are at least twelve hourly observations in each bin.
 [[file:images/paper1/scatter-shear.pdf]]
-
-** Figure 7: NRL5 zoom-in                                           :ignore:
-
-#+BEGIN_SRC jupyter-python :session py :results none
-trange = slice(nrl5.events['Storm-zoomin'][0],
-               nrl5.events['Storm-zoomin'][1])
-
-f, ax = plt.subplots(2, 1, sharex=True, constrained_layout=True,
-                     gridspec_kw={'height_ratios': [1, 2]})
-f.set_size_inches((6.5, 5))
-
-color = 'C0'
-
-# shear = nrl5.interp_shear('bins')
-# (xfilter.lowpass((shear.sel(time=trange).shear),
-#                  coord='time', freq=1/4, cycles_per='h')
-#  .plot.line(x='time', ax=ax[0], color=color, lw=1))
-# # Jqi = (nrl5.Jq.sel(time=trange).isel(depth=1)
-# (xfilter.lowpass((shear.sel(time=trange).uz),
-#                  coord='time', freq=1/4, cycles_per='h')
-#  .plot.line(x='time', ax=ax[0], color='C1', lw=1))
-# # Jqi = (nrl5.Jq.sel(time=trange).isel(depth=1)
-#        .interpolate_na('time'))
-# Jqi[Jqi < -200] = -200
-# Jqi = Jqi.resample(time='30min').mean('time')
-# ax[0].fill_between(Jqi.time.values, Jqi.values, color=color, alpha=0.2)
-# hjq = (Jqi.plot.line(x='time', ax=ax[0], ylim=[-200, 0],
-#                      add_legend=True, color=color, lw=1))
-# ax[0].set_ylabel('$J_q^t$ [W/m²]')
-# # hjq[0].set_clip_on(False)
-# hjq[0].set_in_layout(False)
-
-(nrl5.KT.sel(time=trange).isel(depth=1).interpolate_na('time')
- .resample(time='30min', loffset='15min').mean('time')
- .plot.line(x='time', ax=ax[-2], yscale='log', ylim=[1e-8, 1e-3],
-            add_legend=False, color=color, lw=1))
-ax[0].set_ylabel('$K_T$ [m²/s]')
-
-f0 = nrl5.inertial/86400
-shear = (nrl5.vel.uz.rolling(depth=3, center=True, min_periods=1).mean())
-shear.dc.set_name_units('Zonal shear', '1/s')
-
-(shear.sel(time=trange, depth=slice(90, 300))
- .plot.contourf(yincrease=False, cmap=mpl.cm.RdYlBu_r, ax=ax[-1],
-                levels=20, vmax=0.01,
-                cbar_kwargs={'orientation': 'horizontal', 'shrink': 0.7,
-                             'ticks': np.arange(-0.01, 0.011, 0.005)}))
-
-(nrl5.ctd['T'].sel(time=trange)
- .resample(time='H', loffset='30min').mean('time')
- .plot.contour(levels=np.arange(17, 20.1, 2.5),
-               colors='w', yincrease=False, linewidths=2.5))
-hT = (nrl5.ctd['T'].sel(time=trange)
-      .resample(time='H', loffset='30min').mean('time')
-      .plot.contour(levels=np.arange(17, 20.1, 2.5),
-                    colors='k', yincrease=False, linewidths=1))
-dcpy.plots.contour_label_spines(hT, prefix='$T$=', fmt='%.1f')
-
-(nrl5.zχpod.sel(time=trange).isel(num=1)
- .plot.line(x='time', ax=ax[-1], color='w', lw=2.5,
-            add_legend=False, _labels=False))
-hz = (nrl5.zχpod.sel(time=trange).isel(num=1)
-      .plot.line(x='time', ax=ax[-1], color='k', lw=1,
-                 add_legend=False, _labels=False))
-ax[-1].set_xlim(trange.start, trange.stop)
-dcpy.plots.annotate_end(hz[0], r'$χ$pod', va='center')
-
-[aa.set_title('') for aa in ax]
-[aa.set_xlabel('') for aa in ax]
-ax[-1].set_ylabel('depth [m]')
-[tt.set_rotation(0) for tt in ax[-1].get_xticklabels()]
-[tt.set_ha('center') for tt in ax[-1].get_xticklabels()]
-ax[-1].set_ylim([250, 90])
-
-dcpy.plots.label_subplots(ax[:-1], x=0.03)
-ax[-1].text(0.03, 0.05, '(b)', transform=ax[-1].transAxes)
-
-# label timescales
-harr = ax[-1].plot((np.datetime64('2014-08-01 05:00'),
-                    np.datetime64('2014-08-01 17:25')),
-                   (205, 205), color='k')
-
-harr = ax[-2].plot((np.datetime64('2014-08-01 05:00'),
-                    np.datetime64('2014-08-01 17:25')),
-                   (2e-7, 2e-7), color='k')
-
-# harr = ax[0].plot((np.datetime64('2014-07-30 12:00'),
-#                    np.datetime64('2014-07-31 00:25')),
-#                    (5e-3, 5e-3), color='k')
-
-ax[-2].text(np.datetime64('2014-08-01 11:00'), 1.5e-7, '$M_2$',
-            ha='center', va='top')
-ax[-1].text(np.datetime64('2014-08-01 11:00'), 208, '$M_2$',
-            ha='center', va='top')
-# ax[0].text(np.datetime64('2014-07-30 18:00'), 4.9e-3, '$M_2$',
-#            ha='center', va='top')
-
-harr = ax[-1].plot((np.datetime64('2014-07-26 20:00'),
-                    np.datetime64('2014-07-30 10:10')),
-                   (205, 205), color='k')
-ax[-1].text(np.datetime64('2014-07-28 15:12'), 208, '$f_0$',
-            ha='center', va='top')
-
-ax[-1].xaxis.set_major_formatter(mpl.dates.DateFormatter('%b-%d'))
-
-f.set_size_inches((6.5, 4))
-
-f.savefig('images/paper1/nrl5-aug-niw-mixing.pdf')
-f.savefig('images/paper1/png/nrl5-aug-niw-mixing.png', transparent=False)
-#+END_SRC
-#+NAME: fig:nrl5-niw
-#+ATTR_LATEX: :float multicolumn
-#+CAPTION: An example of pumping of the near-inertial shear layers past the \(\chi\)pod by the $M_2$ tide at NRL5. The time period of focus is highlighted in white in Figure [[fig:nrl]]. Time series of (a) turbulent diffusivity $K_T$ and (b) zonal shear for a period of high mixing associated with downward propagating near-inertial energy. The depth of the \(\chi\)pod and two isotherms are shown in (b).
-[[file:images/paper1/nrl5-aug-niw-mixing.pdf]]
 
 ** Figure 8: 8°N special                                            :ignore:
 
