@@ -1086,9 +1086,9 @@ f.savefig('images/paper1/png/spatial-maps.png', transparent=False)
 #                colors=raincolor, linewidths=1))
 #+END_SRC
 #+NAME: fig:spatial
-#+CAPTION: Seasonal cycle of forcing and circulation in the Bay for 2014. White dots mark mooring locations used in the study. (top) Seasonal mean EKE from AVISO in color; vectors indicate surface currents from seasonally averaged 5-day OSCAR estimate citep:oscar,Bonjean2002. (middle) Seasonal near-inertial energy input $\Pi$ calculated using a slab ocean mixed layer model (Appendix A). White contours are $\Pi=$ \SIlist{2; 4; 10}{\milli\W\per\square\metre}. (bottom) 50, 75 and 100m depth contours of the 34.75 isohaline surface from the mapped Argo climatology.
+#+CAPTION: Seasonal cycle of forcing and circulation in the Bay for 2014. White dots mark mooring locations used in the study. (top) Seasonal mean EKE from AVISO in color; vectors indicate surface currents from seasonally averaged 5-day OSCAR estimate citep:oscar,Bonjean2002. (middle) Seasonal near-inertial energy input calculated using a slab ocean mixed layer model $\Pi\slab$ (Appendix A). White contours are $\Pi=$ \SIlist{2; 4; 10}{\milli\W\per\square\metre}. (bottom) 50, 75 and 100m depth contours of the 34.75 isohaline surface from the mapped Argo climatology.
 #+ATTR_LATEX: :float multicolumn
-[[file:images/paper1/spatial-maps.pdf]]
+[[file:images/paper1/spatial-maps-label.pdf]]
 
 ** Figure 2: map                                                    :ignore:
 
