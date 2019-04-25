@@ -182,38 +182,6 @@ These moorings were blown over significantly by high currents (``blowdown''), up
 In addition, the OMM/WHOI mooring at 18°N was heavily instrumented with χpods.
 This location is relatively unique because it experiences significant freshwater influence from the Ganga-Brahmaputra runoff and the seasonal cycle differs from that at the moorings summarized here --- for a discussion of these measurements see citep:Thakur2019.
 
-*** Table 1 : mooring details                                      :ignore:
-
-#+NAME: tab:pods
-#+ATTR_LATEX: :placement [t] :environment tabular* :width 0.7\textwidth :float multicolumn :align @{\extracolsep\fill}llrl
-#+CAPTION: Bay of Bengal \(\chi\)pod deployments described in this paper.
-|---------+-------------+-------------+-------------------------------------|
-|         | Location    |   Depth [m] | Duration of valid data return       |
-|---------+-------------+-------------+-------------------------------------|
-| RAMA 12 | 90E, 12N    |          15 | 29 Nov 2013 - 22 Nov 2014           |
-|         |             |             | 04 Dec 2014 - 18 Dec 2015           |
-|         |             |          30 | 29 Nov 2013 - 16 Sep 2014           |
-|         |             |             | 04 Dec 2014 - 31 Jan 2016           |
-|         |             |          45 | 04 Dec 2014 - 27 Jul 2015           |
-|---------+-------------+-------------+-------------------------------------|
-| RAMA 15 | 90E, 15N    |          15 | 06 Dec 2014 - 11 Dec 2015           |
-|---------+-------------+-------------+-------------------------------------|
-| NRL1    | 85.5E, 5N   | 60 (55-100) | 19 Dec 2013 - 31 Dec 2014           |
-|         |             | 80 (75-115) | \phantom{19 Dec 2013 -} 06-May-2014 |
-|---------+-------------+-------------+-------------------------------------|
-| NRL2    | 85.5E, 6.5N |          70 | 19 Dec 2013 - 05 Feb 2014           |
-|---------+-------------+-------------+-------------------------------------|
-| NRL3    | 85.5E, 8N   |  32 (28-78) | 20 Dec 2013 - 12 Dec 2014           |
-|         |             | 52 (48-100) | \phantom{20 Dec 2013 -} 28 Dec 2014 |
-|---------+-------------+-------------+-------------------------------------|
-| NRL4    | 87E, 8N     |  63 (60-85) | 21 Dec 2013 - 28 Dec 2014           |
-|         |             | 83 (80-105) | \phantom{21 Dec 2013 -} 09 Feb 2015 |
-|---------+-------------+-------------+-------------------------------------|
-| NRL5    | 88.5E, 8N   |          85 | 21 Dec 2013 - 30 Jan 2015           |
-|         |             |         105 | \phantom{21 Dec 2013 -} 22 Feb 2015 |
-|---------+-------------+-------------+-------------------------------------|
-
-
 ** χpod
 <<sec:pod>>
 
@@ -651,106 +619,7 @@ However, since TropFlux data is available at daily resolution one cannot calcula
 
 * Appendix B: Tables of seasonal mean and seasonal median $K_T$
 
-#+BEGIN_SRC jupyter-python :session py :exports none :results none :eval never-export
-import tabulate
-
-def parse_interval(value):
-    import re
-    val = [float(ff)
-           for ff in re.sub(' +', ' ', value[1:-1].strip()).split(' ')]
-
-    return val
-
-
-kwargs = dict(usecols=[1, 2, 3, 4, 5, 6, 7],
-              converters={'ci_mean': parse_interval,
-                          'ci_median': parse_interval})
-
-sortcsv = pd.read_csv('~/bay/estimates/mean_median_KT_sorted.csv', **kwargs)
-moorcsv = pd.read_csv('~/bay/estimates/mean_median_KT_mooring.csv', **kwargs)
-
-table = moorcsv.copy()[['season', 'bin']]
-table['KT_sort_median'] = '-'
-table['KT_moor_median'] = ''
-table['KT_sort_mean'] = '-'
-table['KT_moor_mean'] = ''
-
-factor = 1e6
-
-for index, row in moorcsv.iterrows():
-    table['KT_moor_mean'].iloc[index] = (f"${row.KT_mean*factor:.2f}"
-                                         f"_{{{row.ci_mean[0]*factor:.2f}}}"
-                                         f"^{{{row.ci_mean[1]*factor:.2f}}}$")
-    table['KT_moor_median'].iloc[index] = (f"${row.KT_median*factor:.2f}"
-                                           f"_{{{row.ci_median[0]*factor:.2f}}}"
-                                           f"^{{{row.ci_median[1]*factor:.2f}}}$")
-
-for index, row in sortcsv.iterrows():
-    if row.z > 50:
-        continue
-
-    table['KT_sort_mean'].iloc[index] = (f"${row.KT_mean*factor:.2f}"
-                                         f"_{{{row.ci_mean[0]*factor:.2f}}}"
-                                         f"^{{{row.ci_mean[1]*factor:.2f}}}$")
-    table['KT_sort_median'].iloc[index] = (f"${row.KT_median*factor:.2f}"
-                                           f"_{{{row.ci_median[0]*factor:.2f}}}"
-                                           f"^{{{row.ci_median[1]*factor:.2f}}}$")
-
-neat_table = (pd.pivot_table(table,
-                             index=['bin'],
-                             columns='season',
-                             aggfunc=lambda x: x)
-              [['KT_sort_median', 'KT_sort_mean', 'KT_moor_median', 'KT_moor_mean']]
-              .reindex(['ML', 'BL'] + list(sortcsv.bin.unique()[:-2])))
-
-(neat_table[['KT_sort_mean', 'KT_moor_mean']]
- .rename(index={'bin': ''},
-         columns={'season': '',
-                  'KT_sort_mean': 'mean $K_T$ (sorted)',
-                  'KT_moor_mean': 'mean $K_T$ (mooring)'})
- .to_latex(escape=False,
-           column_format='@{\extracolsep\\fill}rcccccccccccccccc',
-           multicolumn_format='c',
-           buf='~/bay/paper1/mean_table.tex'))
-
-(neat_table[['KT_sort_median', 'KT_moor_median']]
- .rename(index={'bin': ''},
-         columns={'season': '',
-                  'KT_sort_median': 'median $K_T$ (sorted)',
-                  'KT_moor_median': 'median $K_T$ (mooring)'})
- .to_latex(escape=False,
-           column_format='@{\extracolsep\\fill}rcccccccccccccccc',
-           multicolumn_format='c',
-           buf='~/bay/paper1/median_table.tex'))
-
-# h = ([neat_table.index.names[0]
-#       + '/'
-#       + neat_table.columns.names[1]]
-#       + list(map('\n'.join, neat_table.columns.tolist())))
-# print('#+ATTR_LATEX: :align r')
-# print(r'#+CAPTION: Seasonal mean and median \(K_T\) (\SI{1e-5}{\m\square\per\s}) from Figure ref:fig:vert')
-# print(tabulate.tabulate(neat_table,
-#                         headers=['', 'a', 'b', 'c', 'd'],
-#                         tablefmt='orgtbl'))
-
-#+END_SRC
-
-
-#+begin_export latex
-\begin{sidewaystable}
-\footnotesize
-\centering
-\appendcaption{A1}{Table of mean $K_T$ (\SI{1e-6}{\m\squared\per\second}) and bootstrap 95\% confidence intervals estimated using sorted and mooring gradients.}
-\input{mean_table}
-\end{sidewaystable}
-
-\begin{sidewaystable}
-\footnotesize
-\centering
-\appendcaption{A2}{Table of median $K_T$ (\SI{1e-6}{\m\squared\per\second}) and bootstrap 95\% confidence intervals estimated using sorted and mooring gradients.}
-\input{median_table}
-\end{sidewaystable}
-#+end_export
+Tables B1 and B2 tabulate seasonal mean and seasonal median $K_T$ along with 95% bootstrap confidence intervals.
 
 *** old :noexport:
 #+BEGIN_SRC jupyter-python :session py :exports results :results replace output drawer :cache yes :eval never-export
@@ -876,6 +745,142 @@ Figures S1, S2, S3 present time series of daily averaged quantities as in Figure
 
 [[bibliography:bibtexLibrary.bib]]
 bibliographystyle:ametsoc2014
+
+* Tables :ignore:
+*** Table 1 : mooring details                                      :ignore:
+
+#+NAME: tab:pods
+#+ATTR_LATEX: :placement [t] :environment tabular* :width 0.7\textwidth :float multicolumn :align @{\extracolsep\fill}llrl
+#+CAPTION: Bay of Bengal \(\chi\)pod deployments described in this paper.
+|---------+-------------+-------------+-------------------------------------|
+|         | Location    |   Depth [m] | Duration of valid data return       |
+|---------+-------------+-------------+-------------------------------------|
+| RAMA 12 | 90E, 12N    |          15 | 29 Nov 2013 - 22 Nov 2014           |
+|         |             |             | 04 Dec 2014 - 18 Dec 2015           |
+|         |             |          30 | 29 Nov 2013 - 16 Sep 2014           |
+|         |             |             | 04 Dec 2014 - 31 Jan 2016           |
+|         |             |          45 | 04 Dec 2014 - 27 Jul 2015           |
+|---------+-------------+-------------+-------------------------------------|
+| RAMA 15 | 90E, 15N    |          15 | 06 Dec 2014 - 11 Dec 2015           |
+|---------+-------------+-------------+-------------------------------------|
+| NRL1    | 85.5E, 5N   | 60 (55-100) | 19 Dec 2013 - 31 Dec 2014           |
+|         |             | 80 (75-115) | \phantom{19 Dec 2013 -} 06-May-2014 |
+|---------+-------------+-------------+-------------------------------------|
+| NRL2    | 85.5E, 6.5N |          70 | 19 Dec 2013 - 05 Feb 2014           |
+|---------+-------------+-------------+-------------------------------------|
+| NRL3    | 85.5E, 8N   |  32 (28-78) | 20 Dec 2013 - 12 Dec 2014           |
+|         |             | 52 (48-100) | \phantom{20 Dec 2013 -} 28 Dec 2014 |
+|---------+-------------+-------------+-------------------------------------|
+| NRL4    | 87E, 8N     |  63 (60-85) | 21 Dec 2013 - 28 Dec 2014           |
+|         |             | 83 (80-105) | \phantom{21 Dec 2013 -} 09 Feb 2015 |
+|---------+-------------+-------------+-------------------------------------|
+| NRL5    | 88.5E, 8N   |          85 | 21 Dec 2013 - 30 Jan 2015           |
+|         |             |         105 | \phantom{21 Dec 2013 -} 22 Feb 2015 |
+|---------+-------------+-------------+-------------------------------------|
+
+*** Tables B1, B2                                                  :ignore:
+
+#+BEGIN_SRC jupyter-python :session py :exports none :results none :eval never-export
+import tabulate
+
+def parse_interval(value):
+    import re
+    val = [float(ff)
+           for ff in re.sub(' +', ' ', value[1:-1].strip()).split(' ')]
+
+    return val
+
+
+kwargs = dict(usecols=[1, 2, 3, 4, 5, 6, 7],
+              converters={'ci_mean': parse_interval,
+                          'ci_median': parse_interval})
+
+sortcsv = pd.read_csv('~/bay/estimates/mean_median_KT_sorted.csv', **kwargs)
+moorcsv = pd.read_csv('~/bay/estimates/mean_median_KT_mooring.csv', **kwargs)
+
+table = moorcsv.copy()[['season', 'bin']]
+table['KT_sort_median'] = '-'
+table['KT_moor_median'] = ''
+table['KT_sort_mean'] = '-'
+table['KT_moor_mean'] = ''
+
+factor = 1e6
+
+for index, row in moorcsv.iterrows():
+    table['KT_moor_mean'].iloc[index] = (f"${row.KT_mean*factor:.2f}"
+                                         f"_{{{row.ci_mean[0]*factor:.2f}}}"
+                                         f"^{{{row.ci_mean[1]*factor:.2f}}}$")
+    table['KT_moor_median'].iloc[index] = (f"${row.KT_median*factor:.2f}"
+                                           f"_{{{row.ci_median[0]*factor:.2f}}}"
+                                           f"^{{{row.ci_median[1]*factor:.2f}}}$")
+
+for index, row in sortcsv.iterrows():
+    if row.z > 50:
+        continue
+
+    table['KT_sort_mean'].iloc[index] = (f"${row.KT_mean*factor:.2f}"
+                                         f"_{{{row.ci_mean[0]*factor:.2f}}}"
+                                         f"^{{{row.ci_mean[1]*factor:.2f}}}$")
+    table['KT_sort_median'].iloc[index] = (f"${row.KT_median*factor:.2f}"
+                                           f"_{{{row.ci_median[0]*factor:.2f}}}"
+                                           f"^{{{row.ci_median[1]*factor:.2f}}}$")
+
+neat_table = (pd.pivot_table(table,
+                             index=['bin'],
+                             columns='season',
+                             aggfunc=lambda x: x)
+              [['KT_sort_median', 'KT_sort_mean', 'KT_moor_median', 'KT_moor_mean']]
+              .reindex(['ML', 'BL'] + list(sortcsv.bin.unique()[:-2])))
+
+(neat_table[['KT_sort_mean', 'KT_moor_mean']]
+ .rename(index={'bin': ''},
+         columns={'season': '',
+                  'KT_sort_mean': 'mean $K_T$ (sorted)',
+                  'KT_moor_mean': 'mean $K_T$ (mooring)'})
+ .to_latex(escape=False,
+           column_format='@{\extracolsep\\fill}rcccccccccccccccc',
+           multicolumn_format='c',
+           buf='~/bay/paper1/mean_table.tex'))
+
+(neat_table[['KT_sort_median', 'KT_moor_median']]
+ .rename(index={'bin': ''},
+         columns={'season': '',
+                  'KT_sort_median': 'median $K_T$ (sorted)',
+                  'KT_moor_median': 'median $K_T$ (mooring)'})
+ .to_latex(escape=False,
+           column_format='@{\extracolsep\\fill}rcccccccccccccccc',
+           multicolumn_format='c',
+           buf='~/bay/paper1/median_table.tex'))
+
+# h = ([neat_table.index.names[0]
+#       + '/'
+#       + neat_table.columns.names[1]]
+#       + list(map('\n'.join, neat_table.columns.tolist())))
+# print('#+ATTR_LATEX: :align r')
+# print(r'#+CAPTION: Seasonal mean and median \(K_T\) (\SI{1e-5}{\m\square\per\s}) from Figure ref:fig:vert')
+# print(tabulate.tabulate(neat_table,
+#                         headers=['', 'a', 'b', 'c', 'd'],
+#                         tablefmt='orgtbl'))
+
+#+END_SRC
+
+#+begin_export latex
+\begin{sidewaystable}
+\label{tab:means}
+\footnotesize
+\centering
+\appendcaption{B1}{Table of mean $K_T$ (\SI{1e-6}{\m\squared\per\second}) and bootstrap 95\% confidence intervals estimated using sorted and mooring gradients.}
+\input{mean_table}
+\end{sidewaystable}
+
+\begin{sidewaystable}
+\label{tab:medians}
+\footnotesize
+\centering
+\appendcaption{B2}{Table of median $K_T$ (\SI{1e-6}{\m\squared\per\second}) and bootstrap 95\% confidence intervals estimated using sorted and mooring gradients.}
+\input{median_table}
+\end{sidewaystable}
+#+end_export
 
 * Figures :ignore:
 ** Figure 1: spatial maps of EKE etc.                               :ignore:
