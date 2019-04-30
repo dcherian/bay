@@ -2,7 +2,7 @@
 #+TITLE:  The seasonal cycle of upper-ocean mixing in the Bay of Bengal
 #+AUTHOR: D.A. Cherian, E.L. Shroyer, J.N. Moum
 #+OPTIONS: author:nil timestamp:t email:nil toc:nil num:2 title:nil H:3 p:nil tasks:todo tags:nil
-#+PROPERTY: header-args :eval never :exports none
+#+PROPERTY: header-args :eval never-export :exports none
 #+LATEX_HEADER: \authors{D. A. Cherian\thanks{Current affiliation: National Center for Atmospheric Research, Boulder, Colorado, USA.}\correspondingauthor{Deepak A. Cherian, NCAR, P.O. Box 3000, Boulder, CO 80307-3000.}, E. L. Shroyer, J. N. Moum}
 #+LATEX_HEADER: \affiliation{College of Earth, Ocean and Atmospheric Sciences, Oregon State University, Corvallis, Oregon, USA}
 #+LATEX_HEADER: \journal{jpo}
@@ -629,18 +629,24 @@ We thank NOAA/PMEL and the Naval Research Laboratory for deploying χpods on the
 Sonya Brown (PMEL) graciously provided support and answered many questions about data collected by instruments on the RAMA moorings.
 We also acknowledge expert engineering and technical contributions from Pavan Vutukur, Kerry Latham and Craig van Appledorn, as well as many stimulating discussions with Johannes Becherer, Alexis Kaminski, Sally Warner, Eric D'Asaro and Jennifer MacKinnon.
 Many of these discussions were facilitated by the International Center for Theoretical Sciences, Tata Institute of Fundamental Research, Bangalore (ICTS/Prog-ommbob/2019/02).
+The Ssalto/Duacs altimeter products were produced and distributed by the Copernicus Marine and Environment Monitoring Service (CMEMS) (http://www.marine.copernicus.eu).
 The evaporation product was provided by the WHOI OAFlux project (http://oaflux.whoi.edu) funded by the NOAA Climate Observations and Monitoring (COM) program.
 Analysis was greatly helped by the use of the xarray Python package citep:Hoyer2017.
 
-* Appendix A: Near-inertial input ($Π\slab$) calculation
+* Supplementary Information
 
+Figures S1, S2, S3 present time series of daily averaged quantities as in Figure [[fig:nrl]] for moorings NRL1, NRL3 and NRL4.
+* Appendix A: Near-inertial input ($Π\slab$) calculation             :ignore:
+\appendix[A]
+\appendixtitle{Near-inertial input ($Π\slab$) calculation}
 Near-inertial energy input $Π\slab$ is calculated following [[cite:Alford2003]]'s spectral solution of the cite:Pollard1970 slab ocean mixed layer using wind speeds from the MERRA-2 reanalysis citep:Gelaro2017 and monthly mean mixed layer depth from the MIMOC climatology citep:Schmidtko2013.
 There are flaws associated with this calculation citep:Plueddemann2006 but we believe Figure ref:fig:spatial captures the qualitative large-scale spatial and seasonal variation of the true near-inertial input $Π$.
 Another source of errors is that MERRA-2 does not capture the large wind stresses evident in the TropFlux compilation citep:Kumar2012.
 However, since TropFlux data is available at daily resolution one cannot calculate the near-inertial input north of approximately 10N, where the inertial period nears 2 days, the Nyquist frequency of the TropFlux winds.
 
-* Appendix B: Tables of seasonal mean and seasonal median $K_T$
-
+* Appendix B: Tables of seasonal mean and seasonal median $K_T$ :ignore:
+\appendix[B]
+\appendixtitle{Tables of seasonal mean and seasonal median $K_T$}
 Tables B1 and B2 tabulate seasonal mean and seasonal median $K_T$ along with 95% bootstrap confidence intervals.
 
 *** old :noexport:
@@ -716,7 +722,9 @@ print(tabulate.tabulate(medianKT,
 
 :end:
 
-* Appendix C: Estimating sorted gradients for surface-pumped χpods
+* Appendix C: Estimating sorted gradients for surface-pumped χpods :ignore:
+\appendix[C]
+\appendixtitle{Estimating sorted gradients for surface-pumped χpods}
 
 This section describes a method adapted from \citet[their Section 7]{Winters1996} to estimate sorted temperature gradients from a χpod deployed on a mooring with a surface expression that is pumped by surface gravity waves.
 Consider a chunk of data that has been processed using the fitting procedure of cite:Moum2009a to yield a \SI{1}{\Hz} time series of $χ$ (Figure [[fig:wda]]d).
@@ -751,18 +759,14 @@ two CTD sensors on the χpod (dashed line) as well as a straight line fit to the
 In general, we find that the sorted gradient is larger than the CTD estimate by a factor of two to ten when gradients are on the order of \SI{1e-3}{\celsius\per\m}.
 When gradient is on the order of \SI{1e-2}{\celsius\per\m} or more, all three estimates generally agree to within a factor of two.
 
-* Appendix D: Detecting weak turbulence
-
+* Appendix D: Detecting weak turbulence :ignore:
+\appendix[D]
+\appendixtitle{Detecting weak turbulence}
 The voltage recorded by the FP-07 temperature sensor in the χpod is differentiated by an analog differentiator circuit and then digitized using an analog-to-digital converter (ADC) whose noise level is 6 voltage levels peak-to-peak.
 We estimate the spectral energy level of the discretized white noise voltage time series of that amplitude and combine it with the instrument calibration coefficients as in cite:Becherer2017 to get a dimensional spectral energy density level that would result when the ADC records ``bit noise''.
 Multiplying this noise spectral energy density level by frequency bandwidth gives an estimate of the instrument's ``noise floor'' i.e. an estimate of the variance when the data recorded is bit noise.
 
 # 4.096V using 16 bit quantization i.e. $2^{16}$ voltage levels.
-
-* Supplementary Information
-
-Figures S1, S2, S3 present time series of daily averaged quantities as in Figure [[fig:nrl]] for moorings NRL1, NRL3 and NRL4.
-
 * References :ignore:
 
 [[bibliography:bibtexLibrary.bib]]
