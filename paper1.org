@@ -1,10 +1,11 @@
 #+LATEX_CLASS: ametsoc
 #+TITLE:  The seasonal cycle of upper-ocean mixing in the Bay of Bengal
-#+AUTHOR: D.A. Cherian, E.L. Shroyer, J.N. Moum
 #+OPTIONS: author:nil timestamp:t email:nil toc:nil num:2 title:nil H:3 p:nil tasks:todo tags:nil
 #+PROPERTY: header-args :eval never-export :exports none
-#+LATEX_HEADER: \authors{D. A. Cherian\thanks{Current affiliation: National Center for Atmospheric Research, Boulder, Colorado, USA.}\correspondingauthor{Deepak A. Cherian, NCAR, P.O. Box 3000, Boulder, CO 80307-3000.}, E. L. Shroyer, J. N. Moum}
+#+LATEX_HEADER: \authors{D. A. Cherian\thanks{Current affiliation: National Center for Atmospheric Research, Boulder, Colorado, USA.}\correspondingauthor{Deepak A. Cherian, NCAR, P.O. Box 3000, Boulder, CO 80307-3000.}, E. L. Shroyer}
 #+LATEX_HEADER: \affiliation{College of Earth, Ocean and Atmospheric Sciences, Oregon State University, Corvallis, Oregon, USA}
+#+LATEX_HEADER: \extraauthor{H. W. Wijesekera}\extraaffil{Naval Research Laboratory, Stennis Space Center, Mississippi, USA}
+#+LATEX_HEADER: \extraauthor{J. N. Moum}\extraaffil{College of Earth, Ocean and Atmospheric Sciences, Oregon State University, Corvallis, Oregon, USA}
 #+LATEX_HEADER: \journal{jpo}
 #+LATEX_HEADER: \email{deepak@cherian.net}
 #+LATEX_HEADER: \input{my-math.tex}
