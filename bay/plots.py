@@ -150,13 +150,21 @@ def get_kmeans_bins(k, data):
     return bins
 
 
-def trim_horiz_violin(hdl):
+def trim_horiz_violin(hdl, keep='top'):
+
     # halve the voilin
     for b in hdl['bodies']:
         m = np.mean(b.get_paths()[0].vertices[:, 1])
-        b.get_paths()[0].vertices[:, 1] = np.clip((b.get_paths()[0]
-                                                   .vertices[:, 1]),
-                                                  -np.inf, m)
+
+        if keep == 'top':
+            lower = -np.inf
+            upper = m
+        elif keep == 'bottom':
+            lower = m
+            upper = np.inf
+
+        b.get_paths()[0].vertices[:, 1] = np.clip(
+            (b.get_paths()[0].vertices[:, 1]), lower, upper)
 
 
 def format_moor_names(names):
@@ -192,10 +200,15 @@ def _get_color_from_hdl(hdl):
 
 
 def plot_distrib(ax, plotkind, var, zloc, zstd, width=12, percentile=False,
-                 color=None):
+                 color=None, trim_keep='top', markers=None, overlay=False):
     ''' Actually plot the distribution '''
 
     base_marker_size = 5
+
+    if markers is None:
+        markers = {'median': '^', 'mean': 'o'}
+    else:
+        assert(('median' in markers) and ('mean' in markers))
 
     if np.all(var < 1):
         # if in log-space transform out and back
@@ -222,20 +235,26 @@ def plot_distrib(ax, plotkind, var, zloc, zstd, width=12, percentile=False,
         for pc in hdl['bodies']:
             pc.set_alpha(1)
 
+        trim_horiz_violin(hdl, keep=trim_keep)
+        hdl['cmaxes'].set_visible(False)
+
         if color is not None:
             for pc in hdl['bodies']:
                 pc.set_color(color)
                 pc.set_edgecolor('w')
 
             hdl['cbars'].set_color(color)
-            hdl['cbars'].set_zorder(hdl['bodies'][0].get_zorder())
             hdl['cmins'].set_color(color)
             hdl['cmins'].set_zorder(20)
 
-        trim_horiz_violin(hdl)
-        hdl['cmaxes'].set_visible(False)
-        hdl['cmins'].get_paths()[0].vertices[:, 1] = \
-            (zloc + np.array([-1, 1])*zstd)
+        if trim_keep == 'bottom':
+            hdl['cbars'].set_visible(False)
+            hdl['cmins'].set_visible(False)
+        else:
+            hdl['cbars'].set_zorder(hdl['bodies'][0].get_zorder())
+            hdl['cmins'].get_paths()[0].vertices[:, 1] = (
+                zloc + np.array([-1, 1]) * zstd)
+
         if percentile:
             # use percentile instead of max
             hdl['cbars'].get_paths()[0].vertices[1, 0] = prc
@@ -245,15 +264,37 @@ def plot_distrib(ax, plotkind, var, zloc, zstd, width=12, percentile=False,
 
     # color = _get_color_from_hdl(hdl)
 
-    ax.plot(median, zloc, 'o',
-            color=color, zorder=12, ms=base_marker_size-1)
-    ax.plot(median, zloc, 'o',
-            color='w', zorder=11, ms=base_marker_size+1)
-    ax.plot(mean, zloc, '^',
-            color=color, zorder=12, ms=base_marker_size)
-    ax.plot(mean, zloc, '^',
-            color='w', zorder=12, ms=base_marker_size+2,
-            fillstyle='none')
+    # if trim_keep == 'bottom':
+    #     zloc += 2.5
+    # else:
+    #     zloc -= 2.5
+
+    dz = 2.1 if overlay else 0
+
+    if not overlay:
+        whitez = 11
+        colorz = 12
+        white_size = base_marker_size + 1
+        color_size = base_marker_size - 1
+    else:
+        whitez = 12
+        colorz = 12
+        white_size = base_marker_size
+        color_size = base_marker_size + 2
+
+    ax.plot(median, zloc+dz, markers['median'],
+            color=color, zorder=colorz, ms=color_size)
+
+    ax.plot(median, zloc+dz, markers['median'],
+            color='w', zorder=whitez, ms=white_size,
+            fillstyle='full' if overlay else None)
+
+    ax.plot(mean, zloc+dz, markers['mean'],
+            color=color, zorder=colorz, ms=color_size)
+
+    ax.plot(mean, zloc+dz, markers['mean'],
+            color='w', zorder=whitez, ms=white_size,
+            fillstyle='full' if overlay else 'none')
 
     return hdl, median, mean
 
@@ -281,7 +322,8 @@ def get_pal_dist(bins):
 def vert_distrib(df, bins, varname='KT', kind='distribution',
                  pal=None, f=None, ax=None,
                  label_moorings=True, label_bins=True, adjust_fig=True,
-                 width=12, percentile=False, add_offset=True, **kwargs):
+                 width=12, percentile=False, add_offset=True, trim_keep='top',
+                 **kwargs):
     '''
         Function to make vertical distribution plot when provided with
         appropriately formatted DataFrame.
@@ -305,18 +347,25 @@ def vert_distrib(df, bins, varname='KT', kind='distribution',
 
     if varname is 'KT':
         title = '$\\log_{10}$ hourly averaged $K_T$ [m²/s]'
-        xlim = kwargs.pop('xlim', [-7.5, 2])
+        xlim = kwargs.pop('xlim', [-7, -1])
         xlines = kwargs.pop('xlines', [-6, -5, -4, -3])
     else:
         title = varname
         xlim = kwargs.pop('xlim', None)
         xlines = kwargs.pop('xlines', [])
 
+    markers = kwargs.pop('markers', None)
+    overlay = kwargs.pop('overlay', False)
     months = {'NE': 'Dec-Feb', 'NESW': 'Mar-Apr',
               'SW': 'May-Sep', 'SWNE': 'Oct-Nov'}
 
     coverage_levels = np.array([0.5, 1, 1.5, 2])
     coverage_pal = sns.cubehelix_palette(len(coverage_levels), as_cmap=True)
+
+    # I'm adding sorted gradient estimates
+    if trim_keep == 'bottom':
+        df = df.where((df.bin == 'ML') | (df.bin == 'BL') |
+                      (df.bin == df.bin.cat.categories[2]))
 
     for seas in ax:
         aa = ax[seas]
@@ -347,12 +396,9 @@ def vert_distrib(df, bins, varname='KT', kind='distribution',
                 if season == 'SWNE' or season == 'NE':
                     zloc += 5
             elif interval == 'BL':
-                if season == 'NESW':
-                    zloc -= 5
-                else:
-                    zloc -= 10
+                zloc -= 6
             elif interval == 'ML':
-                zloc -= 5
+                zloc -= 10
 
         bin_name = (np.round(interval.mid-1000, 1).astype('str')
                     if isinstance(interval, pd.Interval)
@@ -378,13 +424,18 @@ def vert_distrib(df, bins, varname='KT', kind='distribution',
 
             hdl, median, mean = plot_distrib(ax[season], plotkind, var,
                                              zloc, ddff.z.std(), width,
-                                             percentile, color)
+                                             percentile, color,
+                                             trim_keep=trim_keep,
+                                             markers=markers,
+                                             overlay=overlay)
 
             zvec[season].append(zloc)
             mdnvec[season].append(median)
             meanvec[season].append(mean)
 
             xtxt = hdl['cbars'].get_paths()[0].vertices[1, 0]
+            if xtxt > -1:
+                xtxt = -1.5
             color = _get_color_from_hdl(hdl)
 
         elif kind == 'mean_ci_profile':
@@ -492,13 +543,14 @@ def mark_moors_clean(ax):
 
 
 def make_vert_distrib_plot(varname,
+                           dataset='../estimates/bay_merged_sorted_hourly.nc',
                            bins=default_density_bins,
                            moor=None,
                            label_moorings=False, **kwargs):
 
     ''' user-friendly wrapper function to make vertical distribution plot. '''
 
-    df = nc_to_binned_df(bins=bins, moor=moor)
+    df = nc_to_binned_df(dataset=dataset, bins=bins, moor=moor)
 
     if varname == 'KT':
         df['KT'] = np.log10(df['KT'])
