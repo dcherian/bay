@@ -91,7 +91,7 @@ def make_map(pods, DX=0.6, DY=0.7, add_year=True, highlight=[],
             text = ''
             if add_year:
                 if pod['label'] == 'RAMA' and pod['lat'] == 15:
-                    text += 'RAMA 15 / 2015\n'
+                    text += 'RAMA 15\n'
                 if pod['label'] == 'RAMA' and pod['lat'] == 12:
                     text += 'RAMA 12\n'
                 if pod['label'] == 'OMM/WHOI':
@@ -101,7 +101,7 @@ def make_map(pods, DX=0.6, DY=0.7, add_year=True, highlight=[],
 
             for z in pod['depths']:
                 text += z
-                if pod['label'] == 'RAMA' and pod['lat'] == 12 and add_year:
+                if pod['label'] == 'RAMA' and add_year:
                     text += ' / ' + pod['depths'][z]
 
                 text += '\n'
@@ -523,7 +523,8 @@ def make_labeled_map(ax=None, add_depths=True):
              'ha': 'right', 'va': 'center',
              'depths': {
                  '15 m': '2015',
-                 '30 m': '2015'}},
+                 # '30 m': '2015'
+             }},
         'WHOI':
             {'lon': 90, 'lat': 18, 'label': 'OMM/WHOI',
              'ha': 'left', 'va': 'top',
