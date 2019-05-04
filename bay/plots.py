@@ -794,12 +794,12 @@ def KT_TS(turb, ctd, which_moorings='all', varname='KT', axes=None,
                         transform=axes['NE'].transAxes)
 
 
-def plot_moor(moor, idepth, axx, time_range='2014', events=None):
+def plot_rama(moor, idepth, axx, time_range='2014', events=None):
 
-    axes = dict(zip(['met', 'KT', 'jq', 'N2'], axx[0:4]))
-    axes['js'] = axes['jq'].twinx()
-    axes['Tz'] = axes['N2'].twinx()
-    axes['coverage'] = axes['KT'].twinx()
+    axes = dict(zip(['met', 'KT', 'jq', 'js', 'coverage', 'N2'], axx[0:6]))
+    # axes['js'] = axes['jq'].twinx()
+    axes['Tz'] = axes['N2']
+    # axes['coverage'] = axes['KT'].twinx()
 
     if len(moor.met) != 0:
         hmet = (moor.met.τ.resample(time='D').mean()
@@ -808,8 +808,107 @@ def plot_moor(moor, idepth, axx, time_range='2014', events=None):
         hmet = (moor.tropflux.tau
                 .sel(time=time_range).plot(ax=axes['met'], color='k', lw=1.2))
 
-    hmet[0].set_clip_on(False)
-    hmet[0].set_in_layout(False)
+    hkt = (moor.KT.isel(depth=idepth).sel(time=time_range)
+           .resample(time='D').mean('time')
+           .plot(ax=axes['KT'], _labels=False, lw=1.2, color='k'))
+    dcpy.plots.annotate_end(hkt[0], 'sorted')
+
+    jq = moor.Jq.isel(depth=idepth).sel(time=time_range)
+    t = jq.time.resample(time='D').mean('time').values
+    hjq = axes['jq'].bar(t,
+                         jq.where(jq > 0).resample(time='D').mean('time'),
+                         color='r')
+    hjq = axes['jq'].bar(t,
+                         jq.where(jq < 0).resample(time='D').mean('time'),
+                         color='C0')
+
+    hjs = ((moor.Js/1e-2).isel(depth=idepth).sel(time=time_range)
+           .resample(time='D').mean('time')
+           .plot(ax=axes['js'], _labels=False, lw=1.2, color='k'))
+
+    htz = ((9.81 * 1.7e-4 * moor.Tz/1e-4)
+           .isel(depth=idepth).sel(time=time_range)
+           .resample(time='D').mean('time')
+           .plot(ax=axes['N2'], _labels=False, lw=1.2, color='k'))
+    # axes['Tz'].set_yscale('symlog', linthreshy=5e-3, linscaley=0.5)
+
+    hn2 = ((moor.N2/1e-4)
+           .isel(depth=idepth).sel(time=time_range)
+           .resample(time='D').mean('time')
+           .plot(ax=axes['N2'], _labels=False, lw=1.2, color='gray'))
+    # axes['N2'].set_ylim([-5, 5])
+
+    fraction = (moor.KT.sel(time=time_range).isel(depth=idepth)
+                .groupby(moor.KT.sel(time=time_range).time.dt.floor('D'))
+                .count()/144)
+    fraction.where(fraction > 0).plot(ax=axes['coverage'], color='k')
+
+    for hh in [hmet, htz, hn2, hjq, hjs]:
+        hh[0].set_clip_on(False)
+        hh[0].set_in_layout(False)
+
+    # dcpy.plots.annotate_end(htz[0], '$gαT_z$', va='top')
+    # dcpy.plots.annotate_end(hn2[0], '$N^2$', va='bottom')
+
+    # axes['js'].set_zorder(-1)
+    # axes['js'].spines['right'].set_visible(True)
+
+    # labels
+    htxt = [axes['met'].text(time, 0.35, season, va='bottom', zorder=-1)
+            for time, season
+            in zip(['2014-02-01', '2014-03-21', '2014-07-16', '2014-10-20',
+                    '2014-12-15'],
+                   ['NE', 'NESW', 'SW', 'SWNE', 'NE'])]
+
+    axes['met'].set_xlim(('2014-01', '2015-01'))
+    axes['met'].set_ylim([0, 0.35])
+    axes['met'].set_ylabel('$τ$ [N/m²]')
+
+    # customize axes
+    axes['KT'].set_ylim([1e-7, 1e-1])
+    axes['KT'].set_yticks([1e-6, 1e-5, 1e-4, 1e-3])
+    axes['KT'].set_yscale('log')
+    axes['KT'].set_ylabel('Daily avg. $K_T$ [m²/s]')
+    axes['KT'].grid(False, axis='x')
+    axes['KT'].grid(True, which='both', axis='y')
+
+    axes['jq'].set_ylabel('$J_q^t$ [W/m²]')
+    axes['js'].set_ylabel('$J_s^t$ \n [$10^{-2}$ g/m²/s]')
+    # [dcpy.plots.set_axes_color(axes[aa], 'C0', 'right')
+     # for aa in ['js', 'coverage']]
+
+    # axes['Tz'].set_ylabel('$gαT_z$ [s^{-2}]')
+    axes['N2'].set_ylabel('[$10^{-4}$ $s^{-2}$]')
+
+    axes['coverage'].set_ylabel('Fraction\ndaily coverage')
+    axes['coverage'].set_yticks([0, 0.5, 1])
+    axes['coverage'].spines['right'].set_visible(True)
+
+    [aa.set_xlabel('') for aa in axx]
+    [aa.set_title('') for aa in axes.values()]
+    [moor.MarkSeasonsAndEvents(ax=axes[aa], events=events)
+     for aa in ['jq', 'KT', 'met', 'N2', 'js', 'coverage']]
+
+    axx[-1].set_xlabel('2014')
+    axx[-1].xaxis.set_tick_params(rotation=0)
+    [tt.set_ha('center') for tt in axx[-1].get_xticklabels()]
+    axx[-1].xaxis.set_major_formatter(mpl.dates.DateFormatter('%Y-%b'))
+
+    return axes
+
+def plot_moor_old(moor, idepth, axx, time_range='2014', events=None):
+
+    axes = dict(zip(['met', 'KT', 'jq', 'N2'], axx[0:4]))
+    axes['js'] = axes['jq'].twinx()
+    axes['Tz'] = axes['N2']
+    axes['coverage'] = axes['KT'].twinx()
+
+    if len(moor.met) != 0:
+        hmet = (moor.met.τ.resample(time='D').mean()
+                .sel(time=time_range).plot(ax=axes['met'], color='k', lw=1.2))
+    else:
+        hmet = (moor.tropflux.tau
+                .sel(time=time_range).plot(ax=axes['met'], color='k', lw=1.2))
 
     hkt = (moor.KT.isel(depth=idepth).sel(time=time_range)
            .resample(time='D').mean('time')
@@ -823,24 +922,30 @@ def plot_moor(moor, idepth, axx, time_range='2014', events=None):
            .resample(time='D').mean('time')
            .plot(ax=axes['js'], _labels=False, lw=1.2, color='C0'))
 
-    htz = ((moor.Tz).isel(depth=idepth).sel(time=time_range)
+    htz = ((9.81 * 1.7e-4 * moor.Tz/1e-4)
+           .isel(depth=idepth).sel(time=time_range)
            .resample(time='D').mean('time')
-           .plot(ax=axes['Tz'], _labels=False, lw=1.2, color='C0'))
+           .plot(ax=axes['N2'], _labels=False, lw=1.2, color='C0'))
     # axes['Tz'].set_yscale('symlog', linthreshy=5e-3, linscaley=0.5)
     axes['Tz'].axhline(0, color='C0', zorder=-1, lw=0.5)
-    hn2 = ((moor.N2/1e-4).isel(depth=idepth).sel(time=time_range)
+
+    hn2 = ((moor.N2/1e-4)
+           .isel(depth=idepth).sel(time=time_range)
            .resample(time='D').mean('time')
            .plot(ax=axes['N2'], _labels=False, lw=1.2, color='k'))
-    axes['N2'].set_ylim([0, None])
+    # axes['N2'].set_ylim([-5, 5])
 
     fraction = (moor.KT.sel(time=time_range).isel(depth=idepth)
                 .groupby(moor.KT.sel(time=time_range).time.dt.floor('D'))
                 .count()/144)
     fraction.where(fraction > 0).plot(ax=axes['coverage'], color='C0')
 
-    for hh in [hjq, hjs]:
+    for hh in [hmet, htz, hn2, hjq, hjs]:
         hh[0].set_clip_on(False)
         hh[0].set_in_layout(False)
+
+    dcpy.plots.annotate_end(htz[0], '$gαT_z$', va='top')
+    dcpy.plots.annotate_end(hn2[0], '$N^2$', va='bottom')
 
     # axes['js'].set_zorder(-1)
     axes['js'].spines['right'].set_visible(True)
@@ -867,10 +972,10 @@ def plot_moor(moor, idepth, axx, time_range='2014', events=None):
     axes['jq'].set_ylabel('$J_q^t$ [W/m²]')
     axes['js'].set_ylabel('$J_s^t$ \n [$10^{-2}$ g/m²/s]')
     [dcpy.plots.set_axes_color(axes[aa], 'C0', 'right')
-     for aa in ['js', 'Tz', 'coverage']]
+     for aa in ['js', 'coverage']]
 
-    axes['Tz'].set_ylabel('$T_z$ [°C/m]')
-    axes['N2'].set_ylabel('$N²$ \n [$10^{-4}$ $s^{-2}$]')
+    # axes['Tz'].set_ylabel('$gαT_z$ [s^{-2}]')
+    axes['N2'].set_ylabel('[$10^{-4}$ $s^{-2}$]')
 
     axes['coverage'].set_ylabel('Fraction\ndaily coverage')
     axes['coverage'].set_yticks([0, 0.5, 1])
@@ -983,8 +1088,8 @@ def plot_nrl(mooring):
     mooring.MarkSeasonsAndEvents(events='Storm-zoomin', ax=axx5[-2])
     axx5[-2].set_ylabel('Squared WKB shear\n[$10^{-5}$ s$^{-2}$]')
 
-    axmooring = plot_moor(mooring, idepth=1,
-                          axx=axx5, events='Storm-zoomin')
+    axmooring = plot_moor_old(mooring, idepth=1,
+                              axx=axx5, events='Storm-zoomin')
 
     # fill in the 20m gap with linear interpolation
     # then interpolate velocity to CTD depths
