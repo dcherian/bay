@@ -634,7 +634,7 @@ The Ssalto/Duacs altimeter products were produced and distributed by the Coperni
 The evaporation product was provided by the WHOI OAFlux project (http://oaflux.whoi.edu) funded by the NOAA Climate Observations and Monitoring (COM) program.
 Analysis was greatly helped by the use of the xarray Python package citep:Hoyer2017.
 
-* Supplementary Information
+* Supplementary Information :noexport:
 
 Figures S1, S2, S3 present time series of daily averaged quantities as in Figure [[fig:nrl]] for moorings NRL1, NRL3 and NRL4.
 * Appendix A: Near-inertial input ($Π\slab$) calculation             :ignore:
@@ -2023,7 +2023,7 @@ f.savefig('images/paper1/8N-binned-avg-js-ep.png', bbox_to_inches='tight')
 #+CAPTION: Thorpe sorting applied to \(\chi\)pod data. On the left are time-series for a two minute subset of data: (a) vertical displacement (b) ``enhanced'' temperature (c) temperature gradient $dT/dt$ (d) χ. Panels (e, g) show sorted and unsorted vertical profiles of temperature with depth respectively along with three estimates of a background gradient: the averaged sorted gradient (thick black), difference between two CTD sensors (dashed) and a linear fit to the unsorted profiles (dash-dot). Panel (f) shows χ as a function of temperature. \(x\)-ticks and grid lines on panels e, f show the temperature bins $\Tbins$. Colors indicate individual up- and down-casts determined using the displacement timeseries (panel a).
 [[file:images/paper1/wda-label.pdf]]
 
-** Supplementary Figures S1, S2, S4                                 :ignore:
+** Supplementary Figures S1, S2, S3                                 :noexport:
 #+BEGIN_SRC jupyter-python :session py
 for mooring in [nrl1, nrl3, nrl4]:
     f, axmooring = bay.plots.plot_nrl(mooring)
