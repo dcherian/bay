@@ -104,6 +104,28 @@ plt.savefig('../images/map-misobob.png', bbox_inches='tight')
 [[file:images/summary-NRL5.png]]
 
 * Vertical profile of $K_T$
+** two distribution ideas
+#+BEGIN_SRC jupyter-python :session py
+
+real = 'time'
+dims = ['time', 'x', 'y']
+
+print(dims)
+if real and dims[-1] != real:
+    dims.remove(real)
+    dims += [real]
+    da.transpose(*dims)
+    transposed = True
+
+# do fft
+if real and transposed:
+    # transpose back
+
+print(dims)
+#+END_SRC
+#+CAPTION:
+[[file:$1]]
+
 ** Make plot
 *** Merge together
 #+CALL: read-all-moorings()
@@ -3286,7 +3308,7 @@ def plot_2dspectrum(spec, **kwargs):
     return hdl
 
 
-def _plot_spec(spec, ax, cmax, vmin, vmax):
+def _plot_spec(spec, ax, cmax, vmin, vmax, coord):
     hdl = plot_2dspectrum(spec, norm=mpl.colors.LogNorm(),
                           ax=ax[0], add_colorbar=False,
                           vmin=vmin, vmax=vmax)
@@ -3303,7 +3325,7 @@ def _plot_spec(spec, ax, cmax, vmin, vmax):
     intspec = xrsp.integrate.trapz(spec.where(niw_band, drop=True)
                                    .reset_coords(drop=True),
                                    'freq_time')
-    intspec.plot(y='freq_wkbz', xscale='linear', ax=ax[1])
+    intspec.plot(y=coord, xscale='linear', ax=ax[1])
 
     return hdl
 
@@ -3359,11 +3381,11 @@ def plot_seasonal_spectrum(w, nsmooth=5):
     for season, grp in grouped:
         hdl_shear = _plot_spec(shear_spec[season],
                                [ax['shear'][season], ax_int['shear'][season]],
-                               cmax=2, vmin=vmin, vmax=vmax)
+                               cmax=2, vmin=vmin, vmax=vmax, coord='freq_'+coord)
 
         hdl_vel = _plot_spec(vel_spec[season],
                              [ax['vel'][season], ax_int['vel'][season]],
-                             cmax=4, vmin=100, vmax=2000)
+                             cmax=4, vmin=100, vmax=2000, coord='freq_'+coord)
 
         ax_int['shear'][season].set_xlim([0, 5])
         # ax_int['vel'][season].set_xlim([0, 5])
@@ -3393,27 +3415,125 @@ def plot_seasonal_spectrum(w, nsmooth=5):
     [aa.set_ylabel('') for aa in list(ax_int['vel'].values())]
     [aa.set_ylabel('') for aa in list(ax['vel'].values())]
     (ax_int['shear']['SWNE']
-     .set_xlabel('near-inertial\nshear PSD\n $\int S_s(m,ω) \, dω$'))
+     .set_xlabel(r'near-inertial\nshear PSD\n $\int S_s(m,ω) \, dω$'))
     (ax_int['vel']['SWNE']
-     .set_xlabel('near-inertial\nvel PSD\n $\int S_v(m,ω) \, dω$'))
+     .set_xlabel(r'near-inertial\nvel PSD\n $\int S_v(m,ω) \, dω$'))
 
     f.savefig('images/seasonal-vel-shear-2d-spectra-' + w.attrs['name'].lower()
               + '.png')
 
+def plot_seasonal_shear_spectrum(w, coord, nsmooth=5):
+
+    import garrettmunk.garrettmunk as gm
+
+    f, axx = plt.subplots(4, 2, sharex='col', sharey=True,
+                          constrained_layout=True,
+                          gridspec_kw={'width_ratios': (4, 1)})
+    f.set_size_inches(7, 8)
+
+    ax = dict()
+    ax_int = dict()
+    ax['shear'] = dict(zip(bay.seasons, axx[:, 0]))
+    ax_int['shear'] = dict(zip(bay.seasons, axx[:, 1]))
+
+    grouped = w.groupby(w.time.monsoon.labels)
+
+    psdmax = -1
+    shear_spec = dict()
+    vel_spec = dict()
+    for season, grp in grouped:
+        # 50m and deeper to avoid mixed layer
+        spec = xrft.power_spectrum(grp.sel({coord: slice(110, None)}),
+                                   dim=None, detrend='linear',
+                                   window=True)
+
+        spec.coords['inertial'] = w.inertial
+        spec['freq_' + coord].attrs['long_name'] = 'm'
+        spec['freq_' + coord].attrs['units'] = 'cpm'
+        spec.freq_time.values = spec.freq_time * 86400
+        spec.freq_time.attrs['long_name'] = 'ω'
+        spec.freq_time.attrs['units'] = 'cpd'
+
+        kernel = np.ones([nsmooth, nsmooth])
+        spec.values = sp.signal.convolve2d(spec, kernel/kernel.sum(), mode='same')
+        vel_spec[season] = spec
+
+        shear_spec[season] = ((2*np.pi * spec['freq_' + coord])**2) * spec
+        vel_spec[season].attrs = w.attrs
+        shear_spec[season].attrs = w.attrs
+        psdmax = max(shear_spec[season].max().values, psdmax)
+
+        GM = gm(N=2e-2, f0=dcpy.oceans.coriolis(w.lat.values))
+        gm_spec = (GM.shear()
+                   .rename({'kz': 'freq_'+coord,
+                            'ω': 'freq_time'}))
+        gm_spec.freq_time.values = gm_spec.freq_time * 86400
+        gm_spec.freq_time.attrs['units'] = 'cpd'
+
+        gm_spec = gm_spec.interp_like(shear_spec[season])
+
+    vmin = 0.05
+    vmax = 10
+
+    f0 = w.inertial.values
+    lo = w.attrs['niw_lo']
+    hi = w.attrs['niw_hi']
+
+    for season, grp in grouped:
+        hdl_shear = _plot_spec(shear_spec[season],
+                               [ax['shear'][season], ax_int['shear'][season]],
+                               cmax=2, vmin=vmin, vmax=vmax, coord='freq_'+coord)
+
+        ax_int['shear'][season].set_xlim([0, 5])
+
+        ax['shear'][season].text(0.05, 0.8, season, color='w',
+                                 transform=ax['shear'][season].transAxes)
+
+    if 'wkb' in coord:
+        wkb = ' WKB'
+    else:
+        wkb = ''
+
+    f.colorbar(hdl_shear, ax=axx[:, 0], orientation='horizontal', extend='both',
+               label=w.attrs['name'].upper() + wkb + ' shear spectral density'
+               + ' $S_s(m, ω)$')
+
+    dcpy.plots.linex(np.array([-lo, -hi]) * f0, ls='--',
+                     ax=list(ax['shear'].values()),
+                     color='k', zorder=2, lw=2)
+
+    [aa.set_xlabel('') for aa in axx.flat[:-1]]
+    [aa.set_title('') for aa in axx.flat]
+    [aa.set_ylabel('') for aa in list(ax_int['shear'].values())]
+    (ax_int['shear']['SWNE']
+     .set_xlabel('near-inertial\nshear PSD\n $\int S_s(m,ω) \, dω$'))
+
+    # f.savefig('images/seasonal-vel-shear-2d-spectra-' + w.attrs['name'].lower()
+    #           + '.png')
+
 import xrft
 
-for m in range(5):
+for m in [4]:
     adcp = bay.read_adcp('nrl' + str(m+1))
     vel = adcp['vel'].load()
     zi = np.arange(vel.wkbz.min(), vel.wkbz.max(), 8)
-    wkb = ((vel.wkbu.interp(wkbz=zi) + 1j * vel.wkbv.interp(wkbz=zi))
-           .dropna('wkbz', how='any'))
-    wkb.attrs = vel.attrs
-    wkb.attrs['niw_lo'] = adcp['niw'].attrs['niw_lo']
-    wkb.attrs['niw_hi'] = adcp['niw'].attrs['niw_hi']
-    wkb['inertial'] = vel.inertial
 
-    plot_seasonal_spectrum(wkb.sel(time=slice('2013-12-01', '2014-11-30')))
+    # coord = 'wkbz'
+    # w = ((vel.wkbu.interp({coord: zi}) + 1j * vel.wkbv.interp({coord: zi}))
+    #        .dropna(coord, how='any'))
+
+    coord = 'depth'
+    w = ((vel.u.interp({coord: zi}) + 1j * vel.v.interp({coord: zi}))
+           .dropna(coord, how='any'))
+
+    w.attrs = vel.attrs
+    w.attrs['niw_lo'] = adcp['niw'].attrs['niw_lo']
+    w['inertial'] = vel.inertial
+    w['lat'] = vel.lat
+    w.attrs['niw_hi'] = adcp['niw'].attrs['niw_hi']
+
+    plot_seasonal_shear_spectrum(w.sel(time=slice('2013-12-01', '2014-11-30')),
+                                 coord=coord)
 #+END_SRC
 #+CAPTION: Depth-time spectra
 [[file:images/seasonal-shear-2d-spectra-nrl4.png]]
@@ -4383,8 +4503,6 @@ f.savefig('images/argo-8N-stratification.png')
 #+END_SRC
 #+CAPTION:
 [[file:images/argo-8N-stratification.png]]
-
-
 * Salinity field, salt budgets & biases
 ** Summary:
 1. Vertical mixing is important during SW, SWNE.
@@ -6707,153 +6825,57 @@ f.savefig('images/gm-diffusivity.png')
 ** spectral models
 
 #+BEGIN_SRC jupyter-python :session
-import scipy as sp
+import garrettmunk.garrettmunk as gm
 
-class gm:
-    def __init__(self, kind='gm76', N=2.5e-3, b=1300, f0=7.3e-5,
-                 jmax=100, nfreq=401, nk=201, nkz=1000):
-        '''
-        Inputs
-        ------
-        b : float
-            e-folding scale of N(z)
-        N : float
-            buoyancy frequency
-        jmax : int (optional)
-            maximum number of vertical modes
-        nfreq, nk, nkz : int (optional)
-            number of log-spaced frequencies, wavenumbers
-        '''
+test = gm(N=2e-2, f0=dcpy.oceans.coriolis(8))
 
-        self.b = b
-        self.N = N
-        self.f0 = f0
-        self.N0 = 5.2e-3
-        self.E0 = 6.3e-5
+vel5 = bay.read_adcp('nrl5')
 
-        self.kzmax = 0.1
-        self.Ef = 0  # if non-zero do rolloff
+uz = vel5['vel'].uz.sel(depth=slice(120, 400))
 
-        self.kind = kind
+f, ax = plt.subplots(1, 1, constrained_layout=True)
+# dcpy.ts.PlotSpectrum(uz.isel(time=10), ax=ax)
+# dcpy.ts.PlotSpectrum(uz.isel(time=100), ax=ax)
+# dcpy.ts.PlotSpectrum(uz.isel(time=1000), ax=ax)
+# dcpy.ts.PlotSpectrum(uz.sel(time='01-Jan-2014', method='nearest'),
+#                      dt=8, ax=ax)
+dcpy.ts.PlotSpectrum(uz.sel(time='01-Apr-2014', method='nearest'),
+                     multitaper=False, decimate=False, dt=8, ax=ax)
 
-        # parameters
-        if kind.lower() == 'gm76':
-            self.s = 2
-            self.t = 2
-            self.jp = 0
-            self.jstar = 3
+test.shear('kz').plot()
 
-        if kind.lower() == 'gm75':
-            self.s = 2
-            self.t = 2.5
-            self.jp = 0
-            self.jstar = 6
+import xrft
+vel = (vel5['vel'].u + 1j * vel5['vel'].v).sel(depth=slice(120, 500))
+spec = xrft.power_spectrum(vel, dim=['depth'], window=True, detrend='linear')
+shear_spec = (2*np.pi * spec.freq_depth)**2 * spec
+monthly = shear_spec.sel(time='2014').groupby('time.month').mean('time')
 
-        if kind.lower() == 'gk91':
-            self.s = 1
-            self.t = 2
-            self.jp = 0
-            self.jstar = 3
+# shear = (vel5['vel'].uz + 1j * vel5['vel'].vz).sel(depth=slice(120, 400))
+# shear_spec = xrft.power_spectrum(shear, dim=['depth'], window=True, detrend='linear')
+# monthly = shear_spec.sel(time='2014').groupby('time.month').mean('time')
 
-        if kind.lower() == 'iwex':
-            raise NotImplementedError('IWEX params not implemented!')
+# shear = (vel5['vel'].uz).sel(depth=slice(120, 400))
+# shear_spec = xrft.power_spectrum(shear, dim=['depth'], window=True, detrend='linear')
+# monthly = shear_spec.sel(time='2014').groupby('time.month').mean('time')
 
-        # Get normalization constant I
-        self.I = (self.s * sp.special.gamma(self.t/self.s)
-                  / sp.special.gamma(1/self.s)
-                  / sp.special.gamma((self.t - 1) / self.s))
+N2 = 9.81/1025 * nrl5.ctd.ρ.diff('z')/nrl5.ctd.depth.diff('z')
 
-        # frequency
-        omg = xr.DataArray(np.logspace(np.log10(1.01*self.f0),
-                                       np.log10(self.N),
-                                       nfreq),
-                           dims='ω', attrs={'units': 'rad/s'})
-        self.ω = omg.assign_coords(ω=omg)
+N2mean = (N2.isel(z=slice(2, 4)).mean('z')
+          .sel(time='2014')
+          .groupby('time.month').mean('time'))
 
-        # horizontal wavenumber
-        k = xr.DataArray(np.logspace(-6, -2, nk),
-                         dims='k', attrs={'units': 'cpm'}, name='k')
-        self.k = k.assign_coords(k=k)
+g = monthly.plot(col='month', col_wrap=4, yscale='log')
 
-        # vertical wavenumber
-        kz = xr.DataArray(np.logspace(-4, 0, nkz),
-                          dims=['kz'], attrs={'units': 'cpm'}, name='kz')
-        self.kz = kz.assign_coords(kz=kz)
+for idx, ax in enumerate(g.axes.flat):
+    gmspec = (gm(N=np.sqrt(N2mean.sel(month=idx+1).values),
+                 f0=dcpy.oceans.coriolis(8))
+              .shear('kz'))
+    gmspec = gmspec.where(gmspec.kz < 0.1)
+    gmspec.plot(ax=ax, color='k', _labels=False)
+    gmspec['kz'] = -1 * gmspec['kz']
+    gmspec.plot(ax=ax, color='k', _labels=False)
 
-        # mode number
-        j = xr.DataArray(np.arange(1, jmax), dims='j', name='j')
-        self.j = j.assign_coords(j=j)
-
-    def __repr__(self):
-        return (('{0}: b = {1}, N = {2}, f0 = {3}')
-                .format(self.kind.upper(), self.b, self.N, self.f0))
-
-    def B(self, ω=None):
-        ''' Frequency part of spectrum. '''
-
-        if ω is None:
-            ω = self.ω
-
-        return (2/np.pi * self.f0 / ω) / np.sqrt(ω**2 - self.f0**2)
-
-    def A(self, trimlow=False, trimhigh=False):
-        ''' Vertical wavenumber part of spectrum. '''
-
-        δ = self.jp * self.N/self.N0/2/self.b
-        kstar = self.jstar * self.N/self.N0/2/self.b
-
-        A = ((1 / kstar) * self.I *
-             (1 + ((self.kz - δ) / kstar)**self.s)**(-self.t/self.s))
-
-        if trimlow:
-            j0 = 1
-            k0 = j0 * self.N/self.N0/2/self.b
-            A = A.where(self.kz > k0, A, xr.zeros_like(A))
-
-        if trimhigh:
-            A = A.where(self.kz < self.kzmax, A, xr.zeros_like(A))
-
-        return A
-
-    def _maybe_integrate(self, S, kind):
-        if kind == 'ω' or kind == 'freq':
-            return xrsp.integrate.trapz(S, 'j')
-
-        if kind == 'kz' or kind == 'k':
-            return xrsp.integrate.trapz(S, 'ω')
-
-    def shear(self, kind='kz'):
-
-        if kind == 'kz':
-            # do transformation
-            Nphi = 1000
-            eps = self.f0 / self.N
-            phi = (np.arange(Nphi) + 1) * (np.arccos(eps)) / (Nphi+1)
-            ω = xr.DataArray(self.f0 * 1 / np.cos(phi),
-                             dims='ω',
-                             name='ω')
-            ω = ω.assign_coords(ω=ω)
-
-        else:
-            ω = self.ω
-
-        R = ((2 * np.pi * self.kz)**2
-             ,* (self.b**2 * self.N0 * self.N
-                ,* (ω**2 + self.f0**2) / ω**2))
-
-        spec = self._maybe_integrate(self.E0 * self.A() * self.B(ω) * R,
-                                     'kz')
-        spec.attrs['name'] = r'$\Phi_{u_z}$'
-        spec.attrs['units'] = 's$^{-2}$ (cpm)$^{-1}$'
-
-        return spec
-
-test = gm(N=5.2e-3, f0=dcpy.oceans.coriolis(30))
-print(test)
-
-test.shear().plot(xscale='log', yscale='log',
-                  ylim=[1e-6, 1e-3], xlim=[1e-4, 1])
-f.savefig('images/gm-test.png')
+ax.set_xscale('symlog', basex=10, linthreshx=1e-4, linscalex=0.1)
 #+END_SRC
 #+CAPTION:
 [[file:images/gm-test.png]]
@@ -7852,6 +7874,80 @@ plt.figure();
 nrl4.KT.z.resample(time='D').mean(dim='time').plot.line(x='time')
 nrl4.MarkSeasonsAndEvents()
 #+END_SRC
+
+** OSU seminar figures
+#+BEGIN_SRC jupyter-python :session
+mooring = nrl5
+
+f5, axx5 = plt.subplots(3, 1, sharex=True, constrained_layout=True)
+f5.set_constrained_layout_pads(hspace=0.001, h_pad=0)
+f5.set_size_inches((8, 4))
+
+shear, low_shear, _, niw_shear, _ = mooring.filter_interp_shear(
+    wkb_scale=True)
+residual = shear.shear - niw_shear - low_shear
+
+hniw = ((niw_shear.rolling(time=7*24).reduce(dcpy.util.ms) * 1e5)
+        .sel(time='2014')
+        .plot(ax=axx5[-2], _labels=False, color='g', lw=1.5))
+hlow = ((np.abs(low_shear)**2 * 1e5)
+        .sel(time='2014')
+        .plot(ax=axx5[-2], _labels=False, color='k', lw=1.5))
+hres = ((residual.rolling(time=7*24).reduce(dcpy.util.ms) * 1e5)
+        .sel(time='2014')
+        .plot(ax=axx5[-2], _labels=False, color='C1', lw=1.5))
+
+trgrid = axx5[-2].get_xaxis_transform('grid')
+axx5[-2].text('2014-08-12', 0.8, 'near-inertial',
+              color=hniw[0].get_color(), transform=trgrid)
+axx5[-2].text('2014-10-06', 0.8, 'low-frequency',
+              color=hlow[0].get_color(), transform=trgrid)
+axx5[-2].text('2014-12-02', 0.8, 'residual',
+              color=hres[0].get_color(), transform=trgrid)
+hniw[0].set_clip_on(False)
+hniw[0].set_in_layout(False)
+hlow[0].set_clip_on(False)
+hlow[0].set_in_layout(False)
+axx5[-2].set_ylabel('Squared WKB shear\n[$10^{-5}$ s$^{-2}$]')
+axx5[-2].set_ylim([0, 10])
+
+N2 = ((9.81/1025 * mooring.ctd.ρ.diff('z')/mooring.ctd.depth.diff('z'))
+      .isel(z=1))
+
+N2.resample(time='D', loffset='12H').mean('time').plot(ax=axx5[0], lw=1.2)
+axx5[0].set_ylabel('')
+
+(mooring.KT.isel(depth=1)
+ .resample(time='D').mean('time')
+ .plot(ax=axx5[-1], lw=1.2, color='C3', yscale='log'))
+
+[mooring.MarkSeasonsAndEvents(aa, events='Storm-zoomin') for aa in axx5]
+
+[tt.set_rotation(0) for tt in axx5[-1].get_xticklabels()]
+[tt.set_ha('center') for tt in axx5[-1].get_xticklabels()]
+[aa.set_xlabel('') for aa in axx5]
+[aa.set_ylabel('') for aa in axx5]
+[aa.set_title('') for aa in axx5]
+
+dcpy.plots.label_subplots(axx5, labels=['$N²$ [s$^{-2}$]',
+                                        'Squared WKB shear [s$^{-2}$]',
+                                        '$K_T$ [m²s$^{-1}$]'],
+                          x=0.025, y=0.8)
+
+axx5[-1].set_xlim(('2014-01-01', '2015-01-01'))
+
+htxt = [axx5[0].text(time, 1.01, season, va='bottom', zorder=-1,
+                     transform=axx5[0].get_xaxis_transform('grid'))
+        for time, season
+        in zip(['2014-02-01', '2014-03-21', '2014-07-16', '2014-10-20',
+                '2014-12-15'],
+               ['NE', 'NESW', 'SW', 'SWNE', 'NE'])]
+
+
+f5.savefig('images/presentations/nrl5-shear-KT.png')
+#+END_SRC
+#+CAPTION:
+[[file:images/presentations/nrl5-shear-KT.png]]
 
 ** ICTS discussion meeting figures
 
@@ -8967,3 +9063,9 @@ f.savefig('images/srtm-relief.png')
 #+END_SRC
 #+CAPTION:
 [[file:images/srtm-relief.png]]
+
+* Low mixing notes
+
+| cite:Itsweire1993 | 16νN²  |                   |
+| cite:Gargett1984a | 200νN² | very conservative |
+|                   |        |                   |
