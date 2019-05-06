@@ -1,0 +1,175 @@
+#+TITLE: Library of babel for bay of bengal stuff
+
+* read sat data
+#+NAME: read-mur
+#+BEGIN_SRC jupyter-python :session :results none
+os.chdir('/home/deepak/bay/')
+
+
+if 'mur' in locals():
+    mur.close()
+    del mur
+
+mur = xr.open_mfdataset('./datasets/mur/*.nc').rename({'analysed_sst': 'sst'})
+# sst = mur.sst.chunk({'time':365})
+#+END_SRC
+
+#+NAME: read-cmc
+#+BEGIN_SRC jupyter-python :session :results none
+os.chdir('/home/deepak/bay/')
+
+
+if 'mur' in locals():
+    mur.close()
+    del mur
+
+cmc = xr.open_mfdataset('./datasets/cmc/*.nc').rename({'analysed_sst': 'sst'})
+sst = cmc['sst'].where(cmc.mask == 1).load()
+sst.name = 'CMC SST'
+#+END_SRC
+
+* read PMEL files
+#+NAME: read-rama-array
+#+BEGIN_SRC jupyter-python :session :results none
+os.chdir('/home/deepak/bay/')
+moorarr = importlib.reload(moorarr)
+
+rama = moorarr.moorarr('RAMA',
+                       'rama/data/t_xyzt_dy.cdf',
+                       'rama/data/s_xyzt_dy.cdf',
+                       'rama/data/cur_xyzt_dy.cdf')
+#+END_SRC
+
+* read tropflux
+#+NAME: read-tropflux
+#+BEGIN_SRC jupyter-python :session :results none
+import xarray as xr
+
+swr = xr.open_mfdataset('../datasets/tropflux/swr*.nc')
+lwr = xr.open_mfdataset('../datasets/tropflux/lwr*.nc')
+tau = xr.open_mfdataset('../datasets/tropflux/tau_*.nc')
+taux = xr.open_mfdataset('../datasets/tropflux/tauy_*.nc')
+tauy = xr.open_mfdataset('../datasets/tropflux/taux_*.nc')
+net = xr.open_mfdataset('../datasets/tropflux/netflux_*.nc')
+sst = xr.open_mfdataset('../datasets/tropflux/sst_*.nc')
+
+tropflux = xr.merge([swr, lwr, tau , taux, tauy, net, sst])
+#+END_SRC
+
+#+NAME: read-tropflux-lwr
+#+BEGIN_SRC jupyter-python :session :results none
+#+END_SRC
+* read χpod moorings
+** all
+#+NAME: read-all-moorings
+#+BEGIN_SRC jupyter-python :session :results none
+import bay
+
+ra12, ra15, nrl1, nrl2, nrl3, nrl4, nrl5 = bay.read_all_moorings()
+#+END_SRC
+
+#+NAME: combine-turb-all
+#+BEGIN_SRC jupyter-python :session :results none
+if 'ra12' in locals():
+    ra12.CombineTurb()
+if 'ra15' in locals():
+    ra15.CombineTurb()
+if 'nrl1' in locals():
+    nrl1.CombineTurb()
+if 'nrl3' in locals():
+    nrl3.CombineTurb()
+if 'nrl4' in locals():
+    nrl4.CombineTurb()
+if 'nrl5' in locals():
+    nrl5.CombineTurb()
+#+END_SRC
+
+#+NAME: summary-all
+#+BEGIN_SRC jupyter-python :session :results none
+if 'ra12' in locals():
+    ra12.Summarize(True)
+if 'ra15' in locals():
+    ra15.Summarize(True)
+if 'nrl1' in locals():
+    nrl1.Summarize(True)
+if 'nrl2' in locals():
+    nrl2.Summarize(True)
+if 'nrl3' in locals():
+    nrl3.Summarize(True)
+if 'nrl4' in locals():
+    nrl4.Summarize(True)
+if 'nrl5' in locals():
+    nrl5.Summarize(True)
+#+END_SRC
+** RAMA
+#+NAME: read-ra12
+#+BEGIN_SRC jupyter-python :session :results none
+import bay
+ra12 = bay.read_ra12()
+#+END_SRC
+
+#+NAME: read-ra15
+#+BEGIN_SRC jupyter-python :session :results none
+import bay
+ra15 = bay.read_ra15()
+#+END_SRC
+
+#+NAME: read-ra12-2015
+#+BEGIN_SRC jupyter-python :session :results none
+import chipy
+import importlib
+chipy = importlib.reload(chipy)
+
+c810 = chipy.chipod('../rama/RAMA14/data/', '810', best='mm', depth=15)
+c811 = chipy.chipod('../rama/RAMA14/data/', '811', best='mm1', depth=30)
+
+c810.LoadT1T2()
+#+END_SRC
+
+#+NAME: read-527
+#+BEGIN_SRC jupyter-python :session :results none
+import chipy
+import importlib
+chipy = importlib.reload(chipy)
+
+c527 = chipy.chipod('../rama/RAMA13/data/', '527', '2017-08-15.mat', best='mm', depth=15)
+#+END_SRC
+
+** EBOB
+#+NAME: read-nrl1
+#+BEGIN_SRC jupyter-python :session :results none
+import bay
+nrl1 = bay.read_nrl1()
+#+END_SRC
+
+#+NAME: read-nrl2
+#+BEGIN_SRC jupyter-python :session :results none
+import bay
+nrl2 = bay.read_nrl2()
+#+END_SRC
+
+#+NAME: read-nrl3
+#+BEGIN_SRC jupyter-python :session :results none
+import bay
+nrl3 = bay.read_nrl3()
+#+END_SRC
+
+#+NAME: read-nrl4
+#+BEGIN_SRC jupyter-python :session :results none
+import bay
+nrl4 = bay.read_nrl4()
+#+END_SRC
+
+#+NAME: read-nrl5
+#+BEGIN_SRC jupyter-python :session :results none
+import bay
+nrl5 = bay.read_nrl5()
+#+END_SRC
+
+#+NAME: read-nrl345
+#+BEGIN_SRC jupyter-python :session :results none
+import bay
+nrl3 = bay.read_nrl3()
+nrl4 = bay.read_nrl4()
+nrl5 = bay.read_nrl5()
+#+END_SRC

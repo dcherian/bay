@@ -1,0 +1,628 @@
+#+TITLE: RAMA13: Stratification
+#+AUTHOR: Deepak Cherian
+#+DATE: 02 Feb 2017
+
+#+OPTIONS: html-link-use-abs-url:nil html-postamble:auto
+#+OPTIONS: html-preamble:t html-scripts:nil html-style:nil
+#+OPTIONS: html5-fancy:t tex:t
+#+HTML_DOCTYPE: html5
+#+HTML_CONTAINER: div
+#+LATEX_CLASS: dcnotebook
+#+HTML_HEAD: <link rel="stylesheet" href="notebook.css" type="text/css" />
+
+* Load data + functions :noexport:
+
+#+BEGIN_SRC ipython :session :exports results :eval never-export
+  %matplotlib inline
+  import numpy as np
+  import matplotlib as mpl
+  import matplotlib.pyplot as plt
+  import datetime as dt
+  import hdf5storage as hs
+  from scipy.io import loadmat
+
+
+  import sys
+  if '/home/deepak/python' not in sys.path:
+      sys.path.append('/home/deepak/python')
+
+  import dcpy.plots
+  import dcpy.util
+
+  mpl.rcParams['savefig.transparent'] = True
+  mpl.rcParams['figure.figsize'] = [6.5, 6.5]
+  mpl.rcParams['figure.dpi'] = 120
+  mpl.rcParams['axes.facecolor'] = 'None'
+
+  mat = hs.loadmat('../RAMA13/data/526/input/dTdz_i.mat')
+  Tz_i = mat['Tz_i'];
+  Tzi = Tz_i['Tz12'][0,0].squeeze()
+  TziTime = Tz_i['time'][0,0].squeeze() - 367
+
+  mat = hs.loadmat('../RAMA13/data/526/input/dTdz_m.mat')
+  Tz_m = mat['Tz_m'];
+  Tzm = Tz_m['Tz'][0,0].squeeze()
+  TzmTime = Tz_m['time'][0,0].squeeze() - 367
+  #Szm = Tz_m['Sz'][0][0][0]
+  #sTS = Tz_m['s_TS'][0][0][0]
+
+  Tzi[abs(Tzi)>5] = np.nan
+  Tzm[abs(Tzm)>5] = np.nan
+#+END_SRC
+
+#+RESULTS:
+
+#+RESULTS
+
+#+BEGIN_SRC ipython :session :exports results :eval never-export
+  def ScatterSameTimeInterval(t1, v1, t2, v2, hax=None, guidelines=True):
+      import matplotlib.pyplot as plt
+      import numpy as np
+      import dcpy.plots
+
+      v2interp = np.interp(t1, t2, v2)
+
+      if ~(hax is None):
+          hax = plt.gca()
+
+      plt.axes(hax);
+      hax.scatter(v1, v2interp, alpha=0.25, edgecolor='black', linewidth=0.15);
+      # hax.hexbin(v1, v2interp, cmap=plt.cm.YlOrRd, gridsize=100)
+      plt.xlabel('v1'); plt.ylabel('v2')
+
+      if guidelines:
+          plt.axhline(0, axes=hax, color='gray')
+          plt.axvline(0, axes=hax, color='gray')
+          dcpy.plots.line45()
+#+END_SRC
+
+#+RESULTS:
+* Tz_i and Tz_m
+
+χpod 526 is moving vertically < 0.5m over a minute in general
+#+CAPTION: Displacement over a minute, using the entire year of data without averaging
+[[file:images/526-dispz.png]]
+
+
+#+BEGIN_SRC ipython :session :tangle yes :exports results :eval never-export :file images/temp/py17346k9x.png
+
+  plt.figure(figsize=(6.5, 3.5))
+  plt.plot_date(TziTime, Tzi, '-', linewidth=0.5)
+  plt.plot_date(TzmTime, Tzm, '-', linewidth=0.5)
+
+  plt.legend(('internal', 'mooring'))
+
+#+END_SRC
+
+#+RESULTS:
+[[file:images/temp/py17346k9x.png]]
+
+* N² from Tz_i and Tz_m
+
+Use filtered 10 minute salinity to create N² with Tz_i.
+
+Mooring "sees" a more stratified fluid in general.
+
+Lot more inversions in internally sensed N².
+
+#+BEGIN_SRC ipython :session :tangle yes :exports results :eval never-export  :file images/N2-moor-internal.png
+
+  plt.subplot(121)
+  ScatterSameTimeInterval(TziTime, Tzi, TzmTime, Tzm)
+  plt.xlabel('Tz_i'); plt.ylabel('Tz_m')
+
+  plt.subplot(122)
+  ScatterSameTimeInterval(TziTime, Tz_i['N2_1'][0,0].squeeze(),
+                          TzmTime, Tz_m['N2'][0,0].squeeze())
+  plt.xlabel('N2_i'); plt.ylabel('N2_m');
+  plt.xlim(np.array([-1,1])*1e-3)
+  plt.ylim([-1e-4, 1.2e-3])
+
+  plt.tight_layout()
+#+END_SRC
+
+#+RESULTS:
+[[file:images/N2-moor-internal.png]]
+
+Let's see what the differences are during the cyclone.
+
+No difference - everything is being mixed.
+
+#+BEGIN_SRC ipython :session :tangle yes :exports results :eval never-export :file images/526-hudhud-tzi-tzm.png
+
+ax1 = plt.subplot(211)
+plt.plot_date(TziTime-365, Tzi, '-', linewidth=1)
+plt.plot_date(TzmTime-365, Tzm, '-', linewidth=1)
+ax1.set_ylim([-0.05, 0.1])
+plt.axhline(0, color='gray', zorder=-100)
+
+ax2 = plt.subplot(212, sharex=ax1)
+plt.plot_date(TziTime-365, Tz_i['N2_1'][0,0].squeeze(), '-', linewidth=1)
+plt.plot_date(TzmTime-365, Tz_m['N2'][0,0].squeeze(), '-', linewidth=1)
+ax2.set_ylim([-1e-4, 5e-4])
+plt.axhline(0, color='gray', zorder=-100)
+
+ax1.set_xlim([dt.datetime(2014, 10, 1), dt.datetime(2014, 10, 15)])
+#+END_SRC
+
+#+RESULTS:
+[[file:images/526-hudhud-tzi-tzm.png]]
+* Compare dT/dz between mooring and chipod
+#+BEGIN_SRC ipython :session :file images/mooring-chipod-dTdz.png :exports results :eval never-export
+  f, (ax1, ax2) = plt.subplots(1,2)
+  plt.axes(ax1)
+  ScatterSameTimeInterval(TzmTime, Tzm, TziTime, Tzi)
+  ax1.set_xlabel('Mooring dT/dz')
+  ax1.set_ylabel('χ-pod dT/dz')
+
+  ax2.hist(Tzm[~np.isnan(Tzm)], bins=100, normed=True, alpha=0.5,
+           label='mooring')
+  ax2.hist(Tzi[~np.isnan(Tzi)], bins=100, normed=True, alpha=0.5,
+           label='χ-pod')
+  ax2.set_ylim([0, 4])
+  ax2.set_xlim([-0.2, 0.2])
+  ax2.legend()
+  ax2.set_xlabel('dT/dz')
+  ax2.set_ylabel('pdf')
+#+END_SRC
+
+#+RESULTS:
+[[file:images/mooring-chipod-dTdz.png]]
+
+Seems like the χpod senses more temperature inversions; seems good.
+
+The mooring sees higher temperature gradients on average but still some negative values. I'm surprised this happens with 10-min data. Salinity stratification is the obvious explanation, maybe it's not so unreasonable in the Bay.
+
+* T-S relation from mooring - historical data
+
+Using 10 min T data, compare $∂T/∂z$ histogram for RAMA13 deployment against that for all data at that location.
+
+I am comparing T_z estimates from *mooring instruments*.
+
+Looks pretty good, I say!
+
+#+BEGIN_SRC ipython :session :file images/Tz-mooring-historical-RAMA13.png :exports results :eval never-export
+
+  mat = loadmat('../processed/rama12n90e.mat', squeeze_me=True, struct_as_record=False)
+
+  T1 = mat['T1']
+  T2 = mat['T2']
+
+  # interpolate temperature onto Salinity
+  # ScatterSameTimeInterval(T1.Stime, T1.S, T1.time, T1.T, guidelines=False)
+
+  TzHist = (T1.T - T2.T)/np.abs(T1.z - T2.z)
+
+  def dcHist(var, bins=100, **kwargs):
+      import numpy as np
+      import seaborn as sns
+      sns.set_style('darkgrid')
+      mpl.rcParams['figure.facecolor'] = 'None'
+      # plt.hist(var[~np.isnan(var)], bins, **kwargs)
+      sns.distplot(var[~np.isnan(var)], bins, norm_hist=True, **kwargs)
+
+  bins = np.linspace(-0.1, .3, num=100)
+  dcHist(TzHist, bins, kde=False, label='all data')
+  dcHist(Tzm,  bins, kde=False, label='RAMA13 15m')
+  limy = plt.ylim()
+
+  plt.boxplot(TzHist[~np.isnan(TzHist)], vert=False,
+              notch=0, positions=[-4], widths=5)
+  plt.boxplot(Tzm[~np.isnan(Tzm)], vert=False,
+              notch=0, positions=[-9], widths=5)
+
+
+  plt.ylim([-15, limy[1]])
+  plt.xlim([-0.05, 0.1])
+  plt.yticks(np.arange(0, 120, 20))
+  plt.legend()
+  plt.xlabel('dT/dz from mooring CTDs at 10m, 20m')
+
+#+END_SRC
+
+#+RESULTS:
+[[file:images/Tz-mooring-historical-RAMA13.png]]
+
+* dT/dz and dS/dz from historical data
+** High pass filtering gradient time series
+As Emily pointed out, I should probably get rid of the daily cycle.
+
+I think we should go further and look at high-frequency variability only. The rest is not really relevant for χ really.
+
+#+BEGIN_SRC ipython :session :file images/high-pass-filter-dTdz-dSdz.png :exports results :eval never-export
+
+  def FindSegments(input):
+      '''
+      Finds and return valid index ranges for the input time series.
+      Input:
+            input - input time series
+      Output:
+            start - starting indices of valid ranges
+            stop  - ending indices of valid ranges
+      '''
+
+      import numpy as np
+
+      NotNans = np.double(~np.isnan(input))
+      edges = np.diff(NotNans)
+      start = np.where(edges == 1)[0]
+      stop = np.where(edges == -1)[0]
+
+      if start.size == 0 and stop.size == 0:
+          start = np.array([0])
+          stop = np.array([len(input)-1])
+
+      else:
+          start = start + 1
+          if ~np.isnan(input[0]):
+              start = np.insert(start, 0, 0)
+
+          if ~np.isnan(input[-1]):
+              stop = np.append(stop, len(input)-1)
+
+      return start, stop
+
+  def smooth(x,window_len=11,window='hanning'):
+      """smooth the data using a window with requested size.
+
+      This method is based on the convolution of a scaled window with the signal.
+      The signal is prepared by introducing reflected copies of the signal
+      (with the window size) in both ends so that transient parts are minimized
+      in the begining and end part of the output signal.
+
+      input:
+          x: the input signal
+          window_len: the dimension of the smoothing window; should be an odd integer
+          window: the type of window from 'flat', 'hanning', 'hamming', 'bartlett', 'blackman'
+              flat window will produce a moving average smoothing.
+
+      output:
+          the smoothed signal
+
+      example:
+
+      t=linspace(-2,2,0.1)
+      x=sin(t)+randn(len(t))*0.1
+      y=smooth(x)
+
+      see also:
+
+      numpy.hanning, numpy.hamming, numpy.bartlett, numpy.blackman, numpy.convolve
+      scipy.signal.lfilter
+
+      TODO: the window parameter could be the window itself if an array instead of a string
+      NOTE: length(output) != length(input), to correct this: return y[(window_len/2-1):-(window_len/2)] instead of just y.
+      """
+
+      if x.ndim != 1:
+          raise ValueError("smooth only accepts 1 dimension arrays.")
+
+      if x.size < window_len:
+          raise ValueError("Input vector needs to be bigger than window size.")
+
+
+      if window_len<3:
+          return x
+
+
+      if not window in ['flat', 'hanning', 'hamming', 'bartlett', 'blackman']:
+          raise ValueError("Window is on of 'flat', 'hanning', 'hamming', 'bartlett', 'blackman'")
+
+      s=np.r_[x[window_len-1:0:-1],x,x[-1:-window_len:-1]]
+      #print(len(s))
+      if window == 'flat': #moving average
+          w=np.ones(window_len,'d')
+      else:
+          w=eval('np.'+window+'(window_len)')
+
+      y=np.convolve(w/w.sum(), s, mode='valid')
+      return y
+
+  def SpectralDensity(input, nsmooth=5):
+      """ Calculates spectral density for longest valid segment
+      """
+      import scipy.signal as signal
+      start, stop = FindLargestSegment(input)
+      f, out = signal.periodogram(input[start:stop],
+                                  fs=1.0, window='hamming')
+      out = smooth(out, window_len=nsmooth, window='flat')
+      f = smooth(f, window_len=nsmooth, window='flat')
+
+      return f, out
+
+  def FindLargestSegment(input):
+
+      start, stop = FindSegments(input)
+      GapLength = stop-start+1
+      imax = np.argmax(GapLength)
+
+      return start[imax], stop[imax]
+
+  def HighPassButter(input, freq):
+      import scipy.signal as signal
+
+      b, a = signal.butter(1, freq/(1/2), btype='high')
+
+      return GappyFilter(input, b, a, 10)
+
+  def GappyFilter(input, b, a, num_discard=None):
+      import scipy.signal as signal
+
+      segstart,segend = FindSegments(input)
+      out = np.empty(input.shape) * np.nan
+      for index, start in np.ndenumerate(segstart):
+          stop = segend[index]
+          out[start:stop] = signal.lfilter(b, a, input[start:stop])
+          if num_discard is not None:
+              out[start:start+num_discard] = np.nan
+              out[stop-num_discard:stop] = np.nan
+
+      return out
+
+  def HighPassAndPlot(input, CutoffFreq, titlestr=None):
+
+      start, stop = FindLargestSegment(input)
+      filtered = HighPassButter(input, CutoffFreq)
+
+      f, InputSpec = SpectralDensity(input, 10)
+      plt.loglog(f, InputSpec, label='input data')
+
+      f, FiltSpec = SpectralDensity(filtered, 10)
+      plt.loglog(f, FiltSpec, label='high pass')
+
+      plt.axvline(CutoffFreq, color='gray', zorder=-20)
+      plt.ylabel('Spectral density')
+      plt.xlabel('Frequency')
+      plt.title(titlestr)
+      plt.legend()
+
+      return filtered
+
+  SzHistHr = (T1.S-T2.S)/np.abs(T1.z-T2.z)
+  # interpolate 10 minute dT/dz to hourly time stamp like dS/dz
+  TzHistHr = np.interp(T1.Stime, T1.time, TzHist)
+
+  f, [ax1,ax2] = plt.subplots(2,1, sharex='all')
+  plt.axes(ax1)
+  TzHi = HighPassAndPlot(TzHistHr, 1/6, titlestr='dT/dz')
+  plt.axvline(1/24, color='gray', zorder=-10) # cutoff frequency
+  plt.xlabel('')
+
+  plt.axes(ax2)
+  SzHi = HighPassAndPlot(SzHistHr, 1/6, titlestr='dS/dz')
+  plt.axvline(1/24, color='gray', zorder=-10) # cutoff frequency
+
+#+END_SRC
+
+#+RESULTS:
+[[file:images/high-pass-filter-dTdz-dSdz.png]]
+
+Temperature has *strong* daily peak. Needs really strict filtering.
+Salinity not so much.
+
+Step response
+#+BEGIN_SRC ipython :session :file images/temp/py49578oeU.png :exports results
+def mfreqz(b,a=1):
+    w,h = signal.freqz(b,a)
+    h_dB = 20 * log10 (abs(h))
+    subplot(211)
+    plot(w/max(w),h_dB)
+    ylim(-150, 5)
+    ylabel('Magnitude (db)')
+    xlabel(r'Normalized Frequency (x$\pi$rad/sample)')
+    title(r'Frequency response')
+    subplot(212)
+    h_Phase = unwrap(arctan2(imag(h),real(h)))
+    plot(w/max(w),h_Phase)
+    ylabel('Phase (radians)')
+    xlabel(r'Normalized Frequency (x$\pi$rad/sample)')
+    title(r'Phase response')
+    subplots_adjust(hspace=0.5)
+    show()
+
+def impz(b,a=1):
+
+    impulse = np.repeat(0,50);
+    impulse[0] =1.
+    x = np.arange(0,50)
+    response = signal.lfilter(b,a,impulse)
+    plt.subplot(211)
+    plt.stem(x, response)
+    plt.ylabel('Amplitude')
+    plt.xlabel(r'n (samples)')
+    plt.title(r'Impulse response')
+    plt.subplot(212)
+    step = np.cumsum(response)
+    plt.stem(x, step)
+    plt.ylabel('Amplitude')
+    plt.xlabel(r'n (samples)')
+    plt.title(r'Step response')
+    plt.subplots_adjust(hspace=0.5)
+    plt.show()
+
+
+import scipy.signal as signal
+b, a = signal.butter(1, (1/8)/(1/2), btype='high')
+impz(b, a)
+
+#+END_SRC
+
+#+RESULTS:
+[[file:images/temp/py49578oeU.png]]
+
+** Scatter plots of dT/dz & dS/dz
+Unfortunately, this doesn't look too promising. See below.
+*** All times
+#+BEGIN_SRC ipython :session :file images/dTdz-dSdz-RAMA13.png :exports results :eval never-export
+
+  def GMregress(x, y):
+      import numpy as np
+
+      mask = ~(np.isnan(x) | np.isnan(y))
+      x = x[mask]; y = y[mask];
+
+      r = np.corrcoef(x, y)[0,1]
+      slope = np.sign(r) * np.std(y)/np.std(x)
+
+      return slope
+
+  def JointPlot(Tz, Sz, titlestr=None, **kwargs):
+      g = sns.jointplot(Tz, Sz,  marker='.', **kwargs)
+      g.set_axis_labels('dT/dz', 'dS/dz')
+      ax = g.fig.get_axes()
+
+      ax[0].axhline(0, color='gray')
+      ax[0].axvline(0, color='gray')
+
+      if titlestr:
+          ax[1].set_title(titlestr)
+
+  def GMregplot(x, y, ax=None):
+      import matplotlib.pyplot as plt
+
+      slope = GMregress(x, y)
+
+      if ax is None:
+          plt.figure()
+          ax = plt.gca()
+
+      ax.plot(x, y, 'k.')
+
+      xx = np.asarray(plt.xlim())
+      yy = slope * xx;
+      ax.hold(True)
+      ax.plot(xx, yy, 'r-')
+      ax.set_title('y = ' + "{0:.2f}".format(slope) + ' x')
+
+  # sns.regplot(TzHi, SzHi, ci=None, marker='.');
+
+  GMregplot(TzHi, SzHi)
+  plt.title('RAMA13 | All hourly data + high pass filter | ' + plt.gca().get_title())
+  plt.xlabel('dT/dz')
+  plt.ylabel('dS/dz')
+  # JointPlot(TzHi, SzHi, titlestr='All data')
+#+END_SRC
+
+#+RESULTS:
+[[file:images/dTdz-dSdz-RAMA13.png]]
+1. S_z < 0 for the most part which makes sense.
+2. S_z has larger magnitude when T_z < 0 which also makes sense.
+
+*** Divide into 4 seasons
+
+#+BEGIN_SRC ipython :session :file images/dTdz-dSdz-seasons.png :exports results :eval never-export
+
+  def suplabel(axis,label,label_prop=None,
+               labelpad=5,
+               ha='center',va='center'):
+      ''' Add super ylabel or xlabel to the figure
+      Similar to matplotlib.suptitle
+      axis       - string: "x" or "y"
+      label      - string
+      label_prop - keyword dictionary for Text
+      labelpad   - padding from the axis (default: 5)
+      ha         - horizontal alignment (default: "center")
+      va         - vertical alignment (default: "center")
+      '''
+      import matplotlib.pyplot as plt
+      fig = plt.gcf()
+      xmin = []
+      ymin = []
+      for ax in fig.axes:
+          xmin.append(ax.get_position().xmin)
+          ymin.append(ax.get_position().ymin)
+      xmin,ymin = min(xmin),min(ymin)
+      dpi = fig.dpi
+      if axis.lower() == "y":
+          rotation=90.
+          x = xmin-float(labelpad)/dpi
+          y = 0.5
+      elif axis.lower() == 'x':
+          rotation = 0.
+          x = 0.5
+          y = ymin - float(labelpad)/dpi
+      else:
+          raise Exception("Unexpected axis: x or y")
+      if label_prop is None:
+          label_prop = dict()
+      plt.text(x,y,label,rotation=rotation,
+		 transform=fig.transFigure,
+		 ha=ha,va=va, **label_prop)
+
+  def ReturnSeason(time, var, season):
+      ''' Given a season, return data only for the months in that season
+          season can be one of SW, NE, SW->NE or NE->SW
+      '''
+      dates = datenum2datetime(time)
+      months = [d.month for d in dates]
+
+      seasonMonths = { 'SW' :  [5,6,7,8,9],
+                       'SW→NE' : [10, 11],
+                       'NE' :  [12,1,2],
+                       'NE→SW' : [3,4], }
+
+      mask = np.asarray([m in seasonMonths[season] for m in months])
+
+      return time[mask], var[mask]
+
+  f, hax = plt.subplots(2,2, sharex=True, sharey=True)
+  hax = hax.ravel()
+
+  for idx,season in enumerate(['SW', 'SW→NE', 'NE', 'NE→SW']):
+      time,Tz = ReturnSeason(T1.Stime, TzHi, season)
+      time,Sz = ReturnSeason(T1.Stime, SzHi, season)
+
+      GMregplot(Tz, Sz, ax=hax[idx]);
+      hax[idx].axhline(0, color='gray')
+      hax[idx].axvline(0, color='gray')
+      hax[idx].set_title(season + ' | ' + hax[idx].get_title())
+      hax[idx].set_xlim([-0.03, 0.03])
+      hax[idx].set_ylim([-0.02, 0.02])
+
+  label_prop=dict(fontsize=14)
+  suplabel('y', 'dS/dz', labelpad=15, label_prop=label_prop)
+  suplabel('x', 'dT/dz', labelpad=8, label_prop=label_prop)
+  f.suptitle('RAMA 12N 90E, 15m - filtered hourly data')
+#+END_SRC
+
+#+RESULTS:
+[[file:images/dTdz-dSdz-seasons.png]]
+
+All look kind of crap.
+* N^2 subsampled / not - historical data
+
+Subsampling hourly data to daily frequency, and then interpolating back to hourly looks quite decent.
+
+#+BEGIN_SRC ipython :session :exports results :file images/rama12n90e-N2-subsampled.png :eval never-export
+  alpha = 1.7e-3
+  beta = 7.6e-4
+
+  # salinity is hourly, T is 10min so use T interpolated to hourly
+  # Best I can do with data
+  N2hr = -alpha*TzHistHr + beta*SzHistHr
+
+  # Assume I only had salinity at daily intervals.
+  # Lets linearly interpolate that daily salinity to hourly interval
+  # and compare resulting N²
+  SzHrIn = np.interp(T1.Stime, T1.Stime[0:-1:24], SzHistHr[0:-1:24])
+
+  plt.subplot(2,1,1)
+  plt.hold(True)
+  plt.plot(T1.Stime, SzHistHr)
+  plt.plot(T1.Stime, SzHrIn)
+  plt.xlim([735100, 735500])
+  plt.title('$S_z$')
+  plt.legend(['Hourly data', 'Subsampled daily, interpolated to hourly'])
+
+  plt.subplot(2,1,2)
+  plt.plot(SzHistHr, SzHrIn, '.')
+  plt.xlabel('from hourly data')
+  plt.ylabel('subsampled daily, interpolated to hourly')
+  plt.axis('square')
+  plt.axhline(0); plt.axvline(0)
+  dcpy.plots.line45()
+
+#+END_SRC
+
+#+RESULTS:
+[[file:images/rama12n90e-N2-subsampled.png]]

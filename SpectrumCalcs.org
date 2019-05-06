@@ -1,0 +1,680 @@
+#+TITLE: Testing out my spectra code
+#+SETUPFILE: ~/org/notebook.org
+
+* RMS of band limited signal
+
+#+BEGIN_SRC ipython :session
+da = xr.DataArray(np.sin(np.arange(10000) * 2 *np.pi/100)
+                  + 0.2 * np.sin(np.arange(10000) * 2 *np.pi/120)
+                  + 0.5 * np.sin(np.arange(10000) * 2 *np.pi/110),
+                  dims=['x'], coords={'x': np.arange(10000)})
+
+
+f, ax = plt.subplots(1, 1, constrained_layout=True)
+(da**2).plot()
+da.rolling(x=25, center=True).reduce(dcpy.util.ms).plot()
+da.rolling(x=50, center=True).reduce(dcpy.util.ms).plot()
+da.rolling(x=100, center=True).reduce(dcpy.util.ms).plot()
+da.rolling(x=200, center=True).reduce(dcpy.util.ms).plot()
+
+f.savefig('images/temp/imgmaBM0A.png')
+#+END_SRC
+#+CAPTION:
+[[file:images/temp/imgmaBM0A.png]]
+* log-normal variables
+
+#+BEGIN_SRC ipython :session :ipyfile images/temp/imgiu42iB.png
+slope = -3
+# normal = dcpy.ts.synthetic(10000, 1, 0.01, slope,
+#                            distrib=np.random.normal)
+
+lognormal = dcpy.ts.synthetic(10000, 1, 0.01, slope,
+                              distrib=np.random.lognormal)
+lognormal = lognormal - 1.001*lognormal.min()
+
+f, ax = plt.subplots()
+kwargs = dict(multitaper=True, ax=ax)
+# dcpy.ts.PlotSpectrum(normal/normal.max(), **kwargs)
+# dcpy.ts.PlotSpectrum(np.log10(normal/normal.max()), ax=plt.gca(), **kwargs)
+dcpy.ts.PlotSpectrum(lognormal/lognormal.max(), **kwargs)
+dcpy.ts.PlotSpectrum(np.log10(lognormal), **kwargs)
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+# Out[312]:
+#+BEGIN_EXAMPLE
+  (<matplotlib.lines.Line2D at 0x7f5c55731358>,
+  <matplotlib.axes._subplots.AxesSubplot at 0x7f5c557310f0>)
+#+END_EXAMPLE
+[[file:images/temp/imgiu42iB.png]]
+:END:
+
+* area/variance preserving
+#+BEGIN_SRC ipython :session :ipyfile images/temp/img9muJnT.png
+
+white = dcpy.ts.synthetic(10000, 1, 1e-3, 0)
+red1 = dcpy.ts.synthetic(10000, 1, 1e-3, -1)
+red2 = dcpy.ts.synthetic(10000, 1, 1e-3, -2)
+red3 = dcpy.ts.synthetic(10000, 1, 1e-3, -3)
+
+white = white / np.std(white)
+red1 = red1 / np.std(red1)
+red2 = red2 / np.std(red2)
+red3 = red3 / np.std(red3)
+
+kwargs = dict(multitaper=True)
+
+f, ax = plt.subplots(1, 2)
+dcpy.ts.PlotSpectrum(white, ax=ax[0], **kwargs)
+dcpy.ts.PlotSpectrum(red1, ax=ax[0], **kwargs)
+dcpy.ts.PlotSpectrum(red2, ax=ax[0], **kwargs)
+dcpy.ts.PlotSpectrum(red3, ax=ax[0], **kwargs)
+
+kwargs['preserve_area'] = True
+dcpy.ts.PlotSpectrum(white, ax=ax[1], **kwargs)
+dcpy.ts.PlotSpectrum(red1, ax=ax[1], **kwargs)
+dcpy.ts.PlotSpectrum(red2, ax=ax[1], **kwargs)
+dcpy.ts.PlotSpectrum(red3, ax=ax[1], **kwargs)
+
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+# Out[282]:
+#+BEGIN_EXAMPLE
+  (<matplotlib.lines.Line2D at 0x7f5c54c6e6a0>,
+  <matplotlib.axes._subplots.AxesSubplot at 0x7f5c5195c9e8>)
+#+END_EXAMPLE
+[[file:images/temp/img9muJnT.png]]
+:END:
+
+* Test out python functions
+** Try multiple subsets of a time series
+- [X] generate synthetic time series
+- [X] add gaps
+- [X] plot spectrum for longest segment
+- [X] given a freq band for which I want spectrum
+  - calculate max averaging I can do to get lo-freq end
+  - shortest segment to get hi-freq end
+- [X] do averaging and supply segment length to plot spectrum.
+
+BAH! THIS GETS SCREWED BY ALIASING IF THERE ARE PEAKS
+
+#+BEGIN_SRC ipython :session :tangle yes :exports results :eval never-export :file images/temp/py2766UOs.png
+%matplotlib inline
+import matplotlib as mpl
+import matplotlib.pyplot as plt
+import numpy as np
+import sys
+import importlib
+
+if '/home/deepak/python/' not in sys.path:
+    sys.path.append('/home/deepak/python')
+    import dcpy.ts
+    import dcpy.util
+
+dcpy.ts = importlib.reload(dcpy.ts)
+dcpy.util = importlib.reload(dcpy.util)
+
+mpl.rcParams['savefig.transparent'] = True
+mpl.rcParams['figure.figsize'] = [6.5, 6.5]
+mpl.rcParams['figure.dpi'] = 180
+mpl.rcParams['axes.facecolor'] = 'None'
+
+dcpy.ts = importlib.reload(dcpy.ts)
+
+dt = 3600  # seconds
+nsmooth = 3
+
+ax1 = plt.subplot(211)
+ax2 = plt.subplot(212)
+
+# generate time series and plot actual spectrum
+y = dcpy.ts.synthetic(7000, dt, 1, -2)
+π = np.pi
+y += max(y) * np.sin(np.arange(len(y))*dt * 2*π/(12.42*3600) )
+y += max(y) * np.sin(np.arange(len(y))*dt * 2*π/(5*86400) )
+
+dcpy.ts.PlotSpectrum(y, ax=ax2, dt=dt, nsmooth=nsmooth*4,
+                     zorder=-100, color='gray')
+# dcpy.ts.PlotSpectrum(y, ax=ax2, dt=dt, nsmooth=nsmooth,
+#                     SubsetLength=320)
+
+# Add gaps.
+ngaps = 40
+i0 = np.random.randint(0, len(y), ngaps)
+i1 = np.random.randint(0, len(y)/40, ngaps)
+for i00, i11 in zip(i0,i1):
+    y[i00:i00+i11] = np.nan
+
+ax1.plot(np.arange(len(y))*dt, y)
+
+# start, stop = dcpy.ts.FindSegments(y)
+# for [s0, s1] in zip(start, stop):
+#     ax1.axvline(s0*dt, color='g')
+#     ax1.axvline(s1*dt, color='r')
+
+# Plot spectrum of longest segment
+# dcpy.ts.PlotSpectrum(y, ax=ax2, dt=dt, nsmooth=nsmooth*4,
+#                     label='raw', zorder=10)
+
+def BreakSpectra(var, breakpoints, dt, ax1=None, ax2=None):
+    nsmooth = 4
+    start, stop = dcpy.ts.FindSegments(var)
+    MaxLength = max(stop-start)
+
+    if ax1 is None:
+        ax1 = plt.subplot(211)
+
+    if ax2 is None:
+        ax2 = plt.subplot(212)
+
+    for idx, bb in enumerate(breakpoints):
+        nn = bb/dt
+        SegmentLength = np.int(np.rint(min(nn * 2.5, MaxLength)))
+
+        if idx > 0:
+            navg = np.int(breakpoints[idx-1]/dt)
+            varavg = dcpy.util.MovingAverage(var, navg,
+                                             decimate=False,
+                                             min_count=1)
+            dtavg = dt #breakpoints[idx-1]
+        else:
+            varavg = var.copy()
+            dtavg = dt
+            navg = 1
+
+        ax1.plot(np.arange(len(varavg))*dt, varavg)
+
+        S, f, conf = dcpy.ts.SpectralDensity(
+            varavg, dt=dtavg, nsmooth=nsmooth,
+            SubsetLength=SegmentLength)
+
+        S[f > 1/navg/dt] = np.nan
+        ax2.loglog(f, S, label=str(breakpoints[idx]/dt),
+                   zorder=idx+1)
+
+breakpoints = np.array([5, 10, 15, 20, 40,
+                        100, 300, 700, 1000])*3600  # in seconds
+BreakSpectra(y, breakpoints, dt, ax1, ax2)
+plt.legend()
+plt.show()
+#+END_SRC
+
+#+RESULTS:
+[[file:images/temp/py2766UOs.png]]
+** aliasing in daily means
+
++I have some factor of 2 error in frequency returned from ~dcpy.ts.SpectralDensity~.+ ; _Using fft instead of rfft fixed it._
+
+Subsampled daily running means of M_2 tide alias to the usual alias frequency.
+
+Interesting!
+
+#+BEGIN_SRC ipython :session :tangle yes :exports results :eval never-export :file images/alias-daily-avg-test.png
+
+import numpy as np
+import matplotlib.pyplot as plt
+import dcpy.util
+import dcpy.ts
+
+dcpy.util = importlib.reload(dcpy.util)
+dcpy.ts = importlib.reload(dcpy.ts)
+from dcpy.util import MovingAverage
+from dcpy.ts import AliasFreq, SpectralDensity
+
+Tavg = 24
+π = np.pi
+TM2 = 12.42
+TM2alias = 1./AliasFreq(1./TM2, Tavg)
+
+t = np.arange(0, 10001)  # in hours
+M2 = 10*np.sin(2*π/TM2 * t)
+M2alias = 10*np.sin(2*π/TM2alias * t)
+
+tavg = MovingAverage(t, Tavg)
+M2avg = MovingAverage(M2, Tavg)
+
+plt.figure(figsize=(6.5, 3.4))
+plt.subplot(121)
+plt.plot(t, M2, label='pure M2')
+plt.plot(t[0::Tavg], M2[0::Tavg], label='M2 alias  to daily')
+plt.plot(tavg, 10* M2avg, label='10x daily average M2')
+plt.xlim([0, 1200])
+plt.ylim([-20, 20])
+plt.legend()
+
+plt.subplot(122)
+spec, freq, _ = SpectralDensity(M2, 1, nsmooth=1)
+plt.loglog(freq, spec, label='pure M2')
+
+spec, freq, _ = SpectralDensity(M2avg, Tavg, nsmooth=1)
+plt.loglog(freq, spec, label='daily average M2')
+
+spec, freq, _ = SpectralDensity(M2[0::Tavg], Tavg, nsmooth=1)
+plt.loglog(freq, spec, label='aliased M2')
+
+plt.legend()
+plt.axvline(1./TM2, color='k', zorder=-10, linewidth=0.4)
+plt.axvline(1./TM2alias, color='k', zorder=-10, linewidth=0.4)
+plt.axvline(1/2)
+plt.axvline(1/len(M2))
+plt.tight_layout()
+#+END_SRC
+
+#+RESULTS:
+[[file:images/alias-daily-avg-test.png]]
+** spectrogram
+
+#+BEGIN_SRC ipython :session :tangle yes :exports results :eval never-export :file images/temp/py30956RdR.png
+
+from scipy.signal import spectrogram
+
+ndays = 20
+f, t, Sxx = spectrogram(M2, fs=1, nperseg=ndays*24)
+
+import matplotlib.pyplot as plt
+plt.pcolormesh(t, f, np.log10(Sxx))
+plt.axhline(1/TM2, color='k')
+plt.yscale('log')
+plt.colorbar()
+plt.xlabel('Time (hours)')
+plt.ylabel('Frequency (cph)')
+plt.title('PSD')
+#+END_SRC
+
+#+RESULTS:
+[[file:images/temp/py30956RdR.png]]
+** band pass butterworth
+
+#+BEGIN_SRC ipython :session :file images/temp/py2833509E.png
+import dcpy.ts
+importlib.reload(dcpy.ts)
+import scipy.signal as signal
+
+π = np.pi
+dt = 4
+
+t = np.arange(0, 10001, dt)  # in days
+freqs = np.arange(5,100,10)
+peaks = np.sum(np.sin(2*π/np.reshape(freqs, (len(freqs), 1)) * t), axis=0)
+syn = dcpy.ts.synthetic(len(t), dt, 1, -5)
+syn/= syn.max()
+syn2 = dcpy.ts.synthetic(len(t), dt, 1, 5)
+syn2/= syn2.max()
+ts = 120*syn + peaks
+ts2 = syn2 + peaks
+
+filtered = dcpy.ts.BandPassButter(ts, 1/np.array([50, 40]), dt=dt,
+                                  order=2)
+
+ax = plt.subplot(211)
+dcpy.ts.PlotSpectrum(ts, dt=dt, nsmooth=3, ax=ax)
+dcpy.ts.PlotSpectrum(filtered, dt=dt, nsmooth=3, ax=ax)
+plt.axvline(1/45)
+
+mask = ~np.isnan(filtered)
+ax2 = plt.subplot(212, sharex=ax)
+f, Cxy, phase, siglevel = dcpy.ts.Coherence(ts[mask], filtered[mask],
+                                     dt=dt, nsmooth=4)
+plt.semilogx(f, Cxy, '.-')
+plt.axhline(siglevel, color='gray', linestyle='--', zorder=-1)
+#+END_SRC
+
+#+RESULTS:
+[[file:images/temp/py2833509E.png]]
+
+Impulse response:
+
+#+BEGIN_SRC ipython :session :file images/temp/py28335L2b.png
+dcpy.ts = importlib.reload(dcpy.ts)
+
+b, a = dcpy.ts.BandPassButter([], [1/30, 1/90], dt=1,
+                              order=1, returnba=True)
+
+dcpy.ts.ImpulseResponse(b, a, eps=5e-3)
+#+END_SRC
+
+#+RESULTS:
+[[file:images/temp/py28335L2b.png]]
+
+** Test coherence
+
+#+BEGIN_SRC ipython :session :file images/temp/py4372ZJA.png
+dcpy.plots.hist(np.concatenate(c), mark95=True)
+#+END_SRC
+
+#+RESULTS:
+[[file:images/temp/py4372ZJA.png]]
+
+#+BEGIN_SRC ipython :session :file images/temp/py28335N7U.png
+%matplotlib inline
+
+import numpy.random
+dcpy.ts = importlib.reload(dcpy.ts)
+
+y0 = np.random.randn(1000)
+y1 = np.random.randn(1000)
+
+dcpy.ts.PlotCoherence(y0, y1, multitaper=True)
+#+END_SRC
+
+#+RESULTS:
+[[file:images/temp/py28335N7U.png]]
+** multitaper vs. usual
+
+#+BEGIN_SRC ipython :session :file images/temp/py28335nlb.png
+dcpy.ts = importlib.reload(dcpy.ts)
+
+π = np.pi
+TM2 = 12.42
+
+t = np.arange(0, 10001)  # in hours
+M2 = 10*np.sin(2*π/TM2 * t)
+
+ax = plt.gca()
+dcpy.ts.PlotSpectrum(M2, nsmooth=4, multitaper=False, ax=ax)
+dcpy.ts.PlotSpectrum(M2, nsmooth=4, multitaper=True, ax=ax)
+dcpy.plots.linex(1/TM2)
+#+END_SRC
+
+#+RESULTS:
+[[file:images/temp/py28335nlb.png]]
+** sign of coherence phase
+#+BEGIN_SRC ipython :session :file images/temp/py29463xPN.png
+y0 = np.sin(np.arange(5000) * 2*np.pi/100) + np.random.randn(5000)
+y1 = np.sin(np.arange(5000) * 2*np.pi/100 + np.pi/4) + np.random.randn(5000)
+
+dcpy.ts.PlotCoherence(y0, y1, multitaper=True)
+dcpy.plots.linex([1/100.0, 1/200.0, 2*np.pi/100])
+plt.gca().set_xscale('log')
+#+END_SRC
+
+#+RESULTS:
+[[file:images/temp/py29463xPN.png]]
+** complex demodulation
+*** Real signals
+Firing's code from https://currents.soest.hawaii.edu/ocn_data_analysis/_static/complex_demod.html
+
+#+BEGIN_SRC ipython :session :results none
+
+from pycurrents.system import Bunch
+def bl_filt(y, half_width):
+    """
+    Simple Blackman filter.
+
+    The end effects are handled by calculating the weighted
+    average of however many points are available, rather than
+    by zero-padding.
+    """
+    nf = half_width * 2 + 1
+    x = np.linspace(-1, 1, nf, endpoint=True)
+    x = x[1:-1]   # chop off the useless endpoints with zero weight
+    w = 0.42 + 0.5 * np.cos(x * np.pi) + 0.08 * np.cos(x * 2 * np.pi)
+    ytop = np.convolve(y, w, mode='same')
+    ybot = np.convolve(np.ones_like(y), w, mode='same')
+
+    return ytop / ybot
+
+
+def test_data(periods, noise=0, rotary=False, npts=1000, dt=1.0/24):
+    """
+    Generate a simple time series for testing complex demodulation.
+
+    ,*periods* is a sequence with the periods of one or more
+        harmonics that will be added to make the test signal.
+        They can be positive or negative.
+    ,*noise* is the amplitude of independent Gaussian noise.
+    ,*rotary* is Boolean; if True, the test signal is complex.
+    ,*npts* is the length of the series.
+    ,*dt* is the time interval (default is 1.0/24)
+
+    Returns t, x: ndarrays with the test times and test data values.
+
+    Note: the default of dt = 1/24 corresponds to hourly values in
+    units of days, so a period of 12.42/24 would give the M2 frequency.
+    """
+
+    t = np.arange(npts, dtype=float) * dt
+
+    if rotary:
+        x = noise * (np.random.randn(npts) + 1j * np.random.randn(npts))
+    else:
+        x = noise * np.random.randn(npts)
+
+    for p in periods:
+        if rotary:
+            x += np.exp(2j * np.pi * t / p)
+        else:
+            x += np.cos(2 * np.pi * t / p)
+
+    return t, x
+
+
+def plot_demod(dm):
+    fig, axs = plt.subplots(3, sharex=True)
+    resid = dm.signal - dm.reconstructed
+    if dm.signal.dtype.kind == 'c':
+        axs[0].plot(dm.t, dm.signal.real, label='signal.real')
+        axs[0].plot(dm.t, dm.signal.imag, label='signal.imag')
+        axs[0].plot(dm.t, resid.real, label='difference real')
+        axs[0].plot(dm.t, resid.imag, label='difference imag')
+    else:
+        axs[0].plot(dm.t, dm.signal, label='signal')
+        axs[0].plot(dm.t, dm.reconstructed, label='reconstructed')
+        axs[0].plot(dm.t, dm.signal - dm.reconstructed, label='difference')
+
+    axs[0].legend(loc='upper right', fontsize='small')
+
+    axs[1].plot(dm.t, np.abs(dm.demod), label='amplitude', color='C3')
+    axs[1].legend(loc='upper right', fontsize='small')
+
+    axs[2].plot(dm.t, np.angle(dm.demod, deg=True), '.', label='phase',
+                color='C4')
+    axs[2].set_ylim(-180, 180)
+    axs[2].legend(loc='upper right', fontsize='small')
+
+    for ax in axs:
+        ax.locator_params(axis='y', nbins=5)
+    return fig, axs
+
+def complex_demod(t, x, central_period, hwidth = 2):
+    """
+    Complex demodulation of a real or complex series, *x*
+    of samples at times *t*, assumed to be uniformly spaced.
+
+    ,*central_period* is the period of the central frequency
+        for the demodulation.  It should be positive for real
+        signals. For complex signals, a positive value will
+        return the CCW rotary component, and a negative value
+        will return the CW component (negative frequency).
+        Period is in the same time units as are used for *t*.
+
+    ,*hwidth* is the Blackman filter half-width in units of the
+        ,*central_period*.  For example, the default value of 2
+        makes the Blackman half-width equal to twice the
+        central period.
+
+    Returns a Bunch; look at the code to see what it contains.
+    """
+
+    rotary = x.dtype.kind == 'c'  # complex input
+
+    # Make the complex exponential for demodulation:
+    c = np.exp(-1j * 2 * np.pi * t / central_period)
+
+    product = x * c
+
+    # filter half-width number of points
+    dt = t[1] - t[0]
+    hwpts = int(round(hwidth * abs(central_period) / dt))
+
+    demod = bl_filt(product, hwpts)
+    if not rotary:
+        # The factor of 2 below comes from fact that the
+        # mean value of a squared unit sinusoid is 0.5.
+        demod *= 2
+
+    reconstructed = (demod * np.conj(c))
+    if not rotary:
+        reconstructed = reconstructed.real
+
+    if np.sign(central_period) < 0:
+        demod = np.conj(demod)
+        # This is to make the phase increase in time
+        # for both positive and negative demod frequency
+        # when the frequency of the signal exceeds the
+        # frequency of the demodulation.
+
+    return Bunch(t=t,
+                 signal=x,
+                 hwpts=hwpts,
+                 demod=demod,
+                 reconstructed=reconstructed)
+
+
+def test_demod(periods, central_period,
+               noise=0,
+               rotary=False,
+               hwidth = 1,
+               npts=1000,
+               dt=1.0/24):
+
+    t, x = test_data(periods, noise=noise, rotary=rotary,
+                     npts=npts, dt=dt)
+    dm = complex_demod(t, x, central_period, hwidth=hwidth)
+    fig, axs = plot_demod(dm)
+    return fig, axs, dm
+
+
+# u = nrl5.vel.u.sel(depth=100, method='nearest').interpolate_na(dim='time')
+# v = nrl5.vel.v.sel(depth=100, method='nearest').interpolate_na(dim='time')
+
+# dm = dcpy.ts.complex_demodulate(u + 1j*v,
+#                                 dim='time',
+#                                 central_period=-1/nrl5.inertial.values,
+#                                 cycles_per='D', hw=2)
+
+# f, ax = plt.subplots()
+# dm.amp.plot(ax=ax)
+# nrl5.niw.amp.sel(depth=100, method='nearest').plot(ax=ax)
+# ax.legend(['mine', 'ewa'])
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+# Out[4]:
+:END:
+
+My code works well when compared to Eric Firing's
+#+BEGIN_SRC ipython :session :ipyfile images/temp/imgwgABya.png
+import dcpy.ts
+
+ts = 0  #dcpy.ts.synthetic(1001, 1, 1, -2)
+# ts = np.random.randn(10001)
+# ts = ts / np.abs(ts).max()
+TM2 = 12.42
+t = np.arange(0, 1001)  # in hours
+pha0 = 0; np.pi/2.25
+M2 = 2*np.sin(2*np.pi/TM2 * t + pha0) # + 1j * 5*np.sin(2*np.pi/TM2 * t + pha0)
+ts += M2
+
+
+t, ts = test_data([TM2])
+recon = dcpy.ts.complex_demodulate(ts, central_period=TM2, t=t, debug=True,
+                                   bw=0.1)
+
+dm = complex_demod(t, ts, TM2, hwidth=1)
+
+f, ax = plt.subplots(2, 1, sharex=True)
+ax[0].plot(np.abs(dm.reconstructed))
+ax[0].plot(recon.amp)
+ax[1].plot(np.angle(dm.reconstructed, deg=True))
+ax[1].plot(recon.pha)
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+# Out[43]:
+: [<matplotlib.lines.Line2D at 0x7f7cbf22a390>]
+:END:
+
+*** Complex signals
+#+BEGIN_SRC ipython :session :ipyfile images/temp/img7BfzCI.png
+ts0 = dcpy.ts.synthetic(10001, 1, 1, -0)
+# ts = np.random.randn(10001)
+ts0 = ts0 / np.abs(ts0).max()
+TM2 = -12.42
+t = np.arange(0, 10001)  # in hours
+pha0 = np.pi/3
+M2 = 2*(np.cos(2*np.pi/TM2 * t + pha0) + 1j * np.sin(2*np.pi/TM2*t + pha0))
+ts = ts0 + M2
+
+recon = dcpy.ts.complex_demodulate(ts, central_period=-TM2,
+                                   t=t, hw=4, debug=False,
+                                   filt='butter')
+
+dm = complex_demod(t, ts, TM2, hwidth=2)
+
+f, ax = plt.subplots(2, 1, constrained_layout=False)
+ax[0].plot(np.abs(dm.reconstructed))
+ax[0].plot(np.abs(recon.cw))
+ax[1].plot(np.angle(dm.reconstructed, deg=True))
+ax[1].plot(np.angle(recon.cw, deg=True))
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+# Out[8]:
+: [<matplotlib.lines.Line2D at 0x7f7cf080ea20>]
+[[file:images/temp/img7BfzCI.png]]
+:END:
+
+** Test rotary spectra
+#+BEGIN_SRC ipython :session :file images/temp/py29463UuM.png
+t = np.arange(10001)
+π = np.pi
+w = np.cos(2*π/10 * t) + 1j * np.sin(2*π/10 * t) \
+    + np.cos(2*π/100 * t) - 1j * np.sin(2*π/100 * t)
+
+cw, ccw, freq, _, _ = dcpy.ts.RotaryPSD(w, multitaper=True)
+plt.loglog(freq, cw, freq, ccw)
+
+cw, ccw, freq, _, _ = dcpy.ts.RotaryPSD(w, multitaper=False)
+plt.loglog(freq, cw, freq, ccw)
+
+plt.legend(['cw multitaper', 'ccw multitaper', 'cw', 'ccw'])
+dcpy.plots.linex([1/10, 1/100])
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+[[file:images/temp/py29463UuM.png]]
+:END:
+** Test ~apply_along_axis~
+#+BEGIN_SRC ipython :session :file images/temp/img3907Ewz.png
+import dcpy.ts
+
+dt = 1
+t = np.arange(0, 10001, dt)  # in days
+freqs = np.arange(5,100,10)
+peaks = np.sum(np.sin(2*π/np.reshape(freqs, (len(freqs), 1)) * t), axis=0)
+syn = dcpy.ts.synthetic(len(t), dt, 1, -5)
+syn/= syn.max()
+syn2 = dcpy.ts.synthetic(len(t), dt, 1, 5)
+syn2/= syn2.max()
+ts = 120*syn + peaks
+ts2d = np.broadcast_to(ts, (13, 5, len(ts)))
+
+b, a = dcpy.ts.BandPassButter(ts, [1/30.0, 1/60.0], dt=dt, returnba=True)
+
+old = dcpy.ts.oldGappyFilter(ts, b, a, num_discard='auto')
+new = np.apply_along_axis(dcpy.ts.GappyFilter, -1, ts2d,
+                          b, a, num_discard='auto')[4, 4, :].squeeze()
+
+assert(np.all(np.equal(old[~np.isnan(old)], new[~np.isnan(new)])))
+#+END_SRC
+
+#+RESULTS:
+[[file:images/temp/img3907Ewz.png]]
