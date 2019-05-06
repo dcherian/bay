@@ -1,0 +1,1 @@
+python2 ~/work/motu-client-python/motu-client.py --verbose -u 'dcherian' -p 'CherianCMEMS2017' -m http://motu.sltac.cls.fr/motu-web/Motu -s SEALEVEL_GLO_PHY_L4_REP_OBSERVATIONS_008_047-TDS -d dataset-duacs-rep-global-merged-allsat-phy-l4-v3 -x 70 -X 98 -y -10 -Y 25 -t "2004-01-01" -T "2017-05-15" -v vgos -v sla -v ugos -o datasets/ssh/ -f ssh.nc
