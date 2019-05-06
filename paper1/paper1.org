@@ -1347,7 +1347,7 @@ axx[-1].xaxis.set_major_formatter(mpl.dates.DateFormatter('%b'))
 f5, ax = bay.plots.plot_nrl(nrl5)
 
 ax['N2'].set_ylim([0, 6])
-f5.savefig('figure5-nrl.pdf')
+f5.savefig('figure5-nrl.pdf', bbox_inches='tight')
 
 # shear_interp = (mooring.vel.shear
 #                 .interp(time=zpod.time, depth=zpod.isel(num=1))
@@ -1743,8 +1743,8 @@ for seas in axes:
 axx[0].set_xlim(10**limits)
 axx[0].set_ylim(10**limits)
 
-axx[0].set_ylabel('$S²_{niw}/N^2$')
-axx[2].set_ylabel('$S²_{niw}/N^2$')
+axx[0].set_ylabel('$S²_{in}/N^2$')
+axx[2].set_ylabel('$S²_{in}/N^2$')
 
 axx[2].set_xlabel('$S²_{low}/N^2$')
 axx[3].set_xlabel('$S²_{low}/N^2$')
