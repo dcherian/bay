@@ -1092,7 +1092,7 @@ f.savefig('images/paper1/png/spatial-maps.png', transparent=False)
 #+NAME: fig:spatial
 #+CAPTION: Seasonal cycle of forcing and circulation in the Bay for 2014. White dots mark mooring locations used in the study. (top) Seasonal mean EKE from AVISO in color; vectors indicate surface currents from seasonally averaged 5-day OSCAR estimate citep:oscar,Bonjean2002. (middle) Seasonal near-inertial energy input calculated using a slab ocean mixed layer model $\Pi\slab$ (Appendix A). White contours are $\Pi=$ \SIlist{2; 4; 10}{\milli\W\per\square\metre}. (bottom) 50, 75 and 100m depth contours of the 34.75 isohaline surface from the mapped Argo climatology.
 #+ATTR_LATEX: :float multicolumn
-[[file:images/paper1/spatial-maps-label.pdf]]
+[[file:figure1-spatial-maps-label.pdf]]
 
 ** Figure 2: map                                                    :ignore:
 
@@ -1138,7 +1138,7 @@ with plt.rc_context({'font.size': 11,
 #+ATTR_LATEX: :width 0.5\textwidth
 #+ATTR_HTML: :style width:50%
 #+CAPTION: 2014, 2015 \(\chi\)pod deployment in the Bay. (a) Locations of moorings with \(\chi\)pods. (b, c) \(\chi\)pod deployment depths marked using horizontal lines on mean T-S profiles from the Argo climatology for RAMA and EBoB moorings, respectively. The EBoB moorings in the south-central Bay experienced significant blowdown. The depth range covered by \(\chi\)pods on these moorings are shaded in (c) with horizontal lines marking median depth. Temperature and salinity axes (lower and upper x-axes) are scaled such that axis limits represent equal jumps in density.
-[[file:images/paper1/map.pdf]]
+[[file:figure2-map.pdf]]
 
 ** Figure 3: vertical profiles                                      :ignore:
 
@@ -1266,7 +1266,7 @@ plt.savefig('images/paper1/bay-KT-vert-profile.png', bbox_inches='tight')
 #+NAME: fig:vert
 #+ATTR_LATEX: :float multicolumn
 #+CAPTION: \small The seasonal cycle of $K_T$. (top) Basin-wide seasonal averages of daily Tropflux wind stress $\tau$, near-inertial energy input $\Pi$, daily Tropflux net surface heat flux $J_q^0$ and TRMM precipitation $P$. Wind stres variability is represented by gray ellipses with widths and heights equal to twice the standard deviation of $\tau_x$ and $\tau_y$. (bottom) Vertical profile of hourly averaged $K_T$ formed by combining all estimates in density bins (Section [[sec:profile]]). PDFs as well as means and medians are shown. Bins are marked by 'ML' (mixed layer), 'BL' (barrier layer) and $\rho-1000$ for deeper bins. PDFs of both moored and sorted estimates are shown for the upper three bins (above and below the baseline respectively). Orange horizontal line marks the climatological depth of the $S=34.75$ isohaline at 8N estimated using the Argo climatology. Vertical lines mark standard deviation of measurement depths in each bin --- these lines tend to overlap each other. Each PDF is colored according to data coverage: one means that there is at least one hourly estimate for every hour in the season.
-file:images/paper1/bay-KT-vert-profile-label.pdf
+file:figure3-profile.pdf
 
 ** Figure 4: RAMA 12N time series                                   :ignore:
 
@@ -1339,7 +1339,7 @@ axx[-1].xaxis.set_major_formatter(mpl.dates.DateFormatter('%b'))
 #+NAME: fig:rama
 #+ATTR_LATEX: :float multicolumn
 #+CAPTION: A year of observations at RAMA 12N, 15m. Time series of daily averaged quantities: (a) locally measured wind stress $\tau$ and locally measured net surface heat flux $J_q^0$ (positive heats the ocean); (b) $K_T$; (c) $J_q^t$; (d) $J_s^t$; (e) fraction daily coverage; (f) buoyancy frequency $N^2$ and temperature contribution to $N²$ using $g \alpha T_z$. In panels (b--f) the estimate using the sorted gradient is in black while that using the mooring gradient is in blue. Background colors mark seasons.
-[[file:images/paper1/rama12.pdf]]
+[[file:figure4-rama.pdf]]
 
 ** Figure 5: NRL time series                                        :ignore:
 
@@ -1347,7 +1347,7 @@ axx[-1].xaxis.set_major_formatter(mpl.dates.DateFormatter('%b'))
 f5, ax = bay.plots.plot_nrl(nrl5)
 
 ax['N2'].set_ylim([0, 6])
-f5.savefig('figure5-nrl5.pdf')
+f5.savefig('figure5-nrl.pdf')
 
 # shear_interp = (mooring.vel.shear
 #                 .interp(time=zpod.time, depth=zpod.isel(num=1))
@@ -1394,7 +1394,7 @@ f5.savefig('figure5-nrl5.pdf')
 #+NAME: fig:nrl
 #+ATTR_LATEX: :float multicolumn
 #+CAPTION: A year of observations at NRL5, 105m. Time series of daily averaged quantities: (a) Tropflux wind stress and wind-forced near-inertial energy flux; (b) daily averaged $K_T$ and fraction daily coverage; (c) turbulent heat and salt fluxes $J_q^t, J_s^t$; (d) Buoyancy frequency $N^2$ and temperature contribution to $N^2$, $g \alpha T_z$; (e) Weekly running mean of filtered squared WKB-scaled shear magnitude: 6.6 day low pass in black, near-inertial bandpass in green and the residual in orange; (f) Fraction of day where Richardson number $\Ri$ < 5. Background colors mark seasons; white region indicates time period that is subject of Figure [[fig:nrl5-niw]].
-[[file:figure5-nrl5.pdf]]
+[[file:figure5-nrl.pdf]]
 
 ** Figure 6: ML scatter plot                                        :noexport:ignore:
 
@@ -1606,7 +1606,7 @@ f.savefig('images/paper1/png/nrl5-aug-niw-mixing.png', transparent=False)
 #+NAME: fig:nrl5-niw
 #+ATTR_LATEX: :float multicolumn
 #+CAPTION: An example of pumping of the near-inertial shear layers past the \(\chi\)pod by the $M_2$ tide at NRL5. The time period of focus is highlighted in white in Figure [[fig:nrl]]. Time series of (a) turbulent diffusivity $K_T$ and (b) zonal shear for a period of high mixing associated with downward propagating near-inertial energy. The depth of the \(\chi\)pod and two isotherms are shown in (b).
-[[file:images/paper1/nrl5-aug-niw-mixing.pdf]]
+[[file:figure6-tidal-pumping.pdf]]
 
 ** Figure 7: NRL scatter plot                                       :ignore:
 
@@ -1767,13 +1767,13 @@ h1 = axx[2].plot(xx, xx/4, color='w', lw=2, ls='--')
 h2 = axx[2].plot(xx, xx/4, color='k', lw=1, ls='--')
 htxt = axx[2].text(xx[0], xx[0]/4, '    factor of 4')
 
-f.savefig('images/paper1/scatter-shear.pdf', bbox_inches='tight')
+f.savefig('figure7-shear-scatter.pdf', bbox_inches='tight')
 f.savefig('images/paper1/png/scatter-shear.png', bbox_inches='tight')
 #+END_SRC
 #+NAME: fig:shearscatter
 #+ATTR_LATEX: :width 27pc :float multicolumn
 #+CAPTION: Drivers of thermocline mixing at the NRL moorings in the south-central Bay: the seasonal cycle of squared shear ($S^2$) and diffusivity $K_T$. Each panel represents one season and shows the two-dimensional distribution of the bin-average of hourly mean $K_T$ (color) against hourly mean near-inertial squared shear (y-axis $S^2\niw$) and low-frequency squared shear (x-axis, $S^2\low$). There are at least twelve hourly observations in each bin.
-[[file:images/paper1/scatter-shear.pdf]]
+[[file:figure7-shear-scatter.pdf]]
 
 ** Figure 8: 8°N special                                            :ignore:
 
@@ -1829,7 +1829,8 @@ kwargs = dict(alpha=1,
               linewidths=0.25,
               edgecolors='darkgray',
               norm=mpl.colors.LogNorm(vmin=1e-3, vmax=1),
-              cmap=mpl.cm.gist_heat_r)
+              cmap=mpl.cm.gist_heat_r,
+              rasterized=True)
 
 # sort so that large Js values are easily visible
 isort = np.argsort(turb8.Js.values[mask].ravel())
@@ -2010,19 +2011,22 @@ ax[-1].set_xlabel('2014')
 [tt.set_visible(False) for tt in ax[2].get_xticklabels()]
 sns.despine(ax=ax[-1], trim=True)
 
-f.savefig('images/paper1/8N-binned-avg-js-ep.png', bbox_to_inches='tight')
+f.savefig('figure8-8n.pdf', bbox_to_inches='tight')
 #+END_SRC
+
+#+RESULTS:
+
 #+NAME: fig:8njs
 #+ATTR_LATEX: :float multicolumn
 #+CAPTION: Turbulent salt flux $J_s^t$ at 8N. (a, b) Scatter plots of hourly averaged $J_s^t$ in depth and salinity spaces respectively. Points with larger $J_s^t$ are plotted over points with lower $J_q^t$ so that high flux events are prominent. (c) Monthly averaged turbulent $J_s^t$ through salinity surfaces $S=34.25, 34.75$ and $35.5$. These are estimated by bin averaging the values in (b) in bins with edges [34, 34.5, 35, 36]. Bins with less than one instrument-month of data are not shown. Those with less than two instrument months of data are grayed out. (d) Monthly averaged surface salinity flux $S_0 (E-P)$ estimated using evaporation from OAFlux and precipitation from TRMM. $S_0$ is assumed to be 32. In orange is $J_s^t$ through $S=34.75$ from (c) with bootstrap error bars.
-[[file:images/paper1/8N-binned-avg-js-ep.png]]
+[[file:figure8-8n.pdf]]
 
 ** Figure 9: Sorted estimate :ignore:
 
 #+NAME: fig:wda
 #+ATTR_LATEX: :float multicolumn
 #+CAPTION: Thorpe sorting applied to \(\chi\)pod data. On the left are time-series for a two minute subset of data: (a) vertical displacement (b) ``enhanced'' temperature (c) temperature gradient $dT/dt$ (d) χ. Panels (e, g) show sorted and unsorted vertical profiles of temperature with depth respectively along with three estimates of a background gradient: the averaged sorted gradient (thick black), difference between two CTD sensors (dashed) and a linear fit to the unsorted profiles (dash-dot). Panel (f) shows χ as a function of temperature. \(x\)-ticks and grid lines on panels e, f show the temperature bins $\Tbins$. Colors indicate individual up- and down-casts determined using the displacement timeseries (panel a).
-[[file:images/paper1/wda-label.pdf]]
+[[file:figure9-wda.pdf]]
 
 ** Supplementary Figures S1, S2, S3                                 :noexport:
 #+BEGIN_SRC jupyter-python :session py
