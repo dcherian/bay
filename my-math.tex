@@ -1,0 +1,70 @@
+
+% Here are a few math abbreviations that may be useful. Note that math
+% variables should generally be set in italic, vectors in bold italic, and
+% constants, such as e and i should be upright. Operators like the 'd' in
+% dx  and 'D' in D/Dt should also be upright.
+\newcommand{\ir}{\mathrm{i}}
+\newcommand{\e}{\, \mathrm{e}} \newcommand{\er}{\mathrm{e}}
+
+% The following makes ODEs and PDEs easier to write.
+% For an example, see the second problem below. - Vallis Solution template
+\newcommand{\dr}{\mathop{}\!\mathrm{d}}
+\newcommand{\D}{\mathop{}\!\mathrm{D}}
+\newcommand{\dd}[3][]{{\frac{\dr^{#1} #2}{\dr #3^{#1}}}}
+\newcommand{\pp}[3][]{{\frac{\partial^{#1} #2}{\partial #3^{#1}}}}
+\newcommand{\DD}[1]{{\frac{\D#1}{\D t}}}
+% example: \pp[2]y x
+
+\newcommand\ppx{\pp{}{x}}
+\newcommand\ppy{\pp{}{y}}
+\newcommand\ppt{\pp{}{t}}
+
+% absolute value signs
+% https://tex.stackexchange.com/questions/43008/absolute-value-symbols#
+\DeclarePairedDelimiter\abs{\lvert}{\rvert}%
+\DeclarePairedDelimiter\norm{\lVert}{\rVert}%
+
+% Swap the definition of \abs* and \norm*, so that \abs
+% and \norm resizes the size of the brackets, and the
+% starred version does not.
+\makeatletter
+\let\oldabs\abs
+\def\abs{\@ifstar{\oldabs}{\oldabs*}}
+%
+\let\oldnorm\norm
+\def\norm{\@ifstar{\oldnorm}{\oldnorm*}}
+\makeatother
+
+% These are some of my math shortcuts
+\newcommand{\mb}[1]{\boldsymbol{#1}} % math bold font
+\newcommand{\ol}[1]{\overline{#1}}
+\newcommand{\x}{\times}
+\newcommand{\mO}{\textnormal{O}}
+\newcommand{\ubr}{\underbracket}
+\newcommand{\disp}{\displaystyle}
+\newcommand{\vb}{\mb {v}\xspace}
+\newcommand{\ub}{\mb {u}\xspace}
+\mathchardef\mhyph="2D
+
+\DeclareMathOperator{\erf}{erf}
+
+% non-dimensional numbers
+\newcommand{\Ro}{\textnormal{Ro}}
+\newcommand{\Rot}{\textnormal{Ro}_\textnormal{T}}
+\newcommand{\Rh}{\textnormal{Rh}}
+\newcommand{\Ri}{\textnormal{Ri}}
+\newcommand{\Rif}{\Ri_f}
+\newcommand{\Pra}{\textnormal{Pr}}
+\newcommand{\Pe}{\textnormal{Pe}}
+\newcommand{\Ra}{\textnormal{Ra}}
+\newcommand{\Rey}{\textnormal{Re}}
+\newcommand{\Fr}{\textnormal{Fr}}
+\newcommand{\Bu}{\textnormal{Bu}}
+
+\newcommand\Hsb{H_\text{sb}}
+\newcommand\tnd{t_\text{nd}}
+\newcommand\bt{_\text{bot}}
+
+\newcommand{\boxedeq}[2]{\begin{empheq}[box={\fboxsep=6pt\fbox}]{equation}{\label{#1}#2}\end{empheq}}
+
+\newcommand{\boxedalign}[2]{\begin{empheq}[box={\fboxsep=6pt\fbox}]{align}\label{#1}#2\end{empheq}}

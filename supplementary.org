@@ -1,0 +1,13 @@
+#+LATEX_CLASS: dcarticle
+#+TITLE: Supplementary Material
+#+AUTHOR:
+#+OPTIONS: toc:nil
+
+We present summary time series for all χpods on all moorings in the following figures.
+
+#+CAPTION: Supplementary Figure S1: Same as Figure 5 but for NRL1.
+[[file:images/paper1/nrl1.pdf]]
+#+CAPTION: Supplementary Figure S2: Same as Figure 5 but for NRL3.
+[[file:images/paper1/nrl3.pdf]]
+#+CAPTION: Supplementary Figure S2: Same as Figure 5 but for NRL4.
+[[file:images/paper1/nrl4.pdf]]
