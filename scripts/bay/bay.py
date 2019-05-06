@@ -81,20 +81,20 @@ def make_merged_nc(moorings, fileprefix='bay_merged'):
     #         xr.testing.assert_equal(merged, orig)
     #         del merged orig
 
-    # orig = Turb.rename({'ε': 'epsilon',
-    #                     'χ': 'chi_t'})
+    Turb = Turb.rename({'ε': 'epsilon',
+                        'χ': 'chi-t'})
 
-    # Turb.epsilon.attrs['long_name'] = (
-    #     'Ocean turbulence kinetic energy dissipation rate')
-    # Turb.epsilon.attrs['standard_name'] = (
-    #     'Ocean_turbulence_kinetic_energy_dissipation_rate')
-    # Turb.epsilon.attrs['units'] = 'W kg^-1'
+    Turb.epsilon.attrs['long_name'] = (
+        'Ocean turbulence kinetic energy dissipation rate')
+    Turb.epsilon.attrs['standard_name'] = (
+        'Ocean_turbulence_kinetic_energy_dissipation_rate')
+    Turb.epsilon.attrs['units'] = 'W kg^-1'
 
-    # Turb['chi-t'].attrs['long_name'] = (
-    #     'Ocean dissipation rate of thermal variance from microtemperature')
-    # Turb['chi-t'].attrs['standard_name'] = (
-    #     'Ocean_dissipation_rate_of_thermal_variance_from_microtemperature')
-    # Turb['chi-t'].attrs['units'] = 'C^2 s^-1'
+    Turb['chi-t'].attrs['long_name'] = (
+        'Ocean dissipation rate of thermal variance from microtemperature')
+    Turb['chi-t'].attrs['standard_name'] = (
+        'Ocean_dissipation_rate_of_thermal_variance_from_microtemperature')
+    Turb['chi-t'].attrs['units'] = 'C^2 s^-1'
 
     Turb.lat.attrs['long_name'] = 'latitude'
     Turb.lat.attrs['units'] = 'degrees_north'
