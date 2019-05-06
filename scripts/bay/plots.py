@@ -896,6 +896,7 @@ def plot_rama(moor, idepth, axx, time_range='2014', events=None):
 
     return axes
 
+
 def plot_moor_old(moor, idepth, axx, time_range='2014', events=None):
 
     axes = dict(zip(['met', 'KT', 'jq', 'N2'], axx[0:4]))
@@ -970,7 +971,7 @@ def plot_moor_old(moor, idepth, axx, time_range='2014', events=None):
     axes['KT'].grid(True, which='both', axis='y')
 
     axes['jq'].set_ylabel('$J_q^t$ [W/m²]')
-    axes['js'].set_ylabel('$J_s^t$ \n [$10^{-2}$ g/m²/s]')
+    axes['js'].set_ylabel('$J_s^t$ \n [$10^{-1}$ [psu] kg/m²/s]')
     [dcpy.plots.set_axes_color(axes[aa], 'C0', 'right')
      for aa in ['js', 'coverage']]
 
@@ -1120,7 +1121,7 @@ def plot_nrl(mooring):
     axmooring['input'] = axmooring['met'].twinx()
     axmooring['input'].plot(mooring.niw.time, mooring.niw.true_flux*1000,
                             color='C0')
-    axmooring['input'].set_ylabel(r'Near-inertial input\n$\Pi$[mW/m²]')
+    axmooring['input'].set_ylabel('Near-inertial input\n$\Pi$[mW/m²]')
     set_axes_color(axmooring['input'], 'C0', spine='right')
 
     dcpy.plots.label_subplots(axx5, x=0.025, y=0.83)
