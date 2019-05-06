@@ -199,10 +199,11 @@ Total temperature and salt diffusivities $K_T, K_S$, heat flux $J_q^t$ and salt 
   K_T &= κ_T(S,T,P) + \frac{χ/2}{T_z^2}, \\
   K_s &= κ_s + \frac{χ/2}{T_z^2}, \\
   J_q^t &= - ρ_0\, c_p\, K_T\, T_z, \\
-  J_s^t &= ρ_0 \, K_S \, S_z;
+  J_s^t &= - ρ_0 \, K_S \, S_z;
 \end{align}
 \end{subequations}
 where $κ_T, κ_s$ are the molecular diffusivity of temperature and salinity respectively, and $T_z, S_z$ are background temperature and salinity gradients (usually obtained by differencing nearby CTDs on the moorings --- /mooring gradients/ $T_z\moor, S_z\moor$; subscript $z$ indicates \(z\)-derivative).
+The sign of $J_q^t$ and $J_s^t$ are such that positive values indicate upward fluxes of heat and salt.
 Again we have assumed that high Reynolds number geophysical turbulence mixes all scalars at the same rate so that the /turbulence/ diffusivities of both temperature and salinity are equal i.e. $(χ/2)/T_z^2$.
 
 *** The challenge of weak background gradients
@@ -755,9 +756,8 @@ For illustration purposes Figure [[fig:wda]] shows a two minute chunk; we use a 
 
 7. We now have a $J_q^t$ estimate for each temperature bin i.e. a vertical profile of $J_q^t$. Depth-average these values to get the volume-average $J_q^t$ in the volume sampled by the χpod in the 10 minute chunk of data.
 
-As reference we show two other estimates of background gradients in Figure [[fig:wda]]e,g: a ``CTD'' estimate obtained by differencing
-two CTD sensors on the χpod (dashed line) as well as a straight line fit to the unsorted profiles ($T_z^{\text{fit}}$ dash-dot line).
-In general, we find that the sorted gradient is larger than the CTD estimate by a factor of two to ten when gradients are on the order of \SI{1e-3}{\celsius\per\m}.
+As reference we show two other estimates of background gradients in Figure [[fig:wda]]e,g: a ``mooring'' estimate obtained by difference two CTD sensors on the χpod (dashed line) as well as a straight line fit to the unsorted profiles ($T_z^{\text{fit}}$ dash-dot line).
+In general, we find that the sorted gradient is larger than the mooring estimate by a factor of two to ten when gradients are on the order of \SI{1e-3}{\celsius\per\m}.
 When gradient is on the order of \SI{1e-2}{\celsius\per\m} or more, all three estimates generally agree to within a factor of two.
 
 * Appendix D: Detecting weak turbulence :ignore:
