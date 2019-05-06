@@ -284,7 +284,7 @@ In general, the ``daily-averaged'' turbulence quantities presented in Figure [[f
 
 The 15m χpod at RAMA 12N recorded a distinctly seasonal cycle in daily averaged diffusivity $K_T$ (Figure [[fig:rama]]b) that mirrors the seasonal cycle in surface wind stress (Figure [[fig:rama]]a).
 cite:Warner2016 summarized this record previously and so we limit ourselves to a brief description here.
-The general patterns described below are repeated at 12°N and 15°N in 2015 (Supplementary Information).
+The general patterns described below are repeated at 12°N and 15°N in 2015 (Supplementary Information, Figures S5--S7).
 Panels b--f in Figure [[fig:rama]] present two estimates in each panel: one using $T_z\sort$ (black) and another using $T_z\moor$ (blue).
 
 During the northeast monsoon, wind stress $τ$ of approximately \SI{0.1}{\N\per\m\squared} forced turbulence with a daily averaged value of $K_T \approxeq \SI{1e-4}{\m\squared\per\s}$ (calculated using $T_z\sort$; sorted) and $\SI{1e-3}{\m\squared\per\sec}$ (calculated using $T_z\moor$; mooring).
@@ -764,8 +764,8 @@ When gradient is on the order of \SI{1e-2}{\celsius\per\m} or more, all three es
 \appendix[D]
 \appendixtitle{Detecting weak turbulence}
 The voltage recorded by the FP-07 temperature sensor in the χpod is differentiated by an analog differentiator circuit and then digitized using an analog-to-digital converter (ADC) whose noise level is 6 voltage levels peak-to-peak.
-We estimate the spectral energy level of the discretized white noise voltage time series of that amplitude and combine it with the instrument calibration coefficients as in cite:Becherer2017 to get a dimensional spectral energy density level that would result when the ADC records ``bit noise''.
-Multiplying this noise spectral energy density level by frequency bandwidth gives an estimate of the instrument's ``noise floor'' i.e. an estimate of the variance when the data recorded is bit noise.
+We estimate the spectral energy level of the discretized white noise voltage time series of that amplitude for a 1 second subset of data and combine it with the instrument calibration coefficients as in cite:Becherer2017 to get a dimensional spectral energy density level that would result when the ADC records ``bit noise''.
+Multiplying this noise spectral energy density level by frequency bandwidth gives an estimate of the instrument's ``noise floor'' i.e. an estimate of the variance when the data recorded over 1 second is bit noise.
 
 # 4.096V using 16 bit quantization i.e. $2^{16}$ voltage levels.
 * References :ignore:
