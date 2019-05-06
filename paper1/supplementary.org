@@ -1,13 +1,50 @@
 #+LATEX_CLASS: dcarticle
-#+TITLE: Supplementary Material
+#+TITLE: Supplementary Material for "The seasonal cycle of upper-ocean turbulence in the Bay of Bengal."
 #+AUTHOR:
 #+OPTIONS: toc:nil
+#+LATEX: \renewcommand{\thefigure}{S\arabic{figure}}
+#+LATEX: \newcommand{\niw}{_\text{in}}
 
 We present summary time series for all χpods on all moorings in the following figures.
 
-#+CAPTION: Supplementary Figure S1: Same as Figure 5 but for NRL1.
-[[file:images/paper1/nrl1.pdf]]
-#+CAPTION: Supplementary Figure S2: Same as Figure 5 but for NRL3.
-[[file:images/paper1/nrl3.pdf]]
-#+CAPTION: Supplementary Figure S2: Same as Figure 5 but for NRL4.
-[[file:images/paper1/nrl4.pdf]]
+#+LATEX: \begin{landscape}
+#+CAPTION: Daily averaged time series for χpod moorings. NRL1. (left column, top to bottom): Wind stress $\tau$ (black) and net surface heat flux $J_q^0$ (color); $N^2$ at \(\chi\)pod depths; Net shear and \(\chi\)pod depths in black; $u$; $v$; EKE and SSH anomaly from AVISO. (right column, top to bottom) T (horizontal lines show \(\chi\)pod depths); S; Near-inertial kinetic energy $KE\niw$; $\partial T/\partial z$; $K_T$; $J_q^t$ at \(\chi\)pod depths (same colors as in $N^2$ panel).
+#+ATTR_LATEX: :width \linewidth :float nil
+[[file:images/summaries/summary-NRL1.png]]
+#+LATEX: \end{landscape}
+
+#+LATEX: \begin{landscape}
+#+CAPTION: Same as Figure S1 but for NRL3.
+#+ATTR_LATEX: :width \linewidth :float nil
+[[file:images/summaries/summary-NRL3.png]]
+#+LATEX: \end{landscape}
+
+#+LATEX: \begin{landscape}
+#+CAPTION: Same as Figure S1 but for NRL4.
+#+ATTR_LATEX: :width \linewidth :float nil
+[[file:images/summaries/summary-NRL4.png]]
+#+LATEX: \end{landscape}
+
+#+LATEX: \begin{landscape}
+#+CAPTION: Same as Figure S1 but for NRL5.
+#+ATTR_LATEX: :width \linewidth :float nil
+[[file:images/summaries/summary-NRL5.png]]
+#+LATEX: \end{landscape}
+
+#+LATEX: \begin{landscape}
+#+CAPTION: Same as Figure S1 but for RAMA 12N (2014). Shear is not available at the RAMA moorings.
+#+ATTR_LATEX: :width \linewidth :float nil
+[[file:images/summaries/summary-RAMA-12N-2014.png]]
+#+LATEX: \end{landscape}
+
+#+LATEX: \begin{landscape}
+#+CAPTION: Same as Figure S5 but for RAMA 12N (2015).
+#+ATTR_LATEX: :width \linewidth :float nil
+[[file:images/summaries/summary-RAMA-12N-2015.png]]
+#+LATEX: \end{landscape}
+
+#+LATEX: \begin{landscape}
+#+CAPTION: Same as Figure S5 but for RAMA 15N.
+#+ATTR_LATEX: :width \linewidth :float nil
+[[file:images/summaries/summary-RAMA-15N.png]]
+#+LATEX: \end{landscape}

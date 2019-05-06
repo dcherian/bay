@@ -2028,25 +2028,6 @@ f.savefig('figure8-8n.pdf', bbox_to_inches='tight')
 #+CAPTION: Thorpe sorting applied to \(\chi\)pod data. On the left are time-series for a two minute subset of data: (a) vertical displacement (b) ``enhanced'' temperature (c) temperature gradient $dT/dt$ (d) χ. Panels (e, g) show sorted and unsorted vertical profiles of temperature with depth respectively along with three estimates of a background gradient: the averaged sorted gradient (thick black), difference between two CTD sensors (dashed) and a linear fit to the unsorted profiles (dash-dot). Panel (f) shows χ as a function of temperature. \(x\)-ticks and grid lines on panels e, f show the temperature bins $\Tbins$. Colors indicate individual up- and down-casts determined using the displacement timeseries (panel a).
 [[file:figure9-wda.pdf]]
 
-** Supplementary Figures S1, S2, S3                                 :noexport:
-#+BEGIN_SRC jupyter-python :session py
-for mooring in [nrl1, nrl3, nrl4]:
-    f, axmooring = bay.plots.plot_nrl(mooring)
-    f.savefig('images/paper1/' + mooring.name.lower() + '.pdf')
-#+END_SRC
-
-#+ATTR_LATEX: :float multicolumn
-#+CAPTION: Supplementary Figure S1: Same as Figure [[fig:nrl]] but for NRL1.
-[[file:images/paper1/nrl1.pdf]]
-
-#+ATTR_LATEX: :float multicolumn
-#+CAPTION: Supplementary Figure S2: Same as Figure [[fig:nrl]] but for NRL3.
-[[file:images/paper1/nrl3.pdf]]
-
-#+ATTR_LATEX: :float multicolumn
-#+CAPTION: Supplementary Figure S3: Same as Figure [[fig:nrl]] but for NRL4.
-[[file:images/paper1/nrl4.pdf]]
-
 
 * A comparison of near-surface and thermocline mixing :noexport:
 <<sec:ramanrl>>
