@@ -1343,11 +1343,11 @@ axx[-1].xaxis.set_major_formatter(mpl.dates.DateFormatter('%b'))
 
 ** Figure 5: NRL time series                                        :ignore:
 
-#+BEGIN_SRC jupyter-python :session py
+#+BEGIN_SRC jupyter-python :session py :results none
 f5, ax = bay.plots.plot_nrl(nrl5)
 
 ax['N2'].set_ylim([0, 6])
-f5.savefig('images/paper1/nrl5.pdf')
+f5.savefig('figure5-nrl5.pdf')
 
 # shear_interp = (mooring.vel.shear
 #                 .interp(time=zpod.time, depth=zpod.isel(num=1))
@@ -1390,10 +1390,11 @@ f5.savefig('images/paper1/nrl5.pdf')
 
 # # axes['shear'].set_ylim([0, 2.5])
 #+END_SRC
+
 #+NAME: fig:nrl
 #+ATTR_LATEX: :float multicolumn
 #+CAPTION: A year of observations at NRL5, 105m. Time series of daily averaged quantities: (a) Tropflux wind stress and wind-forced near-inertial energy flux; (b) daily averaged $K_T$ and fraction daily coverage; (c) turbulent heat and salt fluxes $J_q^t, J_s^t$; (d) Buoyancy frequency $N^2$ and temperature contribution to $N^2$, $g \alpha T_z$; (e) Weekly running mean of filtered squared WKB-scaled shear magnitude: 6.6 day low pass in black, near-inertial bandpass in green and the residual in orange; (f) Fraction of day where Richardson number $\Ri$ < 5. Background colors mark seasons; white region indicates time period that is subject of Figure [[fig:nrl5-niw]].
-[[file:images/paper1/nrl5.pdf]]
+[[file:figure5-nrl5.pdf]]
 
 ** Figure 6: ML scatter plot                                        :noexport:ignore:
 
