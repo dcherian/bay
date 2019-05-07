@@ -116,9 +116,9 @@ def make_merged_nc(moorings, fileprefix='bay_merged'):
     fileprefix = '../estimates/' + fileprefix
     print('Writing to file.')
     Turb.to_netcdf(fileprefix + '_10min.nc')
-    (Turb.resample(time='1H').mean(dim='time')
+    (Turb.resample(time='1H', keep_attrs=True).mean(dim='time')
      .to_netcdf(fileprefix + '_hourly.nc'))
-    (Turb.resample(time='6H').mean(dim='time')
+    (Turb.resample(time='6H', keep_attrs=True).mean(dim='time')
      .to_netcdf(fileprefix + '_6hourly.nc'))
 
 
