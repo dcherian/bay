@@ -163,7 +163,7 @@ Intense near-inertial input in the Bay is forced by the passage of cyclonic syst
 There is approximately no near-inertial energy flux into the mixed layer during March (northern Bay) and April (entire Bay).
 
 Here we summarize year-long observations of turbulence at multiple sites in the Bay (Figure ref:fig:map) and find that the seasonal cycle of winds, currents and near-inertial energy is imprinted on both near-surface and thermocline turbulence (Section ref:sec:profile).
-Correlations of estimated turbulence quantities with wind-stress and local shear, as well as implications of the observed mixing for salt budgets of the Bay are examined (Sections ref:sec:drivers and ref:sec:8n).
+We examine correlations of estimated turbulence quantities with wind-stress and local shear, as well as implications of the observed mixing for salt budgets of the Bay (Sections ref:sec:drivers and ref:sec:8n).
 
 * Observations
 <<sec:obs>>
@@ -330,8 +330,8 @@ More generally, mean diffusivity in the thermocline was approximately \SI{1e-4}{
 
 # Estimates of current shear are only available at the NRL moorings since the only velocity measurements at the RAMA moorings are a current meter at \SI{12}{m}.
 We now examine whether the seasonal cycle in $K_T$ can be linked to a seasonal cycle in local shear if present.
+Shear is estimated by central differencing the velocity over three \SI{8}{m} wide bins that span the χpods depth level.
 Shear can only be estimated at the deeper χpod on each NRL mooring because the shallower χpod was deployed within the blanking zone of the downward looking ADCP.
-Shear is estimated by central differencing the velocity over three \SI{8}{m} wide bins that span that χpods depth level.
 We account for seasonal as well as spatial variability in $N^2$ by WKB scaling the shear as $u_z\wkb = u_z (\tilde{N}(t)/N_0)^{3/2}$ using $\tilde{N}(t)$  calculated as the 30-day low-passed filtered $N$ and $N_0$ calculated as the annual mean $N$.
 
 Variance-preserving /Eulerian/ rotary spectra of the WKB-scaled shear time-series at all NRL moorings were dominated by a broad peak at $-f_0$, narrow secondary peaks at $-f_0 \pm ω_{M2}$ ($ω_{M2}$ is the $M_2$ tidal frequency) and significant energy at frequencies $\le \SI{20}{days}$ reflecting meanders of the Summer Monsoon Current (primarily at NRL3, the easternmost mooring on the 8°N line).
@@ -563,7 +563,7 @@ We find that thermocline mixing is primarily associated with bursts of near-iner
 In addition, we also found substantial covariation of near-inertial and low-frequency shear in the Bay's thermocline.
 Characterizing the seasonal cycle of the near-inertial shear field and understanding the mechanisms that drive that seasonal cycle at depth is thus of prime importance.
 These mechanisms include the interaction of near-inertial energy with lower-frequency mesoscale features citep:Johnston2016 as well as the sensitivity of downward radiation to multi-layer stratification citep:Lucas2016.
-Another puzzle is the extended period of low mixing during March and April — is the internal wave field weaker than that expected from the Garrett-Munk spectrum and if so, why?
+Another puzzle is the extended period of low mixing during March and April — is the internal wave field much weaker than that expected from the Garrett-Munk spectrum and if so, why?
 The Bay offers intriguing opportunities for studying the ocean's internal wave field and its links to turbulence.
 
 # For one, note the repeated correspondence of strong near-inertial shear with strong low-frequency shear in the south-central Bay during the SW monsoon --- a time-period of strong mesoscale variability (Figures ref:fig:scattershear and ref:fig:spatial).
