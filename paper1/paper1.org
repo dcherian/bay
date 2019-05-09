@@ -631,7 +631,7 @@ Processed turbulence datasets and EBoB mooring data are available from the autho
 RAMA mooring data are available at https://www.pmel.noaa.gov/tao/drupal/disdel/ courtesy of the GTMBA Project Office of NOAA/PMEL.
 We thank NOAA/PMEL and the Naval Research Laboratory for deploying χpods on their moorings.
 Sonya Brown (PMEL) graciously provided support and answered many questions about data collected by instruments on the RAMA moorings.
-We also acknowledge expert engineering and technical contributions from Pavan Vutukur, Kerry Latham and Craig van Appledorn, as well as many stimulating discussions with Johannes Becherer, Alexis Kaminski, Sally Warner, Eric D'Asaro and Jennifer MacKinnon.
+We also acknowledge expert engineering and technical contributions from Pavan Vutukur, Kerry Latham and Craig van Appledorn, as well as many stimulating discussions with Johannes Becherer, Alexis Kaminski, Sally Warner, Debasis Sengupta, J. Sree Lekha, Dipanjan Chaudhari, Eric D'Asaro and Jennifer MacKinnon.
 Many of these discussions were facilitated by the International Center for Theoretical Sciences, Tata Institute of Fundamental Research, Bangalore (ICTS/Prog-ommbob/2019/02).
 The Ssalto/Duacs altimeter products were produced and distributed by the Copernicus Marine and Environment Monitoring Service (CMEMS) (http://www.marine.copernicus.eu).
 The evaporation product was provided by the WHOI OAFlux project (http://oaflux.whoi.edu) funded by the NOAA Climate Observations and Monitoring (COM) program.
