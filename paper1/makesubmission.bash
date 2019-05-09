@@ -10,7 +10,6 @@ echo $pdflatexstr
 if [ $? == 0 ]; then
     latexmk -gg -c supplementary.tex
     latexmk -gg -pvc -latex="$pdflatexstr"  -pdf $fname.tex
-    latexmk -c paper1 supplementary
 fi
 exiftool -overwrite_original -Producer='$hash' $fname.pdf
 
