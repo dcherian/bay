@@ -1292,72 +1292,106 @@ f5.savefig('figure5-nrl.pdf', bbox_inches='tight')
 #+CAPTION: A year of observations at NRL5, 105m. Time series of daily averaged quantities: (a) Tropflux wind stress and wind-forced near-inertial energy flux; (b) daily averaged $K_T$ and fraction daily coverage; (c) turbulent heat and salt fluxes $J_q^t, J_s^t$; (d) Buoyancy frequency $N^2$ and temperature contribution to $N^2$, $g \alpha T_z$; (e) Weekly running mean of filtered squared WKB-scaled shear magnitude: 6.6 day low pass in black, near-inertial bandpass in green and the residual in orange; (f) Fraction of day where Richardson number $\Ri$ < 5. Background colors mark seasons; white region indicates time period that is subject of Figure [[fig:nrl5-niw]].
 [[file:figure5-nrl.pdf]]
 
+** Figure 5: NRL spectra
 
-f.savefig('images/paper1/scatter-ml-bl.pdf')
+#+CALL: read-nrl345()
+#+BEGIN_SRC jupyter-python
+f, axx = plt.subplots(3, 1, sharex=True, sharey=True)
+ax = dict(zip(['NRL3', 'NRL4', 'NRL5'], axx))
+
+m = nrl3
+
+for m in [nrl3, nrl4, nrl5]:
+    shear = m.interp_shear('bins')
+    f0 = m.inertial
+    f0m = f0 / 2
+    f0p = f0 * 2
+    M2m = 0.95 * (1.93 - f0)
+    M2p = 1.05 * (1.93 + f0)
+
+    fft = xrft.power_spectrum(shear.shear)
+    lo = np.sum(fft.where(np.abs(fft.freq_time) < 0.1/86400) * fft.freq_time_spacing)
+    niw = np.sum(fft.where((np.abs(fft.freq_time) < f0p/86400)
+                           & (np.abs(fft.freq_time) > f0m/86400))
+                 ,* fft.freq_time_spacing)
+    M2 = np.sum(fft.where((np.abs(fft.freq_time) > M2m/86400)
+                           & (np.abs(fft.freq_time) < M2p/86400))
+                 ,* fft.freq_time_spacing)
+
+    total = np.var(shear.shear)
+
+    hdl, _ = dcpy.ts.PlotSpectrum(shear.shear,
+                                   ax=ax[m.name],
+                                   twoside=False,
+                                   preserve_area=True)
+
+    hdl[0].set_color('k')
+    hdl[1].set_color('C3')
+    [hh.set_linewidth(0.9) for hh in hdl]
+
+    y0 = 1.2
+    text_kwargs = dict(transform=ax[m.name].get_xaxis_transform(), va='top')
+    ax[m.name].text(0.01, y0, f'lowpass: {(lo/total).values*100:.1f}%',
+                    ,**text_kwargs, color='k')
+    ax[m.name].text(0.14, y0, f'near-inertial: {(niw/total).values*100:.1f}%',
+                    ,**text_kwargs, color='C2')
+    ax[m.name].text(1.3, y0, f'$M_2$: {(M2/total).values*100:.1f}%',
+                    ,**text_kwargs, color='C1')
+
+    fill_kwargs = dict(transform=ax[m.name].get_xaxis_transform(),
+                       alpha=0.1, zorder=-10)
+    ax[m.name].fill_betweenx([0, 1],
+                             plt.gca().get_xlim()[0],
+                             0.1, color='k',
+                             ,**fill_kwargs)
+    ax[m.name].fill_betweenx([0, 1],
+                             f0m, f0p,
+                             color='C2',
+                             ,**fill_kwargs)
+    ax[m.name].fill_betweenx([0, 1],
+                             M2m, M2p, color='C1',
+                             ,**fill_kwargs)
+    ax[m.name].get_legend().set_visible(False)
+
+[ax.set_xlabel('') for ax in axx[:-1]]
+[ax.set_title('') for ax in axx]
+axx[0].set_ylim([0, 2.1e-5])
+f.legend(handles=hdl, labels=['CW', 'CCW'], loc='upper right')
+
+plt.tight_layout()
+
+f.set_size_inches((39 * 1/6.0255, 5))
+
+f.savefig('figure-xx-nrl-spectra.pdf', bbox_inches='tight')
 #+END_SRC
-#+NAME: fig:mlbl
-#+ATTR_LATEX: :width \columnwidth
-#+CAPTION: Diffusivity in the mixed and barrier layers is proportional to wind stress. Histogram of hourly averaged $K_T$ in the mixed and barrier layers ($K_T$ values that make up the mixed and barrier layer bins in Figure ref:fig:vert) against a mixing length estimate using friction velocity $u_{*}$ and depth scale of mixing $u_{*}/\sqrt{fN}$ citep:Pollard1972.
-[[file:images/paper1/scatter-ml-bl.pdf]]
 
-** Figure 6: ML scatter plot with ε                        :noexport:ignore:
+#+CAPTION: Variance preserving spectra of shear at the deepest $\chi$pod's depth level. Lowpass, near-inertial and $M_2$ bands (shading) as well as percentage of total shear variance in each band (text) are shown.
+[[file:figure-xx-nrl-spectra.pdf]]
 
-#+BEGIN_SRC jupyter-python :session py
-# df = bay.nc_to_binned_df(turb)
+**** check parsevals :noexport:
 
-# subset = (df.where(df.lon == 90)
-#           .where((df.bin == 'ML'))
-#           .where(np.abs(df.Tz) > 2e-3)
-#           .where(df.N2 > 0)
-#           .dropna())
 
-subset = usual.turb.sel(depth=15).to_dataframe(); title='normal';
-# subset = wda.turb.sel(depth=15).to_dataframe(); title='sorted'
+#+BEGIN_SRC jupyter-python
+import xfilter
+fft = xrft.power_spectrum(shear.shear)
 
-subset = subset.where(subset.mld < 20)
+np.sum(fft.where(np.abs(fft.freq_time) < 0.1/86400) * fft.freq_time_spacing)
 
-eps_wall = (subset.tau/1025)**(3/2)/0.41/subset.z
 
-f, ax = plt.subplots(1, 2, constrained_layout=True)
-mappable = ax[0].hexbin((subset.tau/1025)**(1/2) * 0.41 * subset.z,
-                        subset.KT, gridsize=35, mincnt=10,
-                        cmap=mpl.cm.Blues,
-                        xscale='log', yscale='log',
-                        edgecolors='k', linewidths=0.25)
-ax[0].set_xlabel('$κ z u_{*}$')
-ax[0].set_ylabel('$K_T$ [m² s$^{-1}$]')
-ax[0].set_ylim([1e-6, 1e-2])
-# ax[1].set_xlim([0, 0.02])
+np.var(xfilter.lowpass(shear.shear, 'time', freq=0.1, cycles_per='D'))
 
-mappable = ax[1].hexbin((subset.tau/1025)**(3/2)/0.41/subset.z,
-                        subset.ε, gridsize=35, mincnt=10,
-                        cmap=mpl.cm.Blues,
-                        xscale='log', yscale='log',
-                        edgecolors='k', linewidths=0.25)
-ax[1].set_xlabel('Law of the wall\n$ε = (τ/ρ_0)^{3/2}/(κ_{vk}z)$ [W kg$^{-1}$]')
-ax[1].set_ylabel('$ε_χ$ [W kg$^{-1}$]')
-ax[1].set_ylim([1e-9, 1e-4])
-ax[1].set_xlim([1e-9, 1e-4])
 
-f.colorbar(mappable, ax=ax, extend='max',
-           orientation='horizontal',
-           shrink=0.6,
-           label='Number of observations in bin')
 
-for aa in ax:
-    aa.grid(True)
-
-dcpy.plots.line45(ax=ax[1])
-
-# ax.set_xlim([0, 0.2])
-f.set_size_inches(7, 4)
-f.suptitle(title)
-
-# f.savefig('images/paper1/scatter-ml-bl.pdf')
+dcpy.ts.PlotSpectrum(shear.shear, multitaper=False)
+ax = plt.gca()
+cw = fft.where(fft.freq_time < 0, drop=True)
+ccw = fft.where(fft.freq_time > 0, drop=True)
+ax.plot(-cw.freq_time * 86400, cw/86400)
+ax.plot(ccw.freq_time * 86400, ccw/86400)
 #+END_SRC
-#+NAME: fig:mlbl
-#+CAPTION: Diffusivity in the mixed and barrier layers is proportional to wind stress. Histogram of hourly averaged $K_T$ in the mixed and barrier layers binned by wind stress.
-[[file:images/paper1/scatter-ml-bl.pdf]]
+
+#+RESULTS:
+| <matplotlib.lines.Line2D | at | 0x7fa84b96d9b0> |
 
 ** Figure 6: NRL5 zoom-in                                           :ignore:
 
