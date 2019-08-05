@@ -269,57 +269,20 @@ Enhanced mixing is also observed during October and November, likely a consequen
 The transition months of March and April (NESW) exhibit mixing that is weaker by an order of magnitude at all observed locations.
 Next we study the seasonal cycle in Figure ref:fig:vert in more detail and examine possible drivers of this seasonal cycle.
 
-* Drivers of seasonal variations in mixing
+
+** Drivers of seasonal variations in mixing
 <<sec:drivers>>
 
 # For a broad perspective, we will explore the variation of near-surface mixing (bins `ML', `BL' in Figure ref:fig:vert) with seasonally-varying wind stress, and the variation of thermocline mixing (deeper density bins) with the seasonal cycle in both low-frequency and near-inertial shear fields.
-We begin by contrasting two year-long mixing records that are representative of the shallowest two and the deepest two bins in Figure ref:fig:vert by presenting averaged turbulence quantities as well as daily-averaged surface forcing quantities for the RAMA 12N (12N, 90E) mooring at 15m and the other from the NRL5 mooring (8°N, 88.5E) at 104m (Figures ref:fig:rama and ref:fig:nrl).
+# We begin by contrasting two year-long mixing records that are representative of the shallowest two and the deepest two bins in Figure ref:fig:vert by presenting averaged turbulence quantities as well as daily-averaged surface forcing quantities for the RAMA 12N (12N, 90E) mooring at 15m and the other from the NRL5 mooring (8°N, 88.5E) at 104m (Figures ref:fig:rama and ref:fig:nrl).
 
-Frequent flagging of inferred $K_T, J_q^t$ and $J_s^t$ when the χpod is in mixed layer means that the term ``daily averages'' is not entirely accurate when applied to the $K_T$ time series in Figure [[fig:rama]]b (Section [[sec:obs]]ref:sec:pod).
-Consider data from the RAMA 12N mooring in the month of February (Figure [[fig:rama]]b).
-At night during weak wind periods the 15m χpod appears to be within the night-time convective boundary layer whereas during the daytime, solar heating builds up stratification at 15m.
-At such times we can only estimate $K_T$ during the day when $T_z > \SI{1e-3}{\celsius\per\m}$.
-The ``daily average'' is really a ``daytime average'' estimate of $K_T$ and fraction daily coverage is approximately 50%.
-Accordingly we show the fraction of the day with valid $K_T$ estimates (Figures [[fig:rama]]e and [[fig:nrl]]b).
-In general, the ``daily-averaged'' turbulence quantities presented in Figure [[fig:rama]] are overestimates.
-
-** Near-surface mixing at the RAMA moorings
-
-The 15m χpod at RAMA 12N recorded a distinctly seasonal cycle in daily averaged diffusivity $K_T$ (Figure [[fig:rama]]b) that mirrors the seasonal cycle in surface wind stress (Figure [[fig:rama]]a).
-cite:Warner2016 summarized this record previously and so we limit ourselves to a brief description here.
-The general patterns described below are repeated at 12°N and 15°N in 2015 (Supplementary Information, Figures S5--S7).
-Panels b--f in Figure [[fig:rama]] present two estimates in each panel: one using $T_z\sort$ (black) and another using $T_z\moor$ (blue).
-
-During the northeast monsoon, wind stress $τ$ of approximately \SI{0.1}{\N\per\m\squared} forced turbulence with a daily averaged value of $K_T \approxeq \SI{1e-4}{\m\squared\per\s}$ (calculated using $T_z\sort$; sorted) and $\SI{1e-3}{\m\squared\per\sec}$ (calculated using $T_z\moor$; mooring).
-By mid-February a fresh water pulse arrived at the mooring and the mixed layer shallowed to approximately \SI{10}{m}.
-Such freshwater pulses in February are common in the historic RAMA 12°, 15°N records and surface salinity maps suggest the source to be the Irrawady river.
-Increased turbulence fluxes $J_q^t$ and $J_s^t$ were inferred at \SI{15}{m} during this period (Figure [[fig:rama]]c) but no such enhancement was inferred from the deeper χpod at 30m (in the barrier layer; not shown).
-In March, the weakening wind stress field along with intense surface heating built up near-surface stratification (Figure [[fig:rama]]f), the mixed layer shoaled to a depth shallower than 15m, the \SI{15}{m} χpod recorded weak turbulent fluctuations and $K_T$ decreased to \SI{1e-5}{\m\squared\per\s} (both estimates) associated with near-negligible fluxes $J_q^t$ and $J_s^t$.
-Between May and September, the strong winds of the SW monsoon forced high mixing, a deeper mixed layer, a hundredfold increase in both estimates of $K_T$ and significant increases in $J_q^t$ and $J_s^t$.
-Tropical cyclones and storms during the months of October & November drive a brief 2-3 order of magnitude increase in diffusivity; for e.g. Tropical Cyclone Hudhud (October 6-10) in Figure [[fig:rama]]a.
-Such cyclone-forced mixing can have important consequences for productivity in the Bay: for an analysis of Tropical Cyclone Hudhud see cite:Girishkumar2019.
-The arrival of the Ganga-Brahmaputra-Meghna river plume in August at 18°N shuts down mixing even at \SI{65}{m} depth at 18°N  citep:Thakur2019.
-Interestingly, such a shutdown of mixing is not visible at either 12°N or 15°N in the three instrument-years of observations at these two locations.
-
-*** Scatter :noexport:
-The seasonal cycle of near-surface turbulence is readily explained by the seasonal cycle of wind stress in agreement with cite:Warner2016.
-Mixing in the mixed and barrier layers is proportional to the wind stress $τ$ — consider a histogram of hourly mean $K_T$ from the `ML' and `BL' bins in Figure ref:fig:vert against a scaling estimate $K_T^{PRT}$ that combines mixing length theory and the depth scale from cite:Pollard1972:
-\begin{align}
-        K_T^{PRT} &\sim \text{velocity scale} \times \text{length scale} \\
-                &= u_* \frac{u_*}{\sqrt{fN}} = \frac{τ}{ρ_0 \sqrt{fN}}
-\end{align}
-Hourly mean friction velocity $u_* = \sqrt{τ/ρ_0}^{}$ is estimated using $τ$ measured locally at the RAMA moorings (Figure ref:fig:mlbl).
-There is a large amount of scatter but also a systematic increase in turbulent diffusivities as the friction velocity increases.
-We thus attribute the seasonal cycle of near-surface mixing to the seasonal cycle in wind stress.
-- Eric D'Asaro suggested this scaling; but I haven't thought about it too much yet. I need to re-read cite:Pollard1972.
-- In general, this section is weak. Any suggestions would be very helpful.
-
-# - Mixed layer diffusivity $K_T \approx \SI{1e-3}{m²\per\s}$ during the two monsoons and drops to $K_T\approx\SI{1e-4}{m²\per\s}$ during the two transitions.
-# - During March and April, both weak winds and near-surface stratification resulting from net surface heating weaken mixed layer turbulence.
-
-
-
-** Thermocline mixing in the south-central Bay (NRL EBoB)
+# Frequent flagging of inferred $K_T, J_q^t$ and $J_s^t$ when the χpod is in mixed layer means that the term ``daily averages'' is not entirely accurate when applied to the $K_T$ time series in Figure [[fig:rama]]b (Section [[sec:obs]]ref:sec:pod).
+# Consider data from the RAMA 12N mooring in the month of February (Figure [[fig:rama]]b).
+# At night during weak wind periods the 15m χpod appears to be within the night-time convective boundary layer whereas during the daytime, solar heating builds up stratification at 15m.
+# At such times we can only estimate $K_T$ during the day when $T_z > \SI{1e-3}{\celsius\per\m}$.
+# The ``daily average'' is really a ``daytime average'' estimate of $K_T$ and fraction daily coverage is approximately 50%.
+# Accordingly we show the fraction of the day with valid $K_T$ estimates (Figures [[fig:rama]]e and [[fig:nrl]]b).
+# In general, the ``daily-averaged'' turbulence quantities presented in Figure [[fig:rama]] are overestimates.
 
 # #+LATEX: \note{brief outline, mention low mixing Figure \ref{fig:nrl}}
 The seasonal cycle of thermocline turbulence is dramatic.
@@ -629,9 +592,9 @@ Again, we see the combination of near-inertial waves and internal nonlinear inte
 
 This work was supported under US Office of Naval Research grant numbers N00014-15-1-2634 and N00014-17-2472.
 Processed turbulence datasets and EBoB mooring data are available from the authors upon request.
-RAMA mooring data are available at https://www.pmel.noaa.gov/tao/drupal/disdel/ courtesy of the GTMBA Project Office of NOAA/PMEL.
-We thank NOAA/PMEL and the Naval Research Laboratory for deploying χpods on their moorings.
-Sonya Brown (PMEL) graciously provided support and answered many questions about data collected by instruments on the RAMA moorings.
+# RAMA mooring data are available at https://www.pmel.noaa.gov/tao/drupal/disdel/ courtesy of the GTMBA Project Office of NOAA/PMEL.
+# We thank NOAA/PMEL and the Naval Research Laboratory for deploying χpods on their moorings.
+# Sonya Brown (PMEL) graciously provided support and answered many questions about data collected by instruments on the RAMA moorings.
 We also acknowledge expert engineering and technical contributions from Pavan Vutukur, Kerry Latham and Craig van Appledorn, as well as many stimulating discussions with Johannes Becherer, Alexis Kaminski, Sally Warner, Debasis Sengupta, J. Sree Lekha, Dipanjan Chaudhari, Eric D'Asaro and Jennifer MacKinnon.
 Many of these discussions were facilitated by a visit to the International Centre for Theoretical Sciences (ICTS) for participating in the program - Air-sea Interactions in the Bay of Bengal From Monsoons to Mixing (Code: ICTS/ommbob2019/02).
 The Ssalto/Duacs altimeter products were produced and distributed by the Copernicus Marine and Environment Monitoring Service (CMEMS) (http://www.marine.copernicus.eu).
@@ -727,7 +690,15 @@ print(tabulate.tabulate(medianKT,
 
 :end:
 
-* Appendix C: Estimating sorted gradients for surface-pumped χpods :ignore:
+* Appendix C: Detecting weak turbulence                              :ignore:
+\appendix[D]
+\appendixtitle{Detecting weak turbulence}
+The voltage recorded by the FP-07 temperature sensor in the χpod is differentiated by an analog differentiator circuit and then digitized using an analog-to-digital converter (ADC) whose noise level is 6 voltage levels peak-to-peak.
+We estimate the spectral energy level of the discretized white noise voltage time series of that amplitude for a 1 second subset of data and combine it with the instrument calibration coefficients as in cite:Becherer2017 to get a dimensional spectral energy density level that would result when the ADC records ``bit noise''.
+Multiplying this noise spectral energy density level by frequency bandwidth gives an estimate of the instrument's ``noise floor'' i.e. an estimate of the variance when the data recorded over 1 second is bit noise.
+
+# 4.096V using 16 bit quantization i.e. $2^{16}$ voltage levels.
+* Appendix C: Estimating sorted gradients for surface-pumped χpods :ignore:noexport:
 \appendix[C]
 \appendixtitle{Estimating sorted gradients for surface-pumped χpods}
 
@@ -763,14 +734,6 @@ As reference we show two other estimates of background gradients in Figure [[fig
 In general, we find that the sorted gradient is larger than the mooring estimate by a factor of two to ten when gradients are on the order of \SI{1e-3}{\celsius\per\m}.
 When gradient is on the order of \SI{1e-2}{\celsius\per\m} or more, all three estimates generally agree to within a factor of two.
 
-* Appendix D: Detecting weak turbulence :ignore:
-\appendix[D]
-\appendixtitle{Detecting weak turbulence}
-The voltage recorded by the FP-07 temperature sensor in the χpod is differentiated by an analog differentiator circuit and then digitized using an analog-to-digital converter (ADC) whose noise level is 6 voltage levels peak-to-peak.
-We estimate the spectral energy level of the discretized white noise voltage time series of that amplitude for a 1 second subset of data and combine it with the instrument calibration coefficients as in cite:Becherer2017 to get a dimensional spectral energy density level that would result when the ADC records ``bit noise''.
-Multiplying this noise spectral energy density level by frequency bandwidth gives an estimate of the instrument's ``noise floor'' i.e. an estimate of the variance when the data recorded over 1 second is bit noise.
-
-# 4.096V using 16 bit quantization i.e. $2^{16}$ voltage levels.
 * References :ignore:
 
 [[bibliography:bibtexLibrary.bib]]
@@ -1274,79 +1237,6 @@ plt.savefig('images/paper1/bay-KT-vert-profile.png', bbox_inches='tight')
 #+CAPTION: \small The seasonal cycle of $K_T$. (top) Basin-wide seasonal averages of daily Tropflux wind stress $\tau$, near-inertial energy input $\Pi$, daily Tropflux net surface heat flux $J_q^0$ and TRMM precipitation $P$. Wind stres variability is represented by gray ellipses with widths and heights equal to twice the standard deviation of $\tau_x$ and $\tau_y$. (bottom) Vertical profile of hourly averaged $K_T$ formed by combining all estimates in density bins (Section [[sec:profile]]). PDFs as well as means and medians are shown. Bins are marked by 'ML' (mixed layer), 'BL' (barrier layer) and $\rho-1000$ for deeper bins. PDFs of both moored and sorted estimates are shown for the upper three bins (above and below the baseline respectively). Orange horizontal line marks the climatological depth of the $S=34.75$ isohaline at 8N estimated using the Argo climatology. Vertical lines mark standard deviation of measurement depths in each bin --- these lines tend to overlap each other. Each PDF is colored according to data coverage: one means that there is at least one hourly estimate for every hour in the season.
 file:figure3-profile.pdf
 
-** Figure 4: RAMA 12N time series                                   :ignore:
-
-#+BEGIN_SRC jupyter-python :session py
-if 'ra12' not in locals():
-    ra12 = bay.read_ra12()
-
-if 'n12' not in locals():
-    mooring = xr.open_dataset('../estimates/bay_merged_mooring_10min.nc')
-    n12 = mooring.sel(lat=12, lon=90, depth=15).load()
-
-f, axx = plt.subplots(6, 1, sharex=True, constrained_layout=True)
-f.set_constrained_layout_pads(hspace=0.001, h_pad=0)
-
-ax12 = bay.plots.plot_rama(ra12, idepth=0, axx=axx)
-for var, axis in zip(['KT', 'Js', 'Tz'],
-                     ['KT', 'js', 'N2']):
-
-    if var == 'Tz':
-        plot_var = n12['Tz'] * 9.81 * 1.7e-4/1e-4
-    else:
-        plot_var = n12[var]
-
-    hh = (plot_var.sel(time='2014')
-          .resample(time='D').mean('time')
-          .plot(ax=ax12[axis], color='C0', _labels=False))
-
-    if var == 'KT':
-        dcpy.plots.annotate_end(hh[0], 'mooring')
-
-
-t=  n12.time.resample(time='D').mean('time').values
-ax12['jq'].bar(t,
-               n12.Jq.where(n12.Jq > 0).resample(time='D').mean('time'),
-               color='none',
-               edgecolor='k')
-ax12['jq'].bar(t,
-               n12.Jq.where(n12.Jq < 0).resample(time='D').mean('time'),
-               color='none',
-               edgecolor='k')
-
-fraction = (n12.KT.sel(time='2014')
-            .groupby(n12.time.sel(time='2014').dt.floor('D'))
-            .count()/144)
-fraction.plot(ax=ax12['coverage'], color='C0', _labels=False)
-
-ax12['jq'].set_ylim([-200, 200])
-ax12['N2'].set_ylim([-1, 5])
-ax12['N2'].set_zorder(0)
-# ax12['js'].set_ylim([-1e-2, 2e-1])
-
-flux = ra12.flux.Jq0.sel(time='2014').resample(time='D').mean('time')
-ax12['flux'] = ax12['met'].twinx()
-ra12.PlotFlux(ax12['flux'], flux.time.values, flux)
-ax12['flux'].spines['right'].set_visible(True)
-ax12['flux'].set_ylabel('Daily avg. net surface\nheat flux [W/m²]')
-dcpy.plots.label_subplots(axx, y=0.85)
-
-ax12['N2'].legend(labels=['$gαT_z^{sort}$', '$N^2$', '$gαT_z^{moor}$'], ncol=3)
-ax12['N2'].axhline(0, color='gray', ls='--', zorder=-1, lw=0.5)
-
-f.set_size_inches((8, 8))
-
-axx[-1].xaxis.set_major_formatter(mpl.dates.DateFormatter('%b'))
-[tt.set_rotation(0) for tt in axx[-1].get_xticklabels()]
-[tt.set_ha('center') for tt in axx[-1].get_xticklabels()]
-
-# f.savefig('images/paper1/rama12.pdf')
-#+END_SRC
-#+NAME: fig:rama
-#+ATTR_LATEX: :float multicolumn
-#+CAPTION: A year of observations at RAMA 12N, 15m. Time series of daily averaged quantities: (a) locally measured wind stress $\tau$ and locally measured net surface heat flux $J_q^0$ (positive heats the ocean); (b) $K_T$; (c) $J_q^t$; (d) $J_s^t$; (e) fraction daily coverage; (f) buoyancy frequency $N^2$ and temperature contribution to $N²$ using $g \alpha T_z$. In panels (b--f) the estimate using the sorted gradient is in black while that using the mooring gradient is in blue. Background colors mark seasons.
-[[file:figure4-rama.pdf]]
-
 ** Figure 5: NRL time series                                        :ignore:
 
 #+BEGIN_SRC jupyter-python
@@ -1402,37 +1292,6 @@ f5.savefig('figure5-nrl.pdf', bbox_inches='tight')
 #+CAPTION: A year of observations at NRL5, 105m. Time series of daily averaged quantities: (a) Tropflux wind stress and wind-forced near-inertial energy flux; (b) daily averaged $K_T$ and fraction daily coverage; (c) turbulent heat and salt fluxes $J_q^t, J_s^t$; (d) Buoyancy frequency $N^2$ and temperature contribution to $N^2$, $g \alpha T_z$; (e) Weekly running mean of filtered squared WKB-scaled shear magnitude: 6.6 day low pass in black, near-inertial bandpass in green and the residual in orange; (f) Fraction of day where Richardson number $\Ri$ < 5. Background colors mark seasons; white region indicates time period that is subject of Figure [[fig:nrl5-niw]].
 [[file:figure5-nrl.pdf]]
 
-** Figure 6: ML scatter plot                                        :noexport:ignore:
-
-#+BEGIN_SRC jupyter-python :session py
-
-df = bay.nc_to_binned_df(turb)
-
-subset = (df.where(df.lon == 90)
-          .dropna())
-
-ustar = (subset.tau/1025)**(1/2)
-
-f, ax = plt.subplots(1, 1, constrained_layout=True)
-mappable = ax.hexbin(ustar**2
-                     / np.sqrt(dcpy.oceans.coriolis(subset.lat)
-                               ,* np.sqrt(subset.N2)),
-                     (subset.KT),
-                     gridsize=40, mincnt=5,
-                     cmap=mpl.cm.Blues, vmin=0, vmax=90,
-                     # extent=[0, 0.02, -6, -2],
-                     xscale='log', yscale='log',
-                     edgecolors='k', linewidths=0.25)
-# ax.set_xlabel('Friction velocity $u_{*} = (τ/ρ_0)^{1/2}$ [m s$^{-1}$]')
-ax.set_xlabel(r'$K_T^{PRT} = u_{*}^2/\sqrt{fN}$ [m$^2$ s$^{-1}$]')
-f.colorbar(mappable, ax=ax, extend='max', label='count')
-# ax.set_xlabel('Wind stress $τ$ [N m$^{-2}$]')
-ax.set_ylabel('$K_T$ [m² s$^{-1}$]')
-
-ax.grid(True)
-# ax.set_xlim([0, 0.02])
-# ax.set_ylim([1e-6, 1e-2])
-f.set_size_inches(4, 3.3)
 
 f.savefig('images/paper1/scatter-ml-bl.pdf')
 #+END_SRC
@@ -2027,7 +1886,178 @@ f.savefig('figure8-8n.pdf', bbox_to_inches='tight')
 #+CAPTION: Turbulent salt flux $J_s^t$ at 8N. (a, b) Scatter plots of hourly averaged $J_s^t$ in depth and salinity spaces respectively. Points with larger $J_s^t$ are plotted over points with lower $J_q^t$ so that high flux events are prominent. (c) Monthly averaged turbulent $J_s^t$ through salinity surfaces $S=34.25, 34.75$ and $35.5$. These are estimated by bin averaging the values in (b) in bins with edges [34, 34.5, 35, 36]. Bins with less than one instrument-month of data are not shown. Those with less than two instrument months of data are grayed out. (d) Monthly averaged surface salinity flux $S_0 (E-P)$ estimated using evaporation from OAFlux and precipitation from TRMM. $S_0$ is assumed to be 32. In orange is $J_s^t$ through $S=34.75$ from (c) with bootstrap error bars.
 [[file:figure8-8n.pdf]]
 
-** Figure 9: Sorted estimate :ignore:
+** Figure 4: RAMA 12N time series                                   :ignore:noexport:
+
+#+BEGIN_SRC jupyter-python
+if 'ra12' not in locals():
+    ra12 = bay.read_ra12()
+
+if 'n12' not in locals():
+    mooring = xr.open_dataset('../estimates/bay_merged_mooring_10min.nc')
+    n12 = mooring.sel(lat=12, lon=90, depth=15).load()
+
+f, axx = plt.subplots(6, 1, sharex=True, constrained_layout=True)
+f.set_constrained_layout_pads(hspace=0.001, h_pad=0)
+
+ax12 = bay.plots.plot_rama(ra12, idepth=0, axx=axx)
+for var, axis in zip(['KT', 'Js', 'Tz'],
+                     ['KT', 'js', 'N2']):
+
+    if var == 'Tz':
+        plot_var = n12['Tz'] * 9.81 * 1.7e-4/1e-4
+    else:
+        plot_var = n12[var]
+
+    hh = (plot_var.sel(time='2014')
+          .resample(time='D').mean('time')
+          .plot(ax=ax12[axis], color='C0', _labels=False))
+
+    if var == 'KT':
+        dcpy.plots.annotate_end(hh[0], 'mooring')
+
+
+t=  n12.time.resample(time='D').mean('time').values
+ax12['jq'].bar(t,
+               n12.Jq.where(n12.Jq > 0).resample(time='D').mean('time'),
+               color='none',
+               edgecolor='k')
+ax12['jq'].bar(t,
+               n12.Jq.where(n12.Jq < 0).resample(time='D').mean('time'),
+               color='none',
+               edgecolor='k')
+
+fraction = (n12.KT.sel(time='2014')
+            .groupby(n12.time.sel(time='2014').dt.floor('D'))
+            .count()/144)
+fraction.plot(ax=ax12['coverage'], color='C0', _labels=False)
+
+ax12['jq'].set_ylim([-200, 200])
+ax12['N2'].set_ylim([-1, 5])
+ax12['N2'].set_zorder(0)
+# ax12['js'].set_ylim([-1e-2, 2e-1])
+
+flux = ra12.flux.Jq0.sel(time='2014').resample(time='D').mean('time')
+ax12['flux'] = ax12['met'].twinx()
+ra12.PlotFlux(ax12['flux'], flux.time.values, flux)
+ax12['flux'].spines['right'].set_visible(True)
+ax12['flux'].set_ylabel('Daily avg. net surface\nheat flux [W/m²]')
+dcpy.plots.label_subplots(axx, y=0.85)
+
+ax12['N2'].legend(labels=['$gαT_z^{sort}$', '$N^2$', '$gαT_z^{moor}$'], ncol=3)
+ax12['N2'].axhline(0, color='gray', ls='--', zorder=-1, lw=0.5)
+
+f.set_size_inches((8, 8))
+
+axx[-1].xaxis.set_major_formatter(mpl.dates.DateFormatter('%b'))
+[tt.set_rotation(0) for tt in axx[-1].get_xticklabels()]
+[tt.set_ha('center') for tt in axx[-1].get_xticklabels()]
+
+# f.savefig('images/paper1/rama12.pdf')
+#+END_SRC
+#+NAME: fig:rama
+#+ATTR_LATEX: :float multicolumn
+#+CAPTION: A year of observations at RAMA 12N, 15m. Time series of daily averaged quantities: (a) locally measured wind stress $\tau$ and locally measured net surface heat flux $J_q^0$ (positive heats the ocean); (b) $K_T$; (c) $J_q^t$; (d) $J_s^t$; (e) fraction daily coverage; (f) buoyancy frequency $N^2$ and temperature contribution to $N²$ using $g \alpha T_z$. In panels (b--f) the estimate using the sorted gradient is in black while that using the mooring gradient is in blue. Background colors mark seasons.
+[[file:figure4-rama.pdf]]
+
+** Figure 6: ML scatter plot                                        :noexport:ignore:
+
+#+BEGIN_SRC jupyter-python
+
+df = bay.nc_to_binned_df(turb)
+
+subset = (df.where(df.lon == 90)
+          .dropna())
+
+ustar = (subset.tau/1025)**(1/2)
+
+f, ax = plt.subplots(1, 1, constrained_layout=True)
+mappable = ax.hexbin(ustar**2
+                     / np.sqrt(dcpy.oceans.coriolis(subset.lat)
+                               ,* np.sqrt(subset.N2)),
+                     (subset.KT),
+                     gridsize=40, mincnt=5,
+                     cmap=mpl.cm.Blues, vmin=0, vmax=90,
+                     # extent=[0, 0.02, -6, -2],
+                     xscale='log', yscale='log',
+                     edgecolors='k', linewidths=0.25)
+# ax.set_xlabel('Friction velocity $u_{*} = (τ/ρ_0)^{1/2}$ [m s$^{-1}$]')
+ax.set_xlabel(r'$K_T^{PRT} = u_{*}^2/\sqrt{fN}$ [m$^2$ s$^{-1}$]')
+f.colorbar(mappable, ax=ax, extend='max', label='count')
+# ax.set_xlabel('Wind stress $τ$ [N m$^{-2}$]')
+ax.set_ylabel('$K_T$ [m² s$^{-1}$]')
+
+ax.grid(True)
+# ax.set_xlim([0, 0.02])
+# ax.set_ylim([1e-6, 1e-2])
+f.set_size_inches(4, 3.3)
+
+f.savefig('images/paper1/scatter-ml-bl.pdf')
+#+END_SRC
+#+NAME: fig:mlbl
+#+ATTR_LATEX: :width \columnwidth
+#+CAPTION: Diffusivity in the mixed and barrier layers is proportional to wind stress. Histogram of hourly averaged $K_T$ in the mixed and barrier layers ($K_T$ values that make up the mixed and barrier layer bins in Figure ref:fig:vert) against a mixing length estimate using friction velocity $u_{*}$ and depth scale of mixing $u_{*}/\sqrt{fN}$ citep:Pollard1972.
+[[file:images/paper1/scatter-ml-bl.pdf]]
+
+** Figure 6: ML scatter plot with ε                        :noexport:ignore:
+
+#+BEGIN_SRC jupyter-python
+# df = bay.nc_to_binned_df(turb)
+
+# subset = (df.where(df.lon == 90)
+#           .where((df.bin == 'ML'))
+#           .where(np.abs(df.Tz) > 2e-3)
+#           .where(df.N2 > 0)
+#           .dropna())
+
+subset = usual.turb.sel(depth=15).to_dataframe(); title='normal';
+# subset = wda.turb.sel(depth=15).to_dataframe(); title='sorted'
+
+subset = subset.where(subset.mld < 20)
+
+eps_wall = (subset.tau/1025)**(3/2)/0.41/subset.z
+
+f, ax = plt.subplots(1, 2, constrained_layout=True)
+mappable = ax[0].hexbin((subset.tau/1025)**(1/2) * 0.41 * subset.z,
+                        subset.KT, gridsize=35, mincnt=10,
+                        cmap=mpl.cm.Blues,
+                        xscale='log', yscale='log',
+                        edgecolors='k', linewidths=0.25)
+ax[0].set_xlabel('$κ z u_{*}$')
+ax[0].set_ylabel('$K_T$ [m² s$^{-1}$]')
+ax[0].set_ylim([1e-6, 1e-2])
+# ax[1].set_xlim([0, 0.02])
+
+mappable = ax[1].hexbin((subset.tau/1025)**(3/2)/0.41/subset.z,
+                        subset.ε, gridsize=35, mincnt=10,
+                        cmap=mpl.cm.Blues,
+                        xscale='log', yscale='log',
+                        edgecolors='k', linewidths=0.25)
+ax[1].set_xlabel('Law of the wall\n$ε = (τ/ρ_0)^{3/2}/(κ_{vk}z)$ [W kg$^{-1}$]')
+ax[1].set_ylabel('$ε_χ$ [W kg$^{-1}$]')
+ax[1].set_ylim([1e-9, 1e-4])
+ax[1].set_xlim([1e-9, 1e-4])
+
+f.colorbar(mappable, ax=ax, extend='max',
+           orientation='horizontal',
+           shrink=0.6,
+           label='Number of observations in bin')
+
+for aa in ax:
+    aa.grid(True)
+
+dcpy.plots.line45(ax=ax[1])
+
+# ax.set_xlim([0, 0.2])
+f.set_size_inches(7, 4)
+f.suptitle(title)
+
+# f.savefig('images/paper1/scatter-ml-bl.pdf')
+#+END_SRC
+#+NAME: fig:mlbl
+#+CAPTION: Diffusivity in the mixed and barrier layers is proportional to wind stress. Histogram of hourly averaged $K_T$ in the mixed and barrier layers binned by wind stress.
+[[file:images/paper1/scatter-ml-bl.pdf]]
+
+** Figure 9: Sorted estimate :ignore:noexport:
 
 #+NAME: fig:wda
 #+ATTR_LATEX: :float multicolumn
