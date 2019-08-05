@@ -55,8 +55,10 @@ if 'nrl5' not in locals():
     nrl5 = bay.read_nrl5()
 
 if 'tropflux' not in locals():
-    tropflux = (xr.open_mfdataset('../datasets/tropflux/tau*_tropflux_1d_*.nc')
-                .drop('tau')
+    tropflux_big = (xr.open_mfdataset('../datasets/tropflux/tau*_tropflux_1d_*.nc')
+                    .drop('tau'))
+
+    tropflux = (tropflux_big
                 .sel(time=slice('2013-12-01', '2014-11-30'),
                      latitude=slice(2, 25),
                      longitude=slice(78, 96))
@@ -77,11 +79,10 @@ if 'wind_input' not in locals():
 
 if 'trmm' not in locals():
     trmm = dcpy.oceans.read_trmm()
-    # convert from mm/day to m/s
     P = trmm.precipitation.sel(**bay.region).load()
     P = P.groupby(P.time.monsoon.labels).mean(xr.ALL_DIMS)
-    P.attrs['units'] = 'mm/day'
 
+    # convert from mm/day to m/s
     P8 = (trmm.precipitation.sel(lon=slice(85, 89))
          .sel(lat=8, method='nearest').drop('lat')
          .mean('lon'))[1:-1].load() * 1e-3/86400
@@ -879,13 +880,40 @@ neat_table = (pd.pivot_table(table,
 :PROPERTIES:
 :header-args: :results none
 :END:
+
 ** Figure 1: spatial maps of EKE etc.                               :ignore:
 
 #+BEGIN_SRC jupyter-python
-niw_split = (wind_input
-             .sel(time=slice('2013-12-01', '2014-11-30'))
-             .groupby(wind_input.time.monsoon.splitlabels)
+def quiver(ds, x, y, u, v, ax, **kwargs):
+    x, y, u, v = xr.broadcast(ds[x], ds[y], ds[u], ds[v])
+    ax.quiver(x.values, y.values, u.values, v.values, **kwargs)
+
+big_region = dict(longitude=slice(45, 100),
+              latitude=slice(-10, 26),
+              time=slice('2013-12-01', '2014-11-30'))
+
+if 'mean_precips' not in locals():
+    mean_precips = (trmm
+                    .rename({'lat': 'latitude',
+                             'lon': 'longitude'})
+                    .sel(**big_region)
+                    .groupby(trmm.time.sel(time=big_region['time']).monsoon.labels)
+                    .mean('time'))
+
+if 'means' not in locals():
+    means = (tropflux_big
+             .sel(**big_region)
+             .load()
+             .isel(longitude=slice(None, None, 2),
+                   latitude=slice(None, None, 2))
+             .groupby(tropflux.time.sel(time=big_region['time']).monsoon.labels)
              .mean('time'))
+
+if 'niw_split' not in locals():
+    niw_split = (wind_input
+                 .sel(time=slice('2013-12-01', '2014-11-30'))
+                 .groupby(wind_input.time.monsoon.splitlabels)
+                 .mean('time'))
 
 if 'oscar' not in locals():
     oscar = (xr.open_mfdataset('/home/deepak/work/datasets/oscar/oscar_vel*.nc',
@@ -921,34 +949,87 @@ def common(ax):
     #                fontsize=7, markersize=8)
 
 
+#     f, ax = plt.subplots(4, 5,
+#                          subplot_kw=dict(projection=ccrs.PlateCarree()),
+#                          constrained_layout=True)
+
+
+# f.set_size_inches(6.5, 6.5)
+# f.set_constrained_layout_pads(w_pad=0/72, h_pad=0/72)
+# f.set_constrained_layout(True)
+# [common(aa) for aa in ax.flat[5:]]
+
+
 with mpl.style.context({'axes.titlesize': 9,
                         'axes.labelsize': 9,
                         'xtick.labelsize': 9,
                         'ytick.labelsize': 9,}):
-    f, ax = plt.subplots(3, 5, sharex=True, sharey=True,
-                         subplot_kw=dict(projection=ccrs.PlateCarree()),
-                         constrained_layout=True)
-f.set_size_inches(6.5, 6.5)
-f.set_constrained_layout_pads(w_pad=0/72, h_pad=0/72)
-f.set_constrained_layout(True)
-[common(aa) for aa in ax.flat]
+    f = plt.figure(constrained_layout=True)
+    gs = f.add_gridspec(2, 1, height_ratios=[1, 3])
+    gstop = gs[0].subgridspec(1, 2)
+    gsbot = gs[1].subgridspec(3, 5)
+    axes = dict()
+    axes['big'] = dict()
+    axes['big']['NE'] = f.add_subplot(gstop[0], projection=ccrs.PlateCarree())
+    axes['big']['SW'] = f.add_subplot(gstop[1], projection=ccrs.PlateCarree())
+    axes['big']['SW'].yaxis.set_tick_params(which='both', labelleft=False, labelright=False)
 
-axes = dict()
-if ax.shape[0] > ax.shape[1]:
-    axes['oce'] = dict(zip(bay.splitseasons, ax[:, 0]))
-    axes['atm'] = dict(zip(bay.splitseasons, ax[:, 1]))
-    axes['iso'] = dict(zip(bay.splitseasons, ax[:, 2]))
-else:
-    axes['oce'] = dict(zip(bay.splitseasons, ax[0, :]))
-    axes['atm'] = dict(zip(bay.splitseasons, ax[1, :]))
-    axes['iso'] = dict(zip(bay.splitseasons, ax[2, :]))
+    # Create array to hold all axes.
+    nrows=3; ncols=5
+    axarr = np.empty((nrows, ncols), dtype=object)
+    for row in range(nrows):
+        for col in range(ncols):
+            axarr[row, col] = f.add_subplot(gsbot[row, col],
+                                            projection=ccrs.PlateCarree(),
+                                            sharex=axarr[0, 0],
+                                            sharey=axarr[0, 0])
+
+    for ax in axarr[:-1, :].flat:
+        ax.xaxis.set_tick_params(which='both',
+                                 labelbottom=False, labeltop=False)
+        ax.xaxis.offsetText.set_visible(False)
+    for ax in axarr[:, 1:].flat:
+        ax.yaxis.set_tick_params(which='both',
+                                 labelleft=False, labelright=False)
+        ax.yaxis.offsetText.set_visible(False)
+
+f.set_size_inches(6.5, 9)
+# f.set_constrained_layout_pads(w_pad=0/72, h_pad=0/72)
+
+for season, aa in axes['big'].items():
+    bay.plots.plot_coastline(aa, rivers=False)
+    aa.set_extent([45, 100, -10, 25])
+    quiver(means.sel(monsoon=season), 'longitude', 'latitude', 'taux', 'tauy', ax=aa, scale=2,
+           transform=ccrs.PlateCarree())
+    #mean_precips.precipitation.sel(monsoon=season).plot.contour(ax=aa, levels=10, colors='C0')
+    aa.plot([80, 96, 96, 80, 80],
+            [4, 4, 24, 24, 4],
+            'k-', transform=ccrs.PlateCarree())
+    aa.set_xticks(np.arange(big_region['longitude'].start,
+                            big_region['longitude'].stop, 6))
+    aa.set_yticks(np.arange(big_region['latitude'].start,
+                            big_region['latitude'].stop, 6))
+
+    aa.set_xlabel('Longitude')
+    dcpy.plots.liney(0, ax=aa)
+[common(aa) for aa in axarr.ravel()]
+
+axes['oce'] = dict(zip(bay.splitseasons, axarr[0, :]))
+axes['atm'] = dict(zip(bay.splitseasons, axarr[1, :]))
+axes['iso'] = dict(zip(bay.splitseasons, axarr[2, :]))
+
+cmapj = mpl.colors.LinearSegmentedColormap.from_list(
+    name='j', colors=['w', '#5ABCE1', '#FFA500', '#ED2E00'])
+# plt.figure(); eke.sel(monsoon='SW').plot(cmap=cmapj, robust=True)
+
+ax = axarr  # fundamental assumption below
 
 for season in bay.splitseasons:
     heke = (eke.sel(monsoon=season)
             .plot.contourf(ax=axes['oce'][season],
                            x='longitude', y='latitude',
-                           cmap=mpl.cm.gist_heat_r,
-                           levels=np.linspace(0, 0.30, 20),
+                           cmap=cmapj,
+                           levels=np.linspace(0, 0.25, 40),
                            add_colorbar=False))
 
     hoscar = axes['oce'][season].quiver(osc.longitude, osc.latitude,
@@ -993,7 +1074,7 @@ for season in bay.splitseasons:
         axes['atm']['NE'].quiverkey(htau, 0.25, 0.96, 0.1, '0.1 N/m²',
                                     ,**keykwargs)
 
-    axes['oce'][season].set_title(season)
+    axes['oce'][season].set_title(season, fontsize=10)
 
     hdl = (isodepth.sel(monsoon=season)
            .plot.contour(x='lon', y='lat', ax=axes['iso'][season],
@@ -1059,7 +1140,7 @@ f.savefig('images/paper1/png/spatial-maps.png', transparent=False)
 #                colors=raincolor, linewidths=1))
 #+END_SRC
 #+NAME: fig:spatial
-#+CAPTION: Seasonal cycle of forcing and circulation in the Bay for 2014. White dots mark mooring locations used in the study. (top) Seasonal mean EKE from AVISO in color; vectors indicate surface currents from seasonally averaged 5-day OSCAR estimate citep:oscar,Bonjean2002. (middle) Seasonal near-inertial energy input calculated using a slab ocean mixed layer model $\Pi\slab$ (Appendix A). White contours are $\Pi=$ \SIlist{2; 4; 10}{\milli\W\per\square\metre}. (bottom) 50, 75 and 100m depth contours of the 34.75 isohaline surface from the mapped Argo climatology.
+#+CAPTION: Seasonal cycle of forcing and circulation in the Bay of Bengal for 2014. White dots mark mooring locations used in the study. (top) Seasonal mean geostrophic eddy kinetic energy (EKE) from altimeter sea surface height (SSH) in color; vectors indicate surface currents from seasonally averaged 5-day OSCAR estimate citep:oscar,Bonjean2002. (middle) Seasonal near-inertial energy input calculated using a slab ocean mixed layer model $\Pi\slab$ (Appendix A). White contours are $\Pi=$ \SIlist{2; 4; 10}{\milli\W\per\square\metre}. (bottom) 50, 75 and 100m depth contours of the 34.75 isohaline surface from the mapped Argo climatology.
 #+ATTR_LATEX: :float multicolumn
 [[file:figure1-spatial-maps-label.pdf]]
 
@@ -2098,6 +2179,105 @@ f.suptitle(title)
 #+CAPTION: Thorpe sorting applied to \(\chi\)pod data. On the left are time-series for a two minute subset of data: (a) vertical displacement (b) ``enhanced'' temperature (c) temperature gradient $dT/dt$ (d) χ. Panels (e, g) show sorted and unsorted vertical profiles of temperature with depth respectively along with three estimates of a background gradient: the averaged sorted gradient (thick black), difference between two CTD sensors (dashed) and a linear fit to the unsorted profiles (dash-dot). Panel (f) shows χ as a function of temperature. \(x\)-ticks and grid lines on panels e, f show the temperature bins $\Tbins$. Colors indicate individual up- and down-casts determined using the displacement timeseries (panel a).
 [[file:figure9-wda.pdf]]
 
+** Figure overall map :ignore:
+
+
+#+BEGIN_SRC jupyter-python
+def quiver(ds, x, y, u, v, ax, **kwargs):
+    x, y, u, v = xr.broadcast(ds[x], ds[y], ds[u], ds[v])
+    ax.quiver(x.values, y.values, u.values, v.values, **kwargs)
+
+big_region = dict(longitude=slice(45, 100),
+              latitude=slice(-10, 26),
+              time=slice('2013-12-01', '2014-11-30'))
+
+if 'mean_precips' not in locals():
+    mean_precips = (trmm
+                    .rename({'lat': 'latitude',
+                             'lon': 'longitude'})
+                    .sel(**big_region)
+                    .groupby(trmm.time.sel(time=big_region['time']).monsoon.labels)
+                    .mean('time'))
+
+if 'means' not in locals():
+    means = (tropflux_big
+             .sel(**big_region)
+             .load()
+             .isel(longitude=slice(None, None, 2),
+                   latitude=slice(None, None, 2))
+             .groupby(tropflux.time.sel(time=big_region['time']).monsoon.labels)
+             .mean('time'))
+
+f = plt.figure(constrained_layout=True)
+gs = f.add_gridspec(4, 5)
+axes = dict()
+axes['big'] = dict()
+axes['big']['NE'] = f.add_subplot(gs[0, :2], projection=ccrs.PlateCarree())
+axes['big']['SW'] = f.add_subplot(gs[0, 2:], projection=ccrs.PlateCarree())
+axes['big']['SW'].yaxis.set_tick_params(which='both', labelleft=False, labelright=False)
+
+# Create array to hold all axes.
+nrows=4; ncols=5
+axarr = np.empty((nrows, ncols), dtype=object)
+for row in range(1, nrows):
+    for col in range(ncols):
+        axarr[row, col] = f.add_subplot(gs[row, col],
+                                        projection=ccrs.PlateCarree(),
+                                        sharex=axarr[0, 0],
+                                        sharey=axarr[0, 0])
+
+for ax in axarr[1:-1, :].flat:
+    ax.xaxis.set_tick_params(which='both',
+                             labelbottom=False, labeltop=False)
+    ax.xaxis.offsetText.set_visible(False)
+for ax in axarr[1:, 1:].flat:
+    ax.yaxis.set_tick_params(which='both',
+                             labelleft=False, labelright=False)
+    ax.yaxis.offsetText.set_visible(False)
+
+f.set_size_inches(6.5, 6.5)
+f.set_constrained_layout_pads(w_pad=0/72, h_pad=0/72)
+f.set_constrained_layout(True)
+
+
+for season, aa in axes['big'].items():
+    bay.plots.plot_coastline(aa, rivers=False)
+    aa.set_extent([45, 100, -10, 25])
+    quiver(means.sel(monsoon=season), 'longitude', 'latitude', 'taux', 'tauy', ax=aa, scale=2,
+           transform=ccrs.PlateCarree())
+    #mean_precips.precipitation.sel(monsoon=season).plot.contour(ax=aa, levels=10, colors='C0')
+    aa.plot([80, 96, 96, 80, 80],
+            [4, 4, 24, 24, 4],
+            'k-', transform=ccrs.PlateCarree())
+    aa.set_xticks(np.arange(big_region['longitude'].start,
+                            big_region['longitude'].stop, 6))
+    aa.set_yticks(np.arange(big_region['latitude'].start,
+                            big_region['latitude'].stop, 6))
+
+[common(aa) for aa in axarr[1:, :].ravel()]
+
+#+END_SRC
+
+#+BEGIN_SRC jupyter-python
+
+f, ax = plt.subplots(1, 2, subplot_kw={'projection': ccrs.PlateCarree()})
+
+
+for season, aa in zip(['NE', 'SW'], ax):
+    bay.plots.plot_coastline(aa, rivers=False)
+    aa.set_extent([45, 100, -10, 26])
+
+    quiver(means.sel(monsoon=season), 'longitude', 'latitude', 'taux', 'tauy', ax=aa, scale=2,
+           transform=ccrs.PlateCarree())
+    #mean_precips.precipitation.sel(monsoon=season).plot.contour(ax=aa, levels=10, colors='C0')
+    aa.plot([80, 96, 96, 80, 80],
+            [4, 4, 24, 24, 4],
+            'k-', transform=ccrs.PlateCarree())
+    aa.set_xticks(np.arange(region['longitude'].start,
+                            region['longitude'].stop, 4))
+    aa.set_yticks(np.arange(region['latitude'].start,
+                            region['latitude'].stop, 4))
+#+END_SRC
 
 * A comparison of near-surface and thermocline mixing :noexport:
 <<sec:ramanrl>>
