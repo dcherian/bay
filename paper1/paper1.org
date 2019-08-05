@@ -2,6 +2,7 @@
 #+TITLE:  The seasonal cycle of upper-ocean mixing in the Bay of Bengal
 #+OPTIONS: author:nil timestamp:t email:nil toc:nil num:2 title:nil H:3 p:nil tasks:todo tags:nil
 #+PROPERTY: header-args :eval never-export :exports none :results drawer
+#+PROPERTY: header-args :eval never-export :exports none :results drawer :session py
 #+LATEX_HEADER: \authors{D. A. Cherian\thanks{Current affiliation: National Center for Atmospheric Research, Boulder, Colorado, USA.}\correspondingauthor{Deepak A. Cherian, NCAR, P.O. Box 3000, Boulder, CO 80307-3000.}, E. L. Shroyer}
 #+LATEX_HEADER: \affiliation{College of Earth, Ocean and Atmospheric Sciences, Oregon State University, Corvallis, Oregon, USA}
 #+LATEX_HEADER: \extraauthor{H. W. Wijesekera}\extraaffil{Naval Research Laboratory, Stennis Space Center, Mississippi, USA}
@@ -40,7 +41,7 @@ The magnitude of this salt flux is approximately that required to close model-ba
 #+END_EXPORT
 
 #+NAME: paper1-prereqs
-#+BEGIN_SRC jupyter-python :session py :results none :exports none :eval never-export
+#+BEGIN_SRC jupyter-python :results none :exports none :eval never-export
 import bay
 import cartopy.crs as ccrs
 import scikits.bootstrap as bs
@@ -912,9 +913,12 @@ neat_table = (pd.pivot_table(table,
 #+end_export
 
 * Figures :ignore:
+:PROPERTIES:
+:header-args: :results none
+:END:
 ** Figure 1: spatial maps of EKE etc.                               :ignore:
 
-#+BEGIN_SRC jupyter-python :session py :results none
+#+BEGIN_SRC jupyter-python
 niw_split = (wind_input
              .sel(time=slice('2013-12-01', '2014-11-30'))
              .groupby(wind_input.time.monsoon.splitlabels)
@@ -1098,7 +1102,7 @@ f.savefig('images/paper1/png/spatial-maps.png', transparent=False)
 
 ** Figure 2: map                                                    :ignore:
 
-#+BEGIN_SRC jupyter-python :session py
+#+BEGIN_SRC jupyter-python
 import cartopy.crs as ccrs
 
 with plt.rc_context({'font.size': 11,
@@ -1144,7 +1148,7 @@ with plt.rc_context({'font.size': 11,
 
 ** Figure 3: vertical profiles                                      :ignore:
 
-#+BEGIN_SRC jupyter-python :session py :results none
+#+BEGIN_SRC jupyter-python
 niw = (wind_input.wind_input
        .sel(time=slice('2013-12-01', '2014-11-30'))
        .groupby(wind_input.time.monsoon.labels)
@@ -1345,7 +1349,7 @@ axx[-1].xaxis.set_major_formatter(mpl.dates.DateFormatter('%b'))
 
 ** Figure 5: NRL time series                                        :ignore:
 
-#+BEGIN_SRC jupyter-python :session py :results none
+#+BEGIN_SRC jupyter-python
 f5, ax = bay.plots.plot_nrl(nrl5)
 
 ax['N2'].set_ylim([0, 6])
@@ -1498,7 +1502,7 @@ f.suptitle(title)
 
 ** Figure 6: NRL5 zoom-in                                           :ignore:
 
-#+BEGIN_SRC jupyter-python :session py :results none
+#+BEGIN_SRC jupyter-python
 trange = slice(nrl5.events['Storm-zoomin'][0],
                nrl5.events['Storm-zoomin'][1])
 
@@ -1612,7 +1616,7 @@ f.savefig('images/paper1/png/nrl5-aug-niw-mixing.png', transparent=False)
 
 ** Figure 7: NRL scatter plot                                       :ignore:
 
-#+BEGIN_SRC jupyter-python :session py
+#+BEGIN_SRC jupyter-python
 limits = np.array([-3.5, 0.5])
 
 import facets
@@ -1779,7 +1783,7 @@ f.savefig('images/paper1/png/scatter-shear.png', bbox_inches='tight')
 
 ** Figure 8: 8°N special                                            :ignore:
 
-#+BEGIN_SRC jupyter-python :session py
+#+BEGIN_SRC jupyter-python
 if 'oaflux' not in locals():
     oaflux = dcpy.oceans.read_oaflux()
 
