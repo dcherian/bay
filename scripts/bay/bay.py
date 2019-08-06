@@ -220,7 +220,7 @@ def remake_summaries(moorings=None):
         m.Summarize(savefig=True)
 
 
-def calc_wind_input(kind='merra2'):
+def calc_wind_input(kind='merra2', dask=False):
 
     if kind == 'ncep':
         trange = dict(lat=slice(24, 2, None),
@@ -245,7 +245,8 @@ def calc_wind_input(kind='merra2'):
 
     elif kind == 'merra2':
         trange = dict(time=slice('2013-12-01', '2014-11-30'))
-        merra = (xr.open_mfdataset('/home/deepak/bay/datasets/merra2/*.nc')
+        merra = (xr.open_mfdataset('/home/deepak/bay/datasets/merra2/*.nc',
+                                   parallel=dask)
                  .sel(trange))
         taux = merra.U10M.copy(data=airsea.windstress.stress(merra.U10M))
         tauy = merra.V10M.copy(data=airsea.windstress.stress(merra.V10M))
@@ -253,24 +254,14 @@ def calc_wind_input(kind='merra2'):
         taux = taux * np.sign(merra.U10M)
         tauy = tauy * np.sign(merra.V10M)
 
-        windstr = 'MERRA-2 hourly winds averaged to 6-hourly'
+        windstr = 'MERRA-2 hourly winds'
         windshortstr = 'merra2'
 
         tau = (xr.merge([taux, tauy]).sortby('lat')
                .rename({'U10M': 'taux', 'V10M': 'tauy'})
-               .resample(time='6H').mean('time')
-               .compute())
+               .compute())  # needed because we take FFT along time
 
-    mimoc = xr.open_mfdataset('/home/deepak/datasets/mimoc/MIMOC_ML_*.nc',
-                              concat_dim='month')
-    mimoc['LATITUDE'] = mimoc.LATITUDE.isel(month=1)
-    mimoc['LONGITUDE'] = mimoc.LONGITUDE.isel(month=1)
-    mimoc = (mimoc.swap_dims({'LAT': 'LATITUDE', 'LONG': 'LONGITUDE'})
-             .rename({'LATITUDE': 'lat',
-                      'LONGITUDE': 'lon'}))
-    mimoc['month'] = pd.date_range('2014-01-01', '2014-12-31', freq='SM')[::2]
-    mimoc = mimoc.rename({'month': 'time'})
-
+    mimoc = dcpy.oceans.read_mimoc()
     mld = (mimoc.DEPTH_MIXED_LAYER
            .sel(**region).load())
 

@@ -1574,6 +1574,14 @@ f.savefig('images/niw-input-lon-mean.png')
 #+CAPTION: Average the above in lon. This is cool, because near-inertial waves only propagate equatorward. That means if the wind input is limited to < 10N, as it is, most of the Bay should see little inertial energy. i.e. our 8N χpods should be seeing high mixing relative to the rest of the Bay.
 [[file:images/niw-input-lon-mean.png]]
 
+**** MERRA-2 hourly vs 6hourly: not much difference
+
+#+BEGIN_SRC jupyter-python
+input6 = xr.open_dataset('~/bay/estimates/merra2-wind-power-input-2014-6hourly.nc')
+input1 = xr.open_dataset('~/bay/estimates/merra2-wind-power-input.nc')
+
+#+END_SRC
+
 **** Save all direct mooring estimates
 #+BEGIN_SRC jupyter-python :session
 # [ra12, ra15, nrl1, nrl2, nrl3, nrl4, nrl5] = bay.read_all_moorings()
@@ -8999,7 +9007,6 @@ fig.savefig('images/hillshade.png')
 #+END_SRC
 #+CAPTION:
 [[file:images/hillshade.png]]
-
 
 ** Natural earth SRTM
 
