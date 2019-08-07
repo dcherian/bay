@@ -158,7 +158,10 @@ def nc_to_binned_df(dataset='../estimates/bay_merged_sorted_hourly.nc',
                   .astype('category'))
 
     if moor is not None:
-        df = df.loc[df.moor == moor]
+        if isinstance(moor, str):
+            moor = list(str)
+
+        df = df.loc[df.moor.isin(moor)]
 
     df = bin_ml_bl_rho(df, bins)
 

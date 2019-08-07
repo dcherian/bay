@@ -341,11 +341,12 @@ def vert_distrib(df, bins, varname='KT', kind='distribution',
 
     ax = {'NE': axx[0], 'NESW': axx[1], 'SW': axx[2], 'SWNE': axx[3]}
 
-    df.bin.cat.reorder_categories(
-        ['ML', 'BL'] + list(df.bin.cat.categories[:-2]),
-        inplace=True)
+    if 'ML' in df.bin.cat.categories:
+        df.bin.cat.reorder_categories(
+            ['ML', 'BL'] + list(df.bin.cat.categories[:-2]),
+            inplace=True)
 
-    if varname is 'KT':
+    if varname == 'KT':
         title = '$\\log_{10}$ hourly averaged $K_T$ [m²/s]'
         xlim = kwargs.pop('xlim', [-7, -1])
         xlines = kwargs.pop('xlines', [-6, -5, -4, -3])
