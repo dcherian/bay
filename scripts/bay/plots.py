@@ -10,7 +10,8 @@ import xarray as xr
 import dcpy
 from cartopy import feature
 
-from .bay import default_density_bins, nc_to_binned_df, season_months
+import xfilter
+
 from .bay import default_density_bins, nc_to_binned_df, pods, season_months
 
 # markers = {'RAMA': 'o', 'NRL': '^', 'OMM/WHOI': 'o'}
@@ -525,9 +526,13 @@ def mark_moors(color='w',
                markersize=14,
                fontsize=10,
                ax=None, **kwargs):
-    lons = [85.5, 85.5, 87, 88.5, 90, 90]
-    lats = [5, 8, 8, 8, 12, 15]
-    names = ['1', '3', '4', '5', '12', '15']
+    # lons = [85.5, 85.5, 87, 88.5, 90, 90]
+    # lats = [5, 8, 8, 8, 12, 15]
+    # names = ['1', '3', '4', '5', '12', '15']
+
+    lons = [85.5, 87, 88.5]
+    lats = [8, 8, 8]
+    names = ['3', '4', '5']
 
     if ax is None:
         ax = plt.gca()
