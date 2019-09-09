@@ -1315,7 +1315,7 @@ ax = dict(zip(bay.seasons, axx[0, :]))
 bay.make_vert_distrib_plot('KT', '../estimates/bay_merged_mooring_hourly.nc',
                            label_moorings=False, f=f, ax=axx[1, :],
                            moor=moors,
-                           adjust_fig=False, markers={'mean': 'd', 'median': 'v'},)
+                           adjust_fig=False, markers={'mean': 'o', 'median': 'v'},)
 #bay.make_vert_distrib_plot('KT', '../estimates/bay_merged_sorted_hourly.nc',
 #                           label_moorings=False, f=f, ax=axx[1, :],
 #                           trim_keep='bottom',
@@ -1324,7 +1324,9 @@ bay.make_vert_distrib_plot('KT', '../estimates/bay_merged_mooring_hourly.nc',
 #                           markers={'mean': 'd', 'median': 'v'},
 #                           overlay=True)
 
-axx[1, 1].set_ylim([120, -1])
+axx[1, 1].set_ylim([120, 20])
+axx[1, 1].set_xlim([-7, -2])
+
 barargs = dict(width=0.5)
 labelargs = dict(ha='center', va='baseline')
 for ss in ax:
@@ -1385,7 +1387,6 @@ Scolor = 'orangered'
 for ii in range(4):
     axx[0, ii].set_title(axx[1, ii].get_title())
     axx[1, ii].set_title('')
-    axx[1, ii].set_xlim([-7, -0.9])
     axx[1, ii].plot([-6, -3.9], [S0_z_argo[ii], S0_z_argo[ii]],
                     '-', lw=4, color=Scolor)
     axx[1, ii].text(-3.75, S0_z_argo[ii], r' $S$ = 34.75',
@@ -1396,14 +1397,14 @@ f.set_size_inches(7, 8.5)
 f.suptitle('$\\log_{10}$ hourly averaged $K_T$ (m²/s)', y=0.075)
 
 # plt.savefig('images/vert-profile.svg', bbox_inches='tight')
-#plt.savefig('images/paper1/bay-KT-vert-profile.pdf', bbox_inches='tight')
+plt.savefig('images/paper1/bay-KT-vert-profile.pdf', bbox_inches='tight')
 #plt.savefig('images/paper1/bay-KT-vert-profile.png', bbox_inches='tight')
 # import subprocess
 # subprocess.run(['bash', 'add-legend-vert-profile.bash'], cwd='images/paper1/')
 #+END_SRC
 #+NAME: fig:vert
 #+ATTR_LATEX: :float multicolumn
-#+CAPTION: \small The seasonal cycle of $K_T$. (top) Basin-wide seasonal averages of daily Tropflux wind stress $\tau$, near-inertial energy input $\Pi$, daily Tropflux net surface heat flux $J_q^0$ and TRMM precipitation $P$. Wind stress variability is represented by gray ellipses with widths and heights equal to twice the standard deviation of $\tau_x$ and $\tau_y$. (bottom) Vertical profile of hourly averaged $K_T$ formed by combining all estimates in density bins (Section [[sec:profile]]). PDFs as well as means and medians are shown. Bins are marked by 'ML' (mixed layer), 'BL' (barrier layer) and $\rho-1000$ for deeper bins. PDFs of both moored and sorted estimates are shown for the upper three bins (above and below the baseline respectively). Orange horizontal line marks the climatological depth of the $S=34.75$ isohaline at 8N estimated using the Argo climatology. Vertical lines mark standard deviation of measurement depths in each bin --- these lines tend to overlap each other. Each PDF is colored according to data coverage: one means that there is at least one hourly estimate for every hour in the season.
+#+CAPTION: \small The seasonal cycle of $K_T$ at 8°N. (top) Basin-wide seasonal averages of daily Tropflux wind stress $\tau$, near-inertial energy input $\Pi$, daily Tropflux net surface heat flux $J_q^0$ and TRMM precipitation $P$. Wind stress variability is represented by gray ellipses with widths and heights equal to twice the standard deviation of $\tau_x$ and $\tau_y$. (bottom) Vertical profile of hourly averaged $K_T$ formed by combining all estimates in density bins (Section [[sec:profile]]). PDFs as well as means and medians are shown. Bins are marked by $\rho-1000$. Orange horizontal lines mark the climatological depth of the $S=34.75$ isohaline at 8\(\degree\)N estimated using the Argo climatology. Vertical lines mark the standard deviation of measurement depths in each bin --- these lines tend to overlap each other. Each PDF is colored according to data coverage: one means that there is at least one hourly estimate for every hour in the season.
 file:figure3-profile.pdf
 
 ** Figure 4: NRL time series                                        :ignore:

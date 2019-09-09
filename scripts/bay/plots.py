@@ -360,7 +360,7 @@ def vert_distrib(df, bins, varname='KT', kind='distribution',
     months = {'NE': 'Dec-Feb', 'NESW': 'Mar-Apr',
               'SW': 'May-Sep', 'SWNE': 'Oct-Nov'}
 
-    coverage_levels = np.array([0.5, 1, 1.5, 2])
+    coverage_levels = np.array([0.3, 0.75, 1.5, 2])
     coverage_pal = sns.cubehelix_palette(len(coverage_levels), as_cmap=True)
 
     # I'm adding sorted gradient estimates
@@ -392,18 +392,29 @@ def vert_distrib(df, bins, varname='KT', kind='distribution',
         season = label[1]
         zloc = sp.stats.trim_mean(ddff.z, 0.1)
 
+        bin_name = (np.round(interval.mid-1000, 1).astype('str')
+                    if isinstance(interval, pd.Interval)
+                    else interval)
+
         if add_offset:
-            if type(interval) != str and interval.mid < 1020:
-                if season == 'SWNE' or season == 'NE':
-                    zloc += 5
+            if type(interval) != str:
+                #if interval.mid < 1020:
+                #    if season == 'SWNE' or season == 'NE':
+                #         zloc += 5
+                if bin_name == "23.2" and season == "SWNE":
+                    zloc += 7.5
+
+                if bin_name == "23.2" and season == "SW":
+                    zloc -= 2.5
+
+                if bin_name == "22.8" and season == "SWNE":
+                    zloc += 2.5
+
             elif interval == 'BL':
                 zloc -= 6
             elif interval == 'ML':
                 zloc -= 10
 
-        bin_name = (np.round(interval.mid-1000, 1).astype('str')
-                    if isinstance(interval, pd.Interval)
-                    else interval)
 
         var = ddff[varname]
         if varname == 'ρ':
@@ -417,8 +428,8 @@ def vert_distrib(df, bins, varname='KT', kind='distribution',
 
             fraction_coverage = var.count() / (30 * 24 * season_months[season])
 
-            # at least half season covered by 1 χpod
-            if fraction_coverage < 0.5:
+            # at least 1/3 season covered by 1 χpod
+            if fraction_coverage < 0.3:
                 continue
 
             color = coverage_pal(fraction_coverage / coverage_levels.max())
@@ -435,8 +446,8 @@ def vert_distrib(df, bins, varname='KT', kind='distribution',
             meanvec[season].append(mean)
 
             xtxt = hdl['cbars'].get_paths()[0].vertices[1, 0]
-            if xtxt > -1:
-                xtxt = -1.5
+            #if xtxt > -1:
+            #    xtxt = -2
             color = _get_color_from_hdl(hdl)
 
         elif kind == 'mean_ci_profile':
@@ -451,7 +462,7 @@ def vert_distrib(df, bins, varname='KT', kind='distribution',
         ytxt = zloc
 
         if label_bins:
-            ax[season].text(xtxt, ytxt, '     '+bin_name,
+            ax[season].text(xtxt, ytxt, ' '+bin_name,
                             color=color, ha='left', va='center',
                             fontsize=7)
         if label_moorings:
