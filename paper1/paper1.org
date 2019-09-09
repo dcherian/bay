@@ -941,15 +941,15 @@ def quiver(ds, x, y, u, v, ax, **kwargs):
     ax.quiver(x.values, y.values, u.values, v.values, **kwargs)
 
 big_region = dict(longitude=slice(45, 100),
-                  latitude=slice(-10, 26),
+                  latitude=slice(-10, 24),
                   time=slice('2013-12-01', '2014-11-30'))
 
 if 'mean_precips' not in locals():
-    mean_precips = (trmm
+    mean_precips = (trmm_big
                     .rename({'lat': 'latitude',
                              'lon': 'longitude'})
                     .sel(**big_region)
-                    .groupby(trmm.time.sel(time=big_region['time']).monsoon.labels)
+                    .groupby(trmm_big.time.sel(time=big_region['time']).monsoon.labels)
                     .mean('time'))
 
 if 'means' not in locals():
@@ -1010,7 +1010,6 @@ def common(ax):
 # f.set_constrained_layout(True)
 # [common(aa) for aa in ax.flat[5:]]
 
-
 with mpl.style.context({'axes.titlesize': 9,
                         'axes.labelsize': 9,
                         'xtick.labelsize': 9,
@@ -1021,7 +1020,7 @@ with mpl.style.context({'axes.titlesize': 9,
     gsbot = gs[1].subgridspec(3, 5)
     axes = dict()
     axes['big'] = dict()
-    axes['big']['NE'] = f.add_subplot(gstop[0], projection=ccrs.PlateCarree())
+    axes['big']['SWNE'] = f.add_subplot(gstop[0], projection=ccrs.PlateCarree())
     axes['big']['SW'] = f.add_subplot(gstop[1], projection=ccrs.PlateCarree())
     axes['big']['SW'].yaxis.set_tick_params(which='both', labelleft=False, labelright=False)
 
@@ -1048,13 +1047,13 @@ with mpl.style.context({'axes.titlesize': 9,
 
 for season, aa in axes['big'].items():
     bay.plots.plot_coastline(aa, rivers=False, facecolor='none')
-    aa.set_extent([45, 100, -10, 25])
+    aa.set_extent([45, 100, -10, 24])
     quiver(means.sel(monsoon=season), 'longitude', 'latitude', 'taux', 'tauy', ax=aa, scale=2,
            transform=ccrs.PlateCarree(), zorder=20)
 
     hdl = mean_precips.precipitation.sel(monsoon=season).plot.contourf(
-        ax=aa, levels=11, cmap=dcpy.plots.rain_colormap(), add_labels=False,
-        zorder=1, vmin=0, vmax=20, add_colorbar=False)
+        ax=aa, levels=11, cmap=sns.color_palette("Blues", n_colors=11), add_labels=False,
+        zorder=1, vmin=0, vmax=15, add_colorbar=False)
     aa.plot([80, 96, 96, 80, 80],
             [4, 4, 24, 24, 4],
             'k-', transform=ccrs.PlateCarree())
@@ -1075,8 +1074,11 @@ axes['oce'] = dict(zip(bay.splitseasons, axarr[0, :]))
 axes['atm'] = dict(zip(bay.splitseasons, axarr[1, :]))
 axes['iso'] = dict(zip(bay.splitseasons, axarr[2, :]))
 
-cmapj = mpl.colors.LinearSegmentedColormap.from_list(
-    name='j', colors=['w', '#5ABCE1', '#FFA500', '#ED2E00'])
+#cmapj = mpl.colors.LinearSegmentedColormap.from_list(
+#    name='j', colors=['w', '#5ABCE1', '#FFA500', '#ED2E00'])
+cmapj = sns.blend_palette(
+    colors=["w", "#5ABCE1", "#FFA500", "#ED2E00"], n_colors=20, as_cmap=True
+)
 #cmapj = mpl.colors.LinearSegmentedColormap.from_list(
 #    name='k', colors=colorcet.isolum)
 # plt.figure(); eke.sel(monsoon='SW').plot(cmap=cmapj, robust=True)
@@ -1088,7 +1090,7 @@ for season in bay.splitseasons:
             .plot.contourf(ax=axes['oce'][season],
                            x='longitude', y='latitude',
                            cmap=cmapj,
-                           levels=np.linspace(0, 0.25, 40),
+                           levels=np.linspace(0, 0.25, 20),
                            add_colorbar=False))
 
     hoscar = axes['oce'][season].quiver(osc.longitude, osc.latitude,
@@ -1183,7 +1185,6 @@ hcb2 = plt.colorbar(hniw, ax=ax[-1, 2:], label='Near-inertial wind input $\Pi$ [
 hcb1.set_ticks(np.arange(0, 0.31, 0.05))
 hcb2.set_ticks(np.arange(0, 1.21, 0.2))
 
-
 dcpy.plots.label_subplots(list(axes['big'].values()) + list(axarr.flat),
                           x=0.94, y=0.9,
                           ha='center',
@@ -1192,13 +1193,14 @@ dcpy.plots.label_subplots(list(axes['big'].values()) + list(axarr.flat),
                           color='k')
 
 # plt.subplots_adjust(left=0.080, right=0.99)
-f.set_size_inches(6.5, 8.2)
+f.set_size_inches(dcpy.plots.pub_fig_width("jpo", "two column"), 8.2)
 plt.tight_layout()
 f.canvas.draw()
 f.canvas.draw()
 
-pos0 = axes['big']['NE'].get_position()
-axes['big']['NE'].set_position([pos0.x0+0.1, pos0.y0, pos0.width, pos0.height])
+pos0 = axes['big']['SWNE'].get_position()
+axes['big']['SWNE'].set_position([pos0.x0+0.08, pos0.y0, pos0.width, pos0.height])
+axes['big']['SWNE'].set_ylabel('Latitude')
 
 pos0 = axes['big']['SW'].get_position()
 axes['big']['SW'].set_position([pos0.x0-0.03, pos0.y0, pos0.width, pos0.height])
