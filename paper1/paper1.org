@@ -933,34 +933,109 @@ neat_table = (pd.pivot_table(table,
 :header-args: :results none
 :END:
 
-** Figure 1: spatial maps of EKE etc.                               :ignore:
-
+** Figure 1: Large scale monsoon
 #+BEGIN_SRC jupyter-python
 def quiver(ds, x, y, u, v, ax, **kwargs):
     x, y, u, v = xr.broadcast(ds[x], ds[y], ds[u], ds[v])
     ax.quiver(x.values, y.values, u.values, v.values, **kwargs)
 
-big_region = dict(longitude=slice(45, 100),
-                  latitude=slice(-10, 24),
-                  time=slice('2013-12-01', '2014-11-30'))
 
-if 'mean_precips' not in locals():
-    mean_precips = (trmm_big
-                    .rename({'lat': 'latitude',
-                             'lon': 'longitude'})
-                    .sel(**big_region)
-                    .groupby(trmm_big.time.sel(time=big_region['time']).monsoon.labels)
-                    .mean('time'))
+big_region = dict(
+    longitude=slice(45, 100),
+    latitude=slice(-10, 24),
+    time=slice("2013-12-01", "2014-11-30"),
+)
 
-if 'means' not in locals():
-    means = (tropflux_big
-             .sel(**big_region)
-             .load()
-             .isel(longitude=slice(None, None, 2),
-                   latitude=slice(None, None, 2))
-             .groupby(tropflux.time.sel(time=big_region['time']).monsoon.labels)
-             .mean('time'))
+if "mean_precips" not in locals():
+    mean_precips = (
+        trmm_big.rename({"lat": "latitude", "lon": "longitude"})
+        .sel(**big_region)
+        .groupby(trmm_big.time.sel(time=big_region["time"]).monsoon.labels)
+        .mean("time")
+    )
 
+if "means" not in locals():
+    means = (
+        tropflux_big.sel(**big_region)
+        .load()
+        .isel(longitude=slice(None, None, 2), latitude=slice(None, None, 2))
+        .groupby(tropflux.time.sel(time=big_region["time"]).monsoon.labels)
+        .mean("time")
+    )
+
+f, ax = plt.subplots(
+    2,
+    2,
+    sharex=True,
+    sharey=True,
+    constrained_layout=True,
+    subplot_kw=dict(projection=ccrs.PlateCarree()),
+)
+axes["big"] = dict(zip(bay.seasons, ax.flat))
+
+months = {"NE": "Dec-Feb", "NESW": "Mar-Apr", "SW": "May-Sep", "SWNE": "Oct-Nov"}
+
+for season, aa in axes["big"].items():
+    bay.plots.plot_coastline(aa, rivers=False, facecolor="none")
+    aa.set_extent([45, 100, -10, 24])
+    quiver(
+        means.sel(monsoon=season),
+        "longitude",
+        "latitude",
+        "taux",
+        "tauy",
+        ax=aa,
+        scale=2,
+        transform=ccrs.PlateCarree(),
+        zorder=20,
+    )
+
+    hdl = mean_precips.precipitation.sel(monsoon=season).plot.contourf(
+        ax=aa,
+        levels=11,
+        cmap=sns.color_palette("Blues", n_colors=11),
+        add_labels=False,
+        zorder=1,
+        vmin=0,
+        vmax=15,
+        add_colorbar=False,
+    )
+
+    aa.plot([80, 96, 96, 80, 80], [4, 4, 24, 24, 4], "k-", transform=ccrs.PlateCarree())
+    aa.set_xticks(
+        np.arange(big_region["longitude"].start, big_region["longitude"].stop, 5)
+    )
+    aa.set_yticks(np.arange(-8, big_region["latitude"].stop, 4))
+
+    aa.set_title(f"{season}: {months[season]}")
+    # aa.text(47, 20, season, fontsize=10)
+    dcpy.plots.liney(0, ax=aa, color="w", zorder=10, lw=1.5, ls="-")
+
+[aa.set_xlabel("Longitude") for aa in ax.flat[2:]]
+[aa.set_ylabel("Latitude") for aa in ax.flat[[0, 2]]]
+
+f.colorbar(
+    hdl,
+    ax=list(axes["big"].values()),
+    label="Precipitation [mm/day]",
+    orientation="horizontal",
+    shrink=0.6,
+    aspect=15,
+)
+
+f.set_size_inches((dcpy.plots.pub_fig_width("jpo", "medium 2"), 5))
+f.canvas.draw()
+f.savefig("images/paper1/figure1-ppt.pdf")
+f.savefig("images/paper1/png/figure1-ppt.png")
+#+END_SRC
+#+NAME: fig:ppt
+#+ATTR_LATEX: :width 33pc :float multicolumn
+#+CAPTION: Seasonal mean wind stress and precipitation over the Indian Ocean basin north of 10\(\degree\)S. Black box shows Bay of Bengal inset shown in Figure [[fig:spatial]].
+[[file:images/paper1/figure1-ppt.pdf]]
+
+** Figure 2: spatial maps of EKE etc.                               :ignore:
+
+#+BEGIN_SRC jupyter-python
 niw_split = (wind_input
              .sel(time=slice('2013-12-01', '2014-11-30'))
              .groupby(wind_input.time.monsoon.splitlabels)
@@ -1015,21 +1090,25 @@ with mpl.style.context({'axes.titlesize': 9,
                         'xtick.labelsize': 9,
                         'ytick.labelsize': 9,}):
     f = plt.figure(constrained_layout=True)
-    gs = f.add_gridspec(2, 1, height_ratios=[1, 3])
-    gstop = gs[0].subgridspec(1, 2)
-    gsbot = gs[1].subgridspec(3, 5)
-    axes = dict()
-    axes['big'] = dict()
-    axes['big']['SWNE'] = f.add_subplot(gstop[0], projection=ccrs.PlateCarree())
-    axes['big']['SW'] = f.add_subplot(gstop[1], projection=ccrs.PlateCarree())
-    axes['big']['SW'].yaxis.set_tick_params(which='both', labelleft=False, labelright=False)
+    gs = f.add_gridspec(3, 5)
+    # gstop = gs[0].subgridspec(2, 2)
+    # gsbot = gs[1].subgridspec(3, 5)
+    # axes = dict()
+    # axes['big'] = dict()
+    # axes['big']['NE'] = f.add_subplot(gstop[0], projection=ccrs.PlateCarree())
+    # axes['big']['NESW'] = f.add_subplot(gstop[1], projection=ccrs.PlateCarree())
+    # axes['big']['SW'] = f.add_subplot(gstop[2], projection=ccrs.PlateCarree())
+    # axes['big']['SWNE'] = f.add_subplot(gstop[3], projection=ccrs.PlateCarree())
+
+    # for seas in ["NESW", "SW", "SWNE"]:
+    #     axes['big'][seas].yaxis.set_tick_params(which='both', labelleft=False, labelright=False)
 
     # Create array to hold all axes.
     nrows=3; ncols=5
     axarr = np.empty((nrows, ncols), dtype=object)
     for row in range(nrows):
         for col in range(ncols):
-            axarr[row, col] = f.add_subplot(gsbot[row, col],
+            axarr[row, col] = f.add_subplot(gs[row, col],
                                             projection=ccrs.PlateCarree(),
                                             sharex=axarr[0, 0],
                                             sharey=axarr[0, 0])
@@ -1043,45 +1122,15 @@ with mpl.style.context({'axes.titlesize': 9,
                                  labelleft=False, labelright=False)
         ax.yaxis.offsetText.set_visible(False)
 
-# f.set_constrained_layout_pads(w_pad=0/72, h_pad=0/72)
-
-for season, aa in axes['big'].items():
-    bay.plots.plot_coastline(aa, rivers=False, facecolor='none')
-    aa.set_extent([45, 100, -10, 24])
-    quiver(means.sel(monsoon=season), 'longitude', 'latitude', 'taux', 'tauy', ax=aa, scale=2,
-           transform=ccrs.PlateCarree(), zorder=20)
-
-    hdl = mean_precips.precipitation.sel(monsoon=season).plot.contourf(
-        ax=aa, levels=11, cmap=sns.color_palette("Blues", n_colors=11), add_labels=False,
-        zorder=1, vmin=0, vmax=15, add_colorbar=False)
-    aa.plot([80, 96, 96, 80, 80],
-            [4, 4, 24, 24, 4],
-            'k-', transform=ccrs.PlateCarree())
-    aa.set_xticks(np.arange(big_region['longitude'].start,
-                            big_region['longitude'].stop, 6))
-    aa.set_yticks(np.arange(-8,
-                            big_region['latitude'].stop, 5))
-
-    aa.set_xlabel('Longitude')
-    aa.set_title('')
-    aa.text(48, 20, season, fontsize=10)
-    dcpy.plots.liney(0, ax=aa)
-    [common(aa) for aa in axarr.ravel()]
-
-f.colorbar(hdl, ax=axes['big']['SW'], label='Precipitation [mm/day]')
+f.set_size_inches(dcpy.plots.pub_fig_width("jpo", "two column"), 6)
 
 axes['oce'] = dict(zip(bay.splitseasons, axarr[0, :]))
 axes['atm'] = dict(zip(bay.splitseasons, axarr[1, :]))
 axes['iso'] = dict(zip(bay.splitseasons, axarr[2, :]))
 
-#cmapj = mpl.colors.LinearSegmentedColormap.from_list(
-#    name='j', colors=['w', '#5ABCE1', '#FFA500', '#ED2E00'])
 cmapj = sns.blend_palette(
     colors=["w", "#5ABCE1", "#FFA500", "#ED2E00"], n_colors=20, as_cmap=True
 )
-#cmapj = mpl.colors.LinearSegmentedColormap.from_list(
-#    name='k', colors=colorcet.isolum)
-# plt.figure(); eke.sel(monsoon='SW').plot(cmap=cmapj, robust=True)
 
 ax = axarr  # fundamental assumption below
 
@@ -1170,6 +1219,7 @@ def clean_axis(ax):
 [axes['iso'][aa].set_title('') for aa in axes['iso']]
 [aa.set_xlabel('Longitude') for aa in ax[-1, :]]
 [aa.set_ylabel('Latitude') for aa in ax[:, 0]]
+[common(aa) for aa in ax.flat]
 
 axes['iso']['NE'].text(0.03, 0.96, 'Depth of\nS = 34.75',
                        transform=axes['iso']['NE'].transAxes,
@@ -1193,17 +1243,16 @@ dcpy.plots.label_subplots(list(axes['big'].values()) + list(axarr.flat),
                           color='k')
 
 # plt.subplots_adjust(left=0.080, right=0.99)
-f.set_size_inches(dcpy.plots.pub_fig_width("jpo", "two column"), 8.2)
 plt.tight_layout()
 f.canvas.draw()
 f.canvas.draw()
 
-pos0 = axes['big']['SWNE'].get_position()
-axes['big']['SWNE'].set_position([pos0.x0+0.08, pos0.y0, pos0.width, pos0.height])
-axes['big']['SWNE'].set_ylabel('Latitude')
+#pos0 = axes['big']['SWNE'].get_position()
+#axes['big']['SWNE'].set_position([pos0.x0+0.08, pos0.y0, pos0.width, pos0.height])
+#axes['big']['SWNE'].set_ylabel('Latitude')
 
-pos0 = axes['big']['SW'].get_position()
-axes['big']['SW'].set_position([pos0.x0-0.03, pos0.y0, pos0.width, pos0.height])
+#pos0 = axes['big']['SW'].get_position()
+#axes['big']['SW'].set_position([pos0.x0-0.03, pos0.y0, pos0.width, pos0.height])
 
 f.savefig('images/paper1/spatial-maps.pdf', transparent=False)
 f.savefig('images/paper1/png/spatial-maps.png', transparent=False)
