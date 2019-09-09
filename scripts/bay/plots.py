@@ -11,6 +11,7 @@ import dcpy
 from cartopy import feature
 
 from .bay import default_density_bins, nc_to_binned_df, season_months
+from .bay import default_density_bins, nc_to_binned_df, pods, season_months
 
 # markers = {'RAMA': 'o', 'NRL': '^', 'OMM/WHOI': 'o'}
 # colors = {'RAMA': '#0074D9', 'NRL': '#3D9970', 'OMM/WHOI': '#FF4136'}
@@ -572,81 +573,31 @@ def make_vert_distrib_plot(varname,
                  percentile=True, **kwargs)
 
 
-def make_labeled_map(ax=None, add_depths=True):
-
-    pods = {
-        'RAMA12':
-            {'lon': 90, 'lat': 12, 'label': 'RAMA',
-             'ha': 'right', 'va': 'center',
-             'depths': {
-                 '15 m': '2014-15',
-                 '30 m': '2014-15',
-                 '45 m': '2015'}},
-        'RAMA15':
-            {'lon': 90, 'lat': 15, 'label': 'RAMA',
-             'ha': 'right', 'va': 'center',
-             'depths': {
-                 '15 m': '2015',
-                 # '30 m': '2015'
-             }},
-        'WHOI':
-            {'lon': 90, 'lat': 18, 'label': 'OMM/WHOI',
-             'ha': 'left', 'va': 'top',
-             'depths': {
-                 '22 m': '2014-15',
-                 '30 m': '2014-15',
-                 '46 m': '2014-15',
-                 '55 m': '2014-15',
-                 '65 m': '2014-15'}},
-        'NRL1':
-            {'lon': 85.5, 'lat': 5, 'label': 'NRL',
-             'ha': 'center', 'va': 'top',
-             'depths': {
-                 '60 m (55-100)': '2014',
-                 '80 m (75-115)': '2014'}},
-        'NRL3':
-            {'lon': 85.5, 'lat': 8, 'label': 'NRL',
-             'ha': 'right', 'va': 'top',
-             'depths': {
-                 '32 m (28-78)': '2014',
-                 '52 m (48-100)': '2014'}},
-        'NRL4':
-            {'lon': 87, 'lat': 8, 'label': 'NRL',
-             'ha': 'center', 'va': 'bottom',
-             'depths': {
-                 '63 m (60-85)': '2014',
-                 '83 m (80-105)': '2014'}},
-        'NRL5':
-            {'lon': 88.5, 'lat': 8, 'label': 'NRL',
-             'ha': 'left', 'va': 'top',
-             'depths': {
-                 '  85 m': '2014',
-                 '105 m': '2014'}},
-    }
+def make_labeled_map(ax=None, add_depths=True, pods=pods):
 
     ax, colors = make_map(pods, add_year=True, add_depths=add_depths,
                           highlight=['RAMA', 'NRL', 'OMM/WHOI'], ax=ax)
 
-    ax.text(87, 6.8, 'EBoB\n(2014)',
-            color=colors['NRL'], ha='center', va='center')
-    ax.text(90-0.35, 18, 'OMM/WHOI',
-            color=colors['OMM/WHOI'], ha='right', va='center')
-    ax.text(90, 13.5, 'RAMA',
-            color=colors['RAMA'], ha='left', va='center')
+    # ax.text(87, 6.8, 'EBoB\n[2014]',
+    #         color=colors['NRL'], ha='center', va='center')
+    # ax.text(90-0.35, 18, 'OMM/WHOI',
+    #         color=colors['OMM/WHOI'], ha='right', va='center')
+    # ax.text(90, 13.5, 'RAMA',
+    #         color=colors['RAMA'], ha='left', va='center')
     ax.set_xticks([78, 80, 82, 84, 85.5, 87, 88.5, 90, 92, 94, 96])
     ax.set_yticks([2, 4, 5, 8, 12, 15, 18, 20, 22, 24])
 
 
+def mark_range(ax, top, middle, bottom, color=colors['NRL']):
+    ax.fill_between([0, 1], bottom, top,
+                    facecolor=color, alpha=0.1, zorder=-5,
+                    transform=ax.get_yaxis_transform('grid'))
+    dcpy.plots.liney(middle, ax=ax,
+                     color=colors['NRL'], linestyle='-')
+
 def mark_χpod_depths_on_clim(ax=[], orientation='horizontal'):
 
     argo = dcpy.oceans.read_argo_clim()
-
-    def mark_range(ax, top, middle, bottom, color=colors['NRL']):
-        ax.fill_between([0, 1], bottom, top,
-                        facecolor=color, alpha=0.1, zorder=-5,
-                        transform=ax.get_yaxis_transform('grid'))
-        dcpy.plots.liney(middle, ax=ax,
-                         color=colors['NRL'], linestyle='-')
 
     def plot_profiles(ax, lon, lat, color):
 

@@ -4530,6 +4530,20 @@ f.savefig('images/argo-8N-stratification.png')
 4. *BIAS CORRECTED* The ΔS_{residual} is still negligibly small between January and April but now ranges between 0.1 and 0.25 psu/month between May and November. If we again assume that ΔS_{residual} mostly captures the effect of vertical processes, we would conclude that vertical salinity fluxes have a major effect on near-surface salinities during and immediately following summer monsoon.
 5. From our budget analysis, we deduce that /vertical salt fluxes, across the base of the mixed layer, are largely responsible for counterbalancing the freshening of the near-surface layer caused by summertime freshwater fluxes.// These results corroborate previous findings that highlight the importance of vertical mixing (e.g., Vinayachandran et al. 2013; Benshila et al. 2014; Akhil et al. 2014). The certainty of these results is undermined by the fact that HYCOM is likely overestimating the strength of vertical mixing in the upper 50 m of the bay. This is evidenced by the slight but persistent negative salinity biases observed below the mixed layer for most of the year (Fig. 5b). However, even after accounting for these biases, we still conclude that vertical salinity fluxes are necessary to close the near-surface salinity budget.
 6. For our focus period, years 2008 to 2013, we find that /horizontal salt fluxes across 108N, in the upper 30 m, are not large enough/ to compensate for the huge freshening caused by surface freshwater fluxes. This holds true even after we accounted for the model’s positive salinity bias along the path of the EICC.
+* ARGO seasonal means
+#+BEGIN_SRC jupyter-python
+seasonal_mean = (
+    argo[["T", "S"]]
+    .sel(lat=8.0, method="nearest")
+    .sel(lon=slice(85.5, 88.5))
+    .groupby(argo.time.monsoon.labels)
+    .mean(["time", "lon"])
+    .compute()
+)
+
+seasonal_mean.S.plot.line(hue="monsoon", y="pres")
+#+END_SRC
+
 * NRL4 details
 ** paper summary
 #+BEGIN_SRC jupyter-python :session

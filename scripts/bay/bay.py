@@ -37,6 +37,57 @@ loc = {
 }
 
 
+pods = {
+        'RAMA12':
+            {'lon': 90, 'lat': 12, 'label': 'RAMA',
+             'ha': 'right', 'va': 'center',
+             'depths': {
+                 '15 m': '2014-15',
+                 '30 m': '2014-15',
+                 '45 m': '2015'}},
+        'RAMA15':
+            {'lon': 90, 'lat': 15, 'label': 'RAMA',
+             'ha': 'right', 'va': 'center',
+             'depths': {
+                 '15 m': '2015',
+                 # '30 m': '2015'
+             }},
+        'WHOI':
+            {'lon': 90, 'lat': 18, 'label': 'OMM/WHOI',
+             'ha': 'left', 'va': 'top',
+             'depths': {
+                 '22 m': '2014-15',
+                 '30 m': '2014-15',
+                 '46 m': '2014-15',
+                 '55 m': '2014-15',
+                 '65 m': '2014-15'}},
+        'NRL1':
+            {'lon': 85.5, 'lat': 5, 'label': 'NRL',
+             'ha': 'center', 'va': 'top',
+             'depths': {
+                 '60 m (55-100)': '2014',
+                 '80 m (75-115)': '2014'}},
+        'NRL3':
+            {'lon': 85.5, 'lat': 8, 'label': 'NRL',
+             'ha': 'right', 'va': 'top',
+             'depths': {
+                 '32 m (28-78)': '2014',
+                 '52 m (48-100)': '2014'}},
+        'NRL4':
+            {'lon': 87, 'lat': 8, 'label': 'NRL',
+             'ha': 'center', 'va': 'bottom',
+             'depths': {
+                 '63 m (60-85)': '2014',
+                 '83 m (80-105)': '2014'}},
+        'NRL5':
+            {'lon': 88.5, 'lat': 8, 'label': 'NRL',
+             'ha': 'left', 'va': 'top',
+             'depths': {
+                 '  85 m': '2014',
+                 '105 m': '2014'}},
+    }
+
+
 def make_merged_nc(moorings, fileprefix='bay_merged'):
     ''' Makes merged netCDF files with turbulence info.
 
