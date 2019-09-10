@@ -935,6 +935,8 @@ neat_table = (pd.pivot_table(table,
 
 ** Figure 1: Large scale monsoon
 #+BEGIN_SRC jupyter-python
+import seaborn as sns
+
 def quiver(ds, x, y, u, v, ax, **kwargs):
     x, y, u, v = xr.broadcast(ds[x], ds[y], ds[u], ds[v])
     ax.quiver(x.values, y.values, u.values, v.values, **kwargs)
@@ -971,13 +973,14 @@ f, ax = plt.subplots(
     constrained_layout=True,
     subplot_kw=dict(projection=ccrs.PlateCarree()),
 )
+axes = dict()
 axes["big"] = dict(zip(bay.seasons, ax.flat))
 
 months = {"NE": "Dec-Feb", "NESW": "Mar-Apr", "SW": "May-Sep", "SWNE": "Oct-Nov"}
 
 for season, aa in axes["big"].items():
     bay.plots.plot_coastline(aa, rivers=False, facecolor="none")
-    aa.set_extent([45, 100, -10, 24])
+    aa.set_extent([45, 100, -8, 22.1])
     quiver(
         means.sel(monsoon=season),
         "longitude",
@@ -1013,6 +1016,7 @@ for season, aa in axes["big"].items():
 
 [aa.set_xlabel("Longitude") for aa in ax.flat[2:]]
 [aa.set_ylabel("Latitude") for aa in ax.flat[[0, 2]]]
+[bay.plots.mark_moors_clean(aa, markersize=3) for aa in ax.flat]
 
 f.colorbar(
     hdl,
@@ -1023,14 +1027,15 @@ f.colorbar(
     aspect=15,
 )
 
-f.set_size_inches((dcpy.plots.pub_fig_width("jpo", "medium 2"), 5))
+f.set_size_inches((dcpy.plots.pub_fig_width("jpo", "medium 2"), 4.6))
+dcpy.plots.label_subplots(list(axes["big"].values()), x=0.025, y=0.8)
 f.canvas.draw()
 f.savefig("images/paper1/figure1-ppt.pdf")
 f.savefig("images/paper1/png/figure1-ppt.png")
 #+END_SRC
 #+NAME: fig:ppt
 #+ATTR_LATEX: :width 33pc :float multicolumn
-#+CAPTION: Seasonal mean wind stress and precipitation over the Indian Ocean basin north of 10\(\degree\)S. Black box shows Bay of Bengal inset shown in Figure [[fig:spatial]].
+#+CAPTION: Seasonal mean wind stress over the ocean from Tropflux and precipitation over the Indian Ocean basin north of 10\(\degree\)S averaged between December, 2013 and November, 2014. Black box marks Bay of Bengal bounds shown in Figure [[fig:spatial]]. White dots mark mooring locations.
 [[file:images/paper1/figure1-ppt.pdf]]
 
 ** Figure 2: spatial maps of EKE etc.                               :ignore:
