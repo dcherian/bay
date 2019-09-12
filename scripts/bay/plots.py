@@ -553,10 +553,10 @@ def mark_moors(color='w',
                     transform=ax.transData)
 
 
-def mark_moors_clean(ax):
-    mark_moors(ax=ax, markersize=4.5, fontsize=6, color='k',
+def mark_moors_clean(ax, markersize=4.5):
+    mark_moors(ax=ax, markersize=markersize, fontsize=6, color='k',
                colortext='w', labels=False)
-    mark_moors(ax=ax, markersize=3, fontsize=6, color='w',
+    mark_moors(ax=ax, markersize=markersize-1.5, fontsize=6, color='w',
                colortext='w', labels=False)
 
 
