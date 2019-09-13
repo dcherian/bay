@@ -1210,10 +1210,11 @@ axes['oce'] = dict(zip(bay.splitseasons, axarr[0, :]))
 axes['atm'] = dict(zip(bay.splitseasons, axarr[1, :]))
 axes['iso'] = dict(zip(bay.splitseasons, axarr[2, :]))
 
-cmapj = dcpy.plots.white_blue_orange_red()
+cmapj = dcpy.plots.white_blue_orange_red
 
 ax = axarr  # fundamental assumption below
 
+iso_hdl = dict()
 for season in bay.splitseasons:
     heke = (eke.sel(monsoon=season)
             .plot.contourf(ax=axes['oce'][season],
@@ -1275,13 +1276,19 @@ for season in bay.splitseasons:
 
     axes['oce'][season].set_title(season, fontsize=10)
 
-    hdl = (isodepth.sel(monsoon=season)
-           .plot.contour(x='lon', y='lat', ax=axes['iso'][season],
-                         levels=[50, 75, 100],
-                         colors='C0', zorder=5, linewidths=1.2,
-                         robust=True, add_colorbar=False,
-                         transform=ccrs.PlateCarree()))
-    axes['iso'][season].clabel(hdl, fmt='%d', fontsize=8)
+    iso_hdl[season] = isodepth.sel(monsoon=season).plot.contour(
+        x="lon",
+        y="lat",
+        ax=axes["iso"][season],
+        levels=[50, 75, 100],
+        colors="C0",
+        zorder=5,
+        linewidths=1.2,
+        robust=True,
+        add_colorbar=False,
+        transform=ccrs.PlateCarree(),
+    )
+
 
     # [axes[row][season].text(0.05, 0.875, season,
     #                         transform=axes[row][season].transAxes,
@@ -1293,6 +1300,10 @@ def clean_axis(ax):
     ax.set_xlabel('')
     ax.set_ylabel('')
 
+[
+    axes["iso"][season].clabel(handle, fmt="%d", fontsize=8)
+    for season, handle in iso_hdl.items()
+]
 [clean_axis(aa) for aa in ax.flat]
 [bay.plots.mark_moors_clean(ax=aa) for aa in ax.flat]
 [axes['atm'][aa].set_title('') for aa in axes['atm']]
