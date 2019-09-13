@@ -1807,6 +1807,44 @@ f5.savefig('figure5-nrl.pdf', bbox_inches='tight')
 #+CAPTION: A year of observations at NRL5, 105m. Time series of daily averaged quantities: (a) Tropflux wind stress and wind-forced near-inertial energy flux; (b) daily averaged $K_T$ and fraction daily coverage; (c) turbulent heat and salt fluxes $J_q^t, J_s^t$; (d) Buoyancy frequency $N^2$ and temperature contribution to $N^2$, $g \alpha T_z$; (e) Weekly running mean of filtered squared WKB-scaled shear magnitude: 6.6 day low pass in black, near-inertial bandpass in green and the residual in orange; (f) Fraction of day where Richardson number $\Ri$ < 5. Background colors mark seasons; white region indicates time period that is subject of Figure [[fig:nrl5-niw]].
 [[file:figure5-nrl.pdf]]
 
+** Figure 10: OSCAR hovmoeller
+
+#+BEGIN_SRC jupyter-python
+import dcpy
+
+if "oscar" not in locals():
+    oscar = dcpy.oceans.read_oscar()
+
+oscar["speed"] = np.hypot(oscar.u, oscar.v)
+
+f, ax = plt.subplots(1, 1, constrained_layout=True, squeeze=True)
+
+oscar.speed.sel(lat=8, method="nearest").sel(
+    lon=slice(81.5, 96), time=slice("2013-Nov", "2015-Feb")
+).plot(
+    x="lon",
+    y="time",
+    robust=True,
+    cmap=mpl.cm.Reds,
+    cbar_kwargs={"label": "OSCAR surface speed [m/s]", "orientation": "horizontal", "aspect": 40},
+)
+dcpy.plots.linex([85.5, 87, 88.5], color="w", lw=2, zorder=2)
+dcpy.plots.concise_date_formatter(ax, axis="y", maxticks=10)
+ax.set_xticks(np.arange(82, 96.5, 4))
+ax.set_ylabel("")
+f.set_size_inches((dcpy.plots.pub_fig_width("jpo", "single column"), 6))
+f.savefig("images/paper1/oscar-hovmoeller.pdf", bbox_inches="tight")
+
+# oscar.sel(time="2014-Jan-01").plot.quiver(x="lon", y="lat", u="u", v="v", scale=1)
+
+# (oscar.u.sel(time="2014-Jan").sel(**bay.region).plot(col="time", col_wrap=4))
+#+END_SRC
+
+#+NAME: fig:hov
+#+CAPTION: Hovmoeller diagram of near-surface speed at 8°N as estimated in the OSCAR product. Vertical white dashed lines indicate mooring locations.
+#+ATTR_LATEX: :width \columnwidth
+[[file:images/paper1/oscar-hovmoeller.pdf]]
+
 ** Figure 8: NRL5 zoom-in                                           :ignore:
 
 #+BEGIN_SRC jupyter-python
