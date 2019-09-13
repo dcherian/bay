@@ -1016,46 +1016,50 @@ def mark_seasons(ax=None, zorder=-20):
 
 def plot_nrl(mooring):
 
-    from dcpy.plots import set_axes_color
+    from dcpy.plots import annotate_end, set_axes_color
 
-    shear, low_shear, _, niw_shear, _ = mooring.filter_interp_shear(
-        wkb_scale=True)
+    shear, low_shear, _, niw_shear, _, fm24 = mooring.filter_interp_shear(
+        'filter_then_sample', wkb_scale=False, maxgap_time=12)
+    niw_shear += fm24.interp(time=niw_shear.time, depth=niw_shear.depth)
+    residual = shear.shear - niw_shear - low_shear
+
+    N2 = (xfilter.lowpass(mooring.N2.isel(depth=1),
+                           coord='time',
+                           freq=1/30,
+                           cycles_per='D',
+                           num_discard=0)
+                 .interp(time=niw_shear.time).interpolate_na("time"))
 
     f5, axx5 = plt.subplots(6, 1, sharex=True, constrained_layout=True)
     f5.set_constrained_layout_pads(hspace=0.001, h_pad=0)
     f5.set_size_inches((8, 8))
 
-    residual = shear.shear - niw_shear - low_shear
-
-    N = np.sqrt(mooring.N2.isel(depth=1)
-                .resample(time='M').mean('time')
-                .interp(time=niw_shear.time))
-    hniw = ((niw_shear.rolling(time=7*24).reduce(dcpy.util.ms) * 1e5)
+    hniw = ((niw_shear.rolling(time=7*24, center=True).reduce(dcpy.util.ms) / N2)
             .sel(time='2014')
             .plot(ax=axx5[-2], _labels=False, color='g', lw=1.5))
-    hlow = ((np.abs(low_shear)**2 * 1e5)
+    hlow = ((low_shear.rolling(time=7*24, center=True).reduce(dcpy.util.ms) / N2)
             .sel(time='2014')
             .plot(ax=axx5[-2], _labels=False, color='k', lw=1.5))
-    hres = ((residual.rolling(time=7*24).reduce(dcpy.util.ms) * 1e5)
+    hres = ((residual.rolling(time=7*24, center=True).reduce(dcpy.util.ms) / N2)
             .sel(time='2014')
             .plot(ax=axx5[-2], _labels=False, color='C1', lw=1.5))
-    # annotate_end(hlow[0], 'low pass', va='top')
-    # annotate_end(hniw[0], '  near\n  inertial', va='center')
-    # annotate_end(hres[0], '  residual', va='center')
+    annotate_end(hlow[0], '$S²_{low}$', va='top')
+    annotate_end(hniw[0], '$S²_{niw+}$', va='bottom')
+    annotate_end(hres[0], '$S²_{res}$', va='center')
 
-    trgrid = axx5[-2].get_xaxis_transform('grid')
-    axx5[-2].text('2014-08-12', 0.8, 'near-inertial',
-                  color=hniw[0].get_color(), transform=trgrid)
-    axx5[-2].text('2014-10-06', 0.8, 'low-frequency',
-                  color=hlow[0].get_color(), transform=trgrid)
-    axx5[-2].text('2014-12-02', 0.8, 'residual',
-                  color=hres[0].get_color(), transform=trgrid)
+    # trgrid = axx5[-2].get_xaxis_transform('grid')
+    # axx5[-2].text('2014-08-12', 0.8, 'near-inertial',
+    #               color=hniw[0].get_color(), transform=trgrid)
+    # axx5[-2].text('2014-10-06', 0.8, 'low-frequency',
+    #               color=hlow[0].get_color(), transform=trgrid)
+    # axx5[-2].text('2014-12-02', 0.8, 'residual',
+    #               color=hres[0].get_color(), transform=trgrid)
     hniw[0].set_clip_on(False)
     hniw[0].set_in_layout(False)
     hlow[0].set_clip_on(False)
     hlow[0].set_in_layout(False)
     mooring.MarkSeasonsAndEvents(events='Storm-zoomin', ax=axx5[-2])
-    axx5[-2].set_ylabel('Squared WKB shear\n[$10^{-5}$ s$^{-2}$]')
+    axx5[-2].set_ylabel('$S²/N²$')
 
     axmooring = plot_moor_old(mooring, idepth=1,
                               axx=axx5, events='Storm-zoomin')
@@ -1063,28 +1067,28 @@ def plot_nrl(mooring):
     # fill in the 20m gap with linear interpolation
     # then interpolate velocity to CTD depths
     # then difference to get shear
-    zinterp = mooring.ctd.depth.isel(z=slice(1, 3))
-    vel_interp = (mooring.vel[['u', 'v']].interpolate_na('depth')
-                  .interp(time=zinterp.time, depth=zinterp.drop('depth')))
-    shear_interp = (np.hypot(vel_interp.u.diff('z')/15,
-                             vel_interp.v.diff('z')/15)
-                    .squeeze())
+    # zinterp = mooring.ctd.depth.isel(z=slice(1, 3))
+    # vel_interp = (mooring.vel[['u', 'v']].interpolate_na('depth')
+    #               .interp(time=zinterp.time, depth=zinterp.drop('depth')))
+    # shear_interp = (np.hypot(vel_interp.u.diff('z')/15,
+    #                          vel_interp.v.diff('z')/15)
+    #                 .squeeze())
 
-    N2 = ((9.81/1025 * mooring.ctd.ρ.diff('z')/mooring.ctd.depth.diff('z'))
-          .isel(z=1))
-    Ri = (N2.where(N2 > 0)/shear_interp**2).sel(time='2014')
+    # N2 = ((9.81/1025 * mooring.ctd.ρ.diff('z')/mooring.ctd.depth.diff('z'))
+    #       .isel(z=1))
+    # # Ri = (N2.where(N2 > 0)/shear_interp**2).sel(time='2014')
 
-    axmooring['ri'] = axx5[-1]
-    ((Ri.where(Ri < 5).resample(time='D').count()/144)
-     .plot(ax=axmooring['ri'], label='< 10', _labels=False, color='k'))
-    axmooring['ri'].set_ylabel('Fraction of day\nwith Ri < 5')
-    mooring.MarkSeasonsAndEvents(events='Storm-zoomin', ax=axmooring['ri'])
+    # axmooring['ri'] = axx5[-1]
+    # ((Ri.where(Ri < 5).resample(time='D').count()/144)
+    #  .plot(ax=axmooring['ri'], label='< 10', _labels=False, color='k'))
+    # axmooring['ri'].set_ylabel('Fraction of day\nwith Ri < 5')
 
-    axmooring['depth'] = axmooring['ri'].twinx()
+    axmooring['depth'] = axx5[-1] # axmooring['ri'].twinx()
     (mooring.zχpod.sel(num=1).resample(time='D').mean('time')
-     .plot(ax=axmooring['depth'], _labels=False, color='C0', lw=1.2))
-    set_axes_color(axmooring['depth'], 'C0', spine='right')
+     .plot(ax=axmooring['depth'], _labels=False, color='k', lw=1.2, yincrease=False))
     axmooring['depth'].set_ylabel('$χ$pod depth [m]')
+    mooring.MarkSeasonsAndEvents(events='Storm-zoomin', ax=axx5[-1])
+    # set_axes_color(axmooring['depth'], 'C0', spine='right')
 
     axmooring['input'] = axmooring['met'].twinx()
     axmooring['input'].plot(mooring.niw.time, mooring.niw.true_flux*1000,
@@ -1105,7 +1109,7 @@ def plot_nrl(mooring):
 
     if mooring.name == 'NRL5':
         axmooring['depth'].set_ylim([60, 140])
-        axx5[-2].set_ylim([0, 10])
+        #axx5[-2].set_ylim([0, 10])
         axmooring['jq'].set_ylim([-20, 0])
         axmooring['js'].set_ylim([0, 0.5])
 
