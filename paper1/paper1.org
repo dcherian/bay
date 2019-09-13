@@ -1385,6 +1385,8 @@ with plt.rc_context(
 
 ** Figure 3: vertical profiles                                      :ignore:
 
+# (top) Basin-wide seasonal averages of daily Tropflux wind stress $\tau$, near-inertial energy input $\Pi$, daily Tropflux net surface heat flux $J_q^0$ and TRMM precipitation $P$. Wind stress variability is represented by gray ellipses with widths and heights equal to twice the standard deviation of $\tau_x$ and $\tau_y$. (bottom)
+
 #+BEGIN_SRC jupyter-python
 niw = (wind_input.wind_input
        .sel(time=slice('2013-12-01', '2014-11-30'))
@@ -1416,12 +1418,11 @@ tflux_merged = xr.merge([tau,
 moors = ['NRL3', 'NRL4', 'NRL5']
 #moors = ['RAMA12', 'RAMA15']
 
-f, axx = plt.subplots(2, 4, sharex='row', sharey='row',
-                     gridspec_kw={'height_ratios': [1, 6]})
+f, axx = plt.subplots(1, 4, sharex='row', sharey='row')
 ax = dict(zip(bay.seasons, axx[0, :]))
 
 bay.make_vert_distrib_plot('KT', '../estimates/bay_merged_mooring_hourly.nc',
-                           label_moorings=False, f=f, ax=axx[1, :],
+                           label_moorings=False, f=f, ax=axx,
                            moor=moors,
                            adjust_fig=False, markers={'mean': 'o', 'median': 'v'},)
 #bay.make_vert_distrib_plot('KT', '../estimates/bay_merged_sorted_hourly.nc',
@@ -1434,62 +1435,6 @@ bay.make_vert_distrib_plot('KT', '../estimates/bay_merged_mooring_hourly.nc',
 
 axx[1, 1].set_ylim([120, 20])
 axx[1, 1].set_xlim([-7, -2])
-
-barargs = dict(width=0.5)
-labelargs = dict(ha='center', va='baseline')
-for ss in ax:
-    tflux = tflux_merged.sel(monsoon=ss)
-    if ss == 'SW':
-        x0 = -1.5
-    elif ss == 'SWNE':
-        x0 = -0.85
-    else:
-        x0 = 0
-
-    # wind stress
-    scale = 0.05
-    ax[ss].quiver(x0, 0, tflux.taux, tflux.tauy,
-                  width=0.1, units='x', scale=scale)
-    # ax[ss].quiver(0, 0, scale, scale,
-    #               scale=scale, width=0.1, units='x',
-    #               angles='xy', scale_units='xy')
-    # ax[ss].plot(tflux.taux/scale, tflux.tauy/scale, 'kx')
-    ax[ss].add_artist(mpl.patches.Ellipse((x0+tflux.taux/scale, tflux.tauy/scale),
-                                          2*tflux.taux_std/scale,
-                                          2*tflux.tauy_std/scale,
-                                          alpha=0.1, color='k', zorder=-1))
-    ax[ss].set_aspect(1)
-
-    # near-inertial input
-    ax[ss].bar(1, niw.sel(monsoon=ss)/0.5e-3, color='#31a354', **barargs)
-
-    # netflux
-    ax[ss].bar(2, tflux.heat/50, color='#ff4500', **barargs)
-    ax[ss].bar(2, tflux.cool/50, color='#00bfff', **barargs)
-
-    # precip
-    ax[ss].bar(3, P.sel(monsoon=ss)/5, color='#35dad1', **barargs)
-
-    ax[ss].axhline(0, color='lightgray', zorder=5)
-
-    ax[ss].set_xticklabels([])
-    ax[ss].set_xticks([])
-    ax[ss].set_yticklabels([])
-    ax[ss].set_yticks([])
-    ax[ss].spines['left'].set_visible(False)
-    ax[ss].spines['bottom'].set_visible(False)
-
-    ylabel = -2.5
-    ax[ss].text(0, ylabel, '$τ$', **labelargs)
-    ax[ss].text(1, ylabel, r'$\Pi$', **labelargs)
-    ax[ss].text(2, ylabel, '$J_q^0$', **labelargs)
-    ax[ss].text(3, ylabel, '$P$', **labelargs)
-
-axx[0, 0].set_ylabel('Basin-wide\nseasonal\naverages',
-                     rotation=0, va='center', ha='right')
-
-ax[ss].set_xlim([-2, 4])
-ax[ss].set_ylim([-2, 2])
 
 Scolor = 'orangered'
 for ii in range(4):
@@ -1509,19 +1454,89 @@ plt.savefig('images/paper1/bay-KT-vert-profile.pdf', bbox_inches='tight')
 #plt.savefig('images/paper1/bay-KT-vert-profile.png', bbox_inches='tight')
 # import subprocess
 # subprocess.run(['bash', 'add-legend-vert-profile.bash'], cwd='images/paper1/')
+
+# barargs = dict(width=0.5)
+# labelargs = dict(ha='center', va='baseline')
+# for ss in ax:
+#     tflux = tflux_merged.sel(monsoon=ss)
+#     if ss == 'SW':
+#         x0 = -1.5
+#     elif ss == 'SWNE':
+#         x0 = -0.85
+#     else:
+#         x0 = 0
+
+#     # wind stress
+#     scale = 0.05
+#     ax[ss].quiver(x0, 0, tflux.taux, tflux.tauy,
+#                   width=0.1, units='x', scale=scale)
+#     # ax[ss].quiver(0, 0, scale, scale,
+#     #               scale=scale, width=0.1, units='x',
+#     #               angles='xy', scale_units='xy')
+#     # ax[ss].plot(tflux.taux/scale, tflux.tauy/scale, 'kx')
+#     ax[ss].add_artist(mpl.patches.Ellipse((x0+tflux.taux/scale, tflux.tauy/scale),
+#                                           2*tflux.taux_std/scale,
+#                                           2*tflux.tauy_std/scale,
+#                                           alpha=0.1, color='k', zorder=-1))
+#     ax[ss].set_aspect(1)
+
+#     # near-inertial input
+#     ax[ss].bar(1, niw.sel(monsoon=ss)/0.5e-3, color='#31a354', **barargs)
+
+#     # netflux
+#     ax[ss].bar(2, tflux.heat/50, color='#ff4500', **barargs)
+#     ax[ss].bar(2, tflux.cool/50, color='#00bfff', **barargs)
+
+#     # precip
+#     ax[ss].bar(3, P.sel(monsoon=ss)/5, color='#35dad1', **barargs)
+
+#     ax[ss].axhline(0, color='lightgray', zorder=5)
+
+#     ax[ss].set_xticklabels([])
+#     ax[ss].set_xticks([])
+#     ax[ss].set_yticklabels([])
+#     ax[ss].set_yticks([])
+#     ax[ss].spines['left'].set_visible(False)
+#     ax[ss].spines['bottom'].set_visible(False)
+
+#     ylabel = -2.5
+#     ax[ss].text(0, ylabel, '$τ$', **labelargs)
+#     ax[ss].text(1, ylabel, r'$\Pi$', **labelargs)
+#     ax[ss].text(2, ylabel, '$J_q^0$', **labelargs)
+#     ax[ss].text(3, ylabel, '$P$', **labelargs)
+
+# axx[0, 0].set_ylabel('Basin-wide\nseasonal\naverages',
+#                      rotation=0, va='center', ha='right')
+
+# ax[ss].set_xlim([-2, 4])
+# ax[ss].set_ylim([-2, 2])
+
 #+END_SRC
 #+NAME: fig:vert
 #+ATTR_LATEX: :float multicolumn
-#+CAPTION: \small The seasonal cycle of $K_T$ at 8°N. (top) Basin-wide seasonal averages of daily Tropflux wind stress $\tau$, near-inertial energy input $\Pi$, daily Tropflux net surface heat flux $J_q^0$ and TRMM precipitation $P$. Wind stress variability is represented by gray ellipses with widths and heights equal to twice the standard deviation of $\tau_x$ and $\tau_y$. (bottom) Vertical profile of hourly averaged $K_T$ formed by combining all estimates in density bins (Section [[sec:profile]]). PDFs as well as means and medians are shown. Bins are marked by $\rho-1000$. Orange horizontal lines mark the climatological depth of the $S=34.75$ isohaline at 8\(\degree\)N estimated using the Argo climatology. Vertical lines mark the standard deviation of measurement depths in each bin --- these lines tend to overlap each other. Each PDF is colored according to data coverage: one means that there is at least one hourly estimate for every hour in the season.
+#+CAPTION: \small The seasonal cycle of $K_T$ at 8°N. Vertical profile of hourly averaged $K_T$ formed by combining all estimates in density bins (Section [[sec:profile]]). PDFs as well as means and medians are shown. Bins are marked by $\rho-1000$. Orange horizontal lines mark the climatological depth of the $S=34.75$ isohaline at 8\(\degree\)N estimated using the Argo climatology. Vertical lines mark the standard deviation of measurement depths in each bin --- these lines tend to overlap each other. Each PDF is colored according to data coverage: one means that there is at least one hourly estimate for every hour in the season.
 file:figure3-profile.pdf
 
 ** Figure 4: NRL time series                                        :ignore:
 
 #+BEGIN_SRC jupyter-python
 f5, ax = bay.plots.plot_nrl(nrl5)
-
+ax["depth"].set_ylim([140, 90])
 ax['N2'].set_ylim([0, 6])
+ax['KT'].set_ylim([1e-7, 1e-3])
+ax['KT'].set_yticks([1e-7, 1e-6, 1e-5, 1e-4, 1e-3])
+for child in ax["coverage"].get_children():
+    child.set_visible(False)
 f5.savefig('figure5-nrl.pdf', bbox_inches='tight')
+
+# shear, low_shear, _, niw_shear, _, fm24 = nrl5.filter_interp_shear(
+#     'filter_field', maxgap_time=6)
+
+# samp = nrl5.sample_along_chipod(niw_shear.real.sel(time="2014-Sep"), debug=True)
+# samp = nrl5.sample_along_chipod(shear.uz.sel(time="2014-Sep"), debug=True)
+# plt.figure(); shear.uz.plot()
+# plt.figure(); samp.real.plot()
+
 
 # shear_interp = (mooring.vel.shear
 #                 .interp(time=zpod.time, depth=zpod.isel(num=1))
