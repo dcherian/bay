@@ -933,7 +933,8 @@ neat_table = (pd.pivot_table(table,
 :header-args: :results none
 :END:
 
-** Figure 1: Large scale monsoon
+** Figure 1: Large scale monsoon :ignore:
+
 #+BEGIN_SRC jupyter-python
 import seaborn as sns
 
@@ -1133,9 +1134,7 @@ axes['oce'] = dict(zip(bay.splitseasons, axarr[0, :]))
 axes['atm'] = dict(zip(bay.splitseasons, axarr[1, :]))
 axes['iso'] = dict(zip(bay.splitseasons, axarr[2, :]))
 
-cmapj = sns.blend_palette(
-    colors=["w", "#5ABCE1", "#FFA500", "#ED2E00"], n_colors=20, as_cmap=True
-)
+cmapj = dcpy.plots.white_blue_orange_red()
 
 ax = axarr  # fundamental assumption below
 
@@ -1240,7 +1239,7 @@ hcb2 = plt.colorbar(hniw, ax=ax[-1, 2:], label='Near-inertial wind input $\Pi$ [
 hcb1.set_ticks(np.arange(0, 0.31, 0.05))
 hcb2.set_ticks(np.arange(0, 1.21, 0.2))
 
-dcpy.plots.label_subplots(list(axes['big'].values()) + list(axarr.flat),
+dcpy.plots.label_subplots(list(axarr.flat),
                           x=0.94, y=0.9,
                           ha='center',
                           fontsize=8,
@@ -1380,7 +1379,7 @@ with plt.rc_context(
 #+END_SRC
 #+NAME: fig:map
 #+ATTR_LATEX: :float multicolumn
-#+CAPTION: 2014 \(\chi\)pod deployment at 8\(\degree\)N. (a) Locations of moorings with \(\chi\)pods. (b--i) \(\chi\)pod deployment depths marked using horizontal lines on seasonal mean temperature (b--e) and salinity (f--i) profiles from the Argo climatology, averaged between 85.5\(\degree\)E and 88.5\(\degree\)E. These moorings experienced significant blowdown. Horizontal lines and shading mark median and interquartile range of each \(\chi\)pod's depth. Salinity equal to 34.75 psu is marked by a black dot. Temperature and salinity axes (lower and upper x-axes) are scaled such that axis limits represent equal jumps in density.
+#+CAPTION: 2014 \(\chi\)pod deployment at 8\(\degree\)N. (a) Locations of moorings. (b--i) Seasonal mean temperature (b--e) and salinity (f--i) profiles from the Argo climatology, averaged between 85.5\(\degree\)E and 88.5\(\degree\)E. These moorings experienced significant blowdown. Horizontal lines and shading mark median and interquartile range of each \(\chi\)pod's depth. The black dot marks $S=34.75$ psu. Temperature and salinity axes (lower and upper x-axes) are scaled such that axis limits represent equal jumps in density.
 [[file:figure2-map.pdf]]
 
 ** Figure 3: vertical profiles                                      :ignore:
@@ -1592,8 +1591,9 @@ f5.savefig('figure5-nrl.pdf', bbox_inches='tight')
 import xrft
 import xfilter
 
-f, axx = plt.subplots(3, 1, sharex=True, sharey=True)
-ax = dict(zip(['NRL3', 'NRL4', 'NRL5'], axx))
+with plt.rc_context({"font.size": 10}):
+    f, axx = plt.subplots(3, 1, sharex=True, sharey=True)
+    ax = dict(zip(['NRL3', 'NRL4', 'NRL5'], axx))
 
 for m in [nrl3, nrl4, nrl5]:
     shear = (m.interp_shear('depth').shear)
@@ -1625,6 +1625,10 @@ for m in [nrl3, nrl4, nrl5]:
                                   twoside=False,
                                   preserve_area=True)
 
+    for hh in hdl:
+        hh.set_clip_on(False)
+        hh.set_in_layout(False)
+
     hdl[0].set_color('k')
     hdl[1].set_color('C3')
     [hh.set_linewidth(0.9) for hh in hdl]
@@ -1653,24 +1657,27 @@ for m in [nrl3, nrl4, nrl5]:
                              ,**fill_kwargs)
     ax[m.name].get_legend().set_visible(False)
 
-dcpy.plots.linex([f0, 1, 1.93, 2, 1-f0, 1+f0, 1.93-f0, 1.93 + f0], ax=list(ax.values()))
+# dcpy.plots.linex([f0, 1, 1.93, 2, 1-f0, 1+f0, 1.93-f0, 1.93 + f0], ax=list(ax.values()))
+dcpy.plots.linex([f0, 1, 1.93, 1.93-f0, 1.93 + f0], ax=list(ax.values()))
 
 [ax.set_xlabel('') for ax in axx[:-1]]
 [ax.set_title('') for ax in axx]
-axx[0].set_ylim([0, 3e-5])
+[ax.set_yticks(np.arange(0, 1.6e-5, 0.5e-5)) for ax in axx]
+axx[0].set_ylim([0, 1.5e-5])
 f.legend(handles=hdl, labels=['CW', 'CCW'], loc='upper right')
 
 plt.tight_layout()
 
-f.set_size_inches((39 * 1/6.0255, 5))
+f.set_size_inches((dcpy.plots.pub_fig_width("jpo", "medium 2"), 4.5))
+f.suptitle(f"depth = {shear.depth.values}m", y=1.01)
 
-f.savefig('figure-xx-nrl-spectra.pdf', bbox_inches='tight')
+f.savefig('images/paper1/figure-xx-nrl-spectra.pdf', bbox_inches="tight")
 #+END_SRC
 
 #+NAME: fig:nrlspectra
 #+ATTR_LATEX: :float multicolumn :width 39pc
-#+CAPTION: Variance preserving spectra of shear at the deepest $\chi$pod's depth level. Lowpass, near-inertial and $M_2$ bands (shading) as well as percentage of total shear variance in each band (text) are shown.
-[[file:figure-xx-nrl-spectra.pdf]]
+#+CAPTION: Variance preserving rotary spectra of shear at 136-m at all three moorings (top to bottom). Lowpass, near-inertial and $M_2$ bands (shading) as well as percentage of total shear variance in each band (text) are shown. Vertical lines mark $f_0$, the diurnal frequency, $ω_{M2} - f_0$ and $ω_{M2} + f_0$. Clockwise and counter-clockwise spectra are in black and red respectively.
+[[file:images/paper1/figure-xx-nrl-spectra.pdf]]
 
 **** check parsevals :noexport:
 
@@ -1811,14 +1818,13 @@ f.savefig('images/paper1/png/nrl5-aug-niw-mixing.png', transparent=False)
 #+CAPTION: An example of pumping of the near-inertial shear layers past the \(\chi\)pod by the $M_2$ tide at NRL5. The time period of focus is highlighted in white in Figure [[fig:nrl]]. Time series of (a) turbulent diffusivity $K_T$ and (b) zonal shear for a period of high mixing associated with downward propagating near-inertial energy. The depth of the \(\chi\)pod and two isotherms are shown in (b). Horizontal lines indicate the inertial period (3.79 days; labelled $f_0$) and the $M_2$ period (12.42 hours; labelled $M_2$).
 [[file:figure6-tidal-pumping.pdf]]
 
-** Figure XX: NRL shears
+** Figure XX: NRL shears :ignore:
 
 #+NAME: fig:shears
 #+ATTR_LATEX: :float multicolumn
-#+CAPTION: Filtered shear components for the three moorings (left to right). From top to bottom, low-frequency shear, near-inertial shear, near-tidal shear and the residual.
+#+CAPTION: Weekly running RMS filtered shear components for the three moorings (top to bottom). All components are normalized by the normalized by 30-day lowpass filtered $N$. Depth mean from 50 to 150m.
 [[file:images/paper1/figure-xx-filtered-shears.png]]
-
-** Figure 7: NRL scatter plot                                       :ignore:
+** Figure 7: NRL scatter plot                                       :noexport:ignore:
 
 # - [X] check with merged turb fields
 # - [X] get rid of useless dropping along depth
@@ -1878,7 +1884,7 @@ if 'low' not in locals():
     for m in [nrl3, nrl4, nrl5]:
         if 'iz' in m.turb:
             m.turb = m.turb.drop('iz')
-        _, l, _, n, _ = m.filter_interp_shear('filter')
+        _, l, _, n, _, _ = m.filter_interp_shear('filter_then_sample')
         low.append(l.expand_dims(['lon', 'lat'])
                    .drop('depth')
                    .expand_dims({'depth': m.turb.depth})
@@ -2793,7 +2799,7 @@ f5.savefig('images/paper1/' + mooring.name.lower() + '.pdf')
 # # axes['shear'].set_ylim([0, 2.5])
 #+END_SRC
 #+NAME: fig:nrl
-#+CAPTION: A year of observations at NRL5. Time series of daily averaged quantities: (a) Tropflux wind stress and wind-forced near-inertial energy flux; (b) daily averaged $K_T$ and fraction daily coverage; (c) turbulent heat and salt fluxes $J_q^t, J_s^t$; (d) Buoyancy frequency $N^2$ and temperature stratification $T_z$; (e) Weekly running mean of filtered squared WKB-scaled shear magnitude: 6.6 day low pass in black and near-inertial bandpass in green; (f) Fraction of day where Richardson number $\Ri$ < 5. Background colors mark seasons; white region indicates time period that is subject of Figure [[fig:nrl5-niw]].
+#+CAPTION: A year of observations at NRL5. Time series of daily averaged quantities: (a) Tropflux wind stress and wind-forced near-inertial energy flux; (b) daily averaged $K_T$; (c) turbulent heat and salt fluxes $J_q^t, J_s^t$; (d) Buoyancy frequency $N^2$ and temperature stratification $T_z$; (e) Weekly running mean of filtered squared shear normalized by 30-day filtered $N^2$: 6.6 day low pass in black and near-inertial bandpass in green; (f) χpod depth. Background colors mark seasons; white region indicates time period that is subject of Figure [[fig:nrl5-niw]].
 [[file:images/paper1/nrl5.pdf]]
 
 *** Figure 8: NRL5 zoom-in                                         :ignore:
@@ -3175,7 +3181,6 @@ We thus attribute the seasonal cycle of near-surface mixing to the seasonal cycl
 
 # - Mixed layer diffusivity $K_T \approx \SI{1e-3}{m²\per\s}$ during the two monsoons and drops to $K_T\approx\SI{1e-4}{m²\per\s}$ during the two transitions.
 # - During March and April, both weak winds and near-surface stratification resulting from net surface heating weaken mixed layer turbulence.
-
 
 * intro outline                                                    :noexport:
 
