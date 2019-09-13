@@ -1014,9 +1014,11 @@ neat_table = (pd.pivot_table(table,
 #+BEGIN_SRC jupyter-python
 import seaborn as sns
 
+
 def quiver(ds, x, y, u, v, ax, **kwargs):
     x, y, u, v = xr.broadcast(ds[x], ds[y], ds[u], ds[v])
-    ax.quiver(x.values, y.values, u.values, v.values, **kwargs)
+    hdl = ax.quiver(x.values, y.values, u.values, v.values, **kwargs)
+    return hdl
 
 
 big_region = dict(
@@ -1058,7 +1060,7 @@ months = {"NE": "Dec-Feb", "NESW": "Mar-Apr", "SW": "May-Sep", "SWNE": "Oct-Nov"
 for season, aa in axes["big"].items():
     bay.plots.plot_coastline(aa, rivers=False, facecolor="none")
     aa.set_extent([45, 100, -8, 22.1])
-    quiver(
+    htau = quiver(
         means.sel(monsoon=season),
         "longitude",
         "latitude",
@@ -1069,6 +1071,11 @@ for season, aa in axes["big"].items():
         transform=ccrs.PlateCarree(),
         zorder=20,
     )
+    if season == "NE":
+        keykwargs = dict(
+            coordinates="axes", labelpos="S", labelsep=0.04, fontproperties=dict(size=9)
+        )
+        axes["big"]["NE"].quiverkey(htau, 0.110, 0.92, 0.1, "0.1 N/m²", **keykwargs)
 
     hdl = mean_precips.precipitation.sel(monsoon=season).plot.contourf(
         ax=aa,
@@ -1105,14 +1112,14 @@ f.colorbar(
 )
 
 f.set_size_inches((dcpy.plots.pub_fig_width("jpo", "medium 2"), 4.6))
-dcpy.plots.label_subplots(list(axes["big"].values()), x=0.025, y=0.8)
+dcpy.plots.label_subplots(list(axes["big"].values()), x=0.01, y=0.47)
 f.canvas.draw()
 f.savefig("images/paper1/figure1-ppt.pdf")
 f.savefig("images/paper1/png/figure1-ppt.png")
 #+END_SRC
 #+NAME: fig:ppt
 #+ATTR_LATEX: :width 33pc :float multicolumn
-#+CAPTION: Seasonal mean wind stress over the ocean from Tropflux and precipitation over the Indian Ocean basin north of 10\(\degree\)S averaged between December, 2013 and November, 2014. Black box marks Bay of Bengal bounds shown in Figure [[fig:spatial]]. White dots mark mooring locations.
+#+CAPTION: Seasonal mean wind stress over the ocean from Tropflux citep:Kumar2012 and precipitation from the TRMM Multi-satellite Precipitation Analysis dataset citep:trmm over the Indian Ocean basin north of 10\(\degree\)S averaged between December, 2013 and November, 2014. Black box marks Bay of Bengal bounds shown in Figure [[fig:spatial]]. White dots mark mooring locations.
 [[file:images/paper1/figure1-ppt.pdf]]
 
 ** Figure 2: spatial maps of EKE etc.                               :ignore:
