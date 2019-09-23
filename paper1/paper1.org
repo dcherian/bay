@@ -1500,7 +1500,7 @@ with plt.rc_context(
 #+END_SRC
 #+NAME: fig:map
 #+ATTR_LATEX: :float multicolumn
-#+CAPTION: 2014 \(\chi\)pod deployment at 8\(\degree\)N. (a) Locations of moorings. (b--i) Seasonal mean temperature (b--e) and salinity (f--i) profiles from the Argo climatology, averaged between 85.5\(\degree\)E and 88.5\(\degree\)E. These moorings experienced significant blowdown. Horizontal lines and shading mark median and interquartile range of each \(\chi\)pod's depth. The black dot marks $S=34.75$ psu. Temperature and salinity axes (lower and upper x-axes) are scaled such that axis limits represent equal jumps in density.
+#+CAPTION: 2014 \(\chi\)pod deployment at 8\(\degree\)N. (a) Locations of moorings. (b--i) Seasonal mean temperature (b--e) and salinity (f--i) profiles from the Argo climatology, averaged between 85.5\(\degree\)E and 88.5\(\degree\)E. These moorings experienced significant blowdown. Horizontal lines and shading mark median and interquartile range of each \(\chi\)pod's depth. The black dot marks $S=34.75$ psu. Temperature and salinity axes (lower and upper x-axes) are scaled such that axis limits represent equal jumps in density so panels (b--i) indicate that the mean stratification at the χpod depth levels is dominated by temperature in the long-term mean.
 [[file:figure2-map.pdf]]
 
 ** Figure 4: NRL spectra                                            :ignore:
@@ -1874,14 +1874,180 @@ f.savefig("images/paper1/oscar-hovmoeller.pdf", bbox_inches="tight")
 ** Figure 9: NRL5 zoom-in                                           :ignore:
 
 #+BEGIN_SRC jupyter-python
-trange = slice(nrl5.events['Storm-zoomin'][0],
-               nrl5.events['Storm-zoomin'][1])
+if "vel5" not in locals():
+    vel5 = bay.adcp.read_adcp("nrl5")
 
-f, ax = plt.subplots(2, 1, sharex=True, constrained_layout=True,
-                     gridspec_kw={'height_ratios': [1, 2]})
-f.set_size_inches((6.5, 5))
+    niw = xfilter.bandpass(
+        vel5["iso"].shear,
+        freq=[2 * nrl5.inertial.values, 1 / 2 * nrl5.inertial.values],
+        cycles_per="D",
+        coord="time",
+    )
 
-color = 'C0'
+    m2 = xfilter.bandpass(
+        vel5["iso"].shear,
+        freq=[
+            0.95 * (1.93 - nrl5.inertial.values),
+            1.05 * (1.93 + nrl5.inertial.values),
+        ],
+        cycles_per="D",
+        coord="time",
+    )
+
+
+trange = slice(nrl5.events["Storm-zoomin"][0], nrl5.events["Storm-zoomin"][1])
+
+f, ax = plt.subplots(
+    3, 1, sharex=True, constrained_layout=True, gridspec_kw={"height_ratios": [1, 2, 1]}
+)
+f.set_size_inches((dcpy.plots.pub_fig_width("jpo", "two column"), 6))
+
+color = "C0"
+
+(
+    nrl5.KT.sel(time=trange)
+    .isel(depth=1)
+    .interpolate_na("time")
+    .resample(time="30min", loffset="15min")
+    .mean("time")
+    .plot.line(
+        x="time",
+        ax=ax[0],
+        yscale="log",
+        ylim=[1e-8, 1e-3],
+        add_legend=False,
+        color=color,
+        lw=1,
+    )
+)
+ax[0].set_ylabel("$K_T$ [m²/s]")
+
+f0 = nrl5.inertial / 86400
+shear = nrl5.smooth_full_shear().uz
+shear.name = "Zonal shear"
+shear.attrs["units"] = "1/s"
+
+(
+    shear.sel(time=trange, depth=slice(90, 300)).plot.contourf(
+        yincrease=False,
+        cmap=mpl.cm.RdYlBu_r,
+        ax=ax[1],
+        levels=20,
+        vmax=0.01,
+        cbar_kwargs={
+            "orientation": "horizontal",
+            "shrink": 0.7,
+            "ticks": np.arange(-0.01, 0.011, 0.005),
+        },
+    )
+)
+
+(
+    nrl5.ctd["T"]
+    .sel(time=trange)
+    .resample(time="H", loffset="30min")
+    .mean("time")
+    .plot.contour(
+        levels=np.arange(17, 20.1, 2.5),
+        colors="w",
+        yincrease=False,
+        linewidths=2.5,
+        ax=ax[1],
+    )
+)
+hT = (
+    nrl5.ctd["T"]
+    .sel(time=trange)
+    .resample(time="H", loffset="30min")
+    .mean("time")
+    .plot.contour(
+        levels=np.arange(17, 20.1, 2.5),
+        colors="k",
+        yincrease=False,
+        linewidths=1,
+        ax=ax[1],
+    )
+)
+dcpy.plots.contour_label_spines(hT, prefix="$T$=", fmt="%.1f")
+
+(
+    nrl5.zχpod.sel(time=trange)
+    .isel(num=1)
+    .plot.line(x="time", ax=ax[1], color="w", lw=2.5, add_legend=False, _labels=False)
+)
+hz = (
+    nrl5.zχpod.sel(time=trange)
+    .isel(num=1)
+    .plot.line(x="time", ax=ax[1], color="k", lw=1, add_legend=False, _labels=False)
+)
+ax[1].set_xlim(trange.start, trange.stop)
+dcpy.plots.annotate_end(hz[0], r"$χ$pod", va="center")
+
+[aa.set_title("") for aa in ax]
+[aa.set_xlabel("") for aa in ax]
+ax[1].set_ylabel("depth [m]")
+[tt.set_rotation(0) for tt in ax[1].get_xticklabels()]
+[tt.set_ha("center") for tt in ax[1].get_xticklabels()]
+ax[1].set_ylim([250, 90])
+
+# ax[1].text(0.03, 0.05, "(b)", transform=ax[1].transAxes)
+
+# label timescales
+harr = ax[1].plot(
+    (np.datetime64("2014-08-01 05:00"), np.datetime64("2014-08-01 17:25")),
+    (205, 205),
+    color="k",
+)
+
+harr = ax[0].plot(
+    (np.datetime64("2014-08-01 05:00"), np.datetime64("2014-08-01 17:25")),
+    (2e-7, 2e-7),
+    color="k",
+)
+
+ax[0].text(np.datetime64("2014-08-01 11:00"), 1.5e-7, "$M_2$", ha="center", va="top")
+ax[1].text(np.datetime64("2014-08-01 11:00"), 208, "$M_2$", ha="center", va="top")
+
+harr = ax[1].plot(
+    (np.datetime64("2014-07-26 20:00"), np.datetime64("2014-07-30 10:10")),
+    (205, 205),
+    color="k",
+)
+ax[1].text(np.datetime64("2014-07-28 15:12"), 208, "$f_0$", ha="center", va="top")
+
+hdl1 = (np.abs(niw.sel(time=trange).sel(T=19, method="nearest")) ** 2).plot(
+    ax=ax[2], color="C3"
+)
+dcpy.plots.annotate_end(hdl1[0], "T=19", va="top")
+hdl2 = (np.abs(m2.sel(time=trange).sel(T=19, method="nearest")) ** 2).plot(
+    ax=ax[2], color="C3", ls="--"
+)
+
+hleg = ax[2].legend(
+    handles=[hdl1[0], hdl2[0]], labels=["near-inertial", "near-tidal"], frameon=False
+)
+hleg.legendHandles[0].set_color("k")
+hleg.legendHandles[1].set_color("k")
+
+hdl = (np.abs(niw.sel(time=trange).sel(T=17.5, method="nearest")) ** 2).plot(
+    ax=ax[2], color="C4"
+)
+dcpy.plots.annotate_end(hdl[0], "T=17.5", va="bottom")
+(np.abs(m2.sel(time=trange).sel(T=17.5, method="nearest")) ** 2).plot(
+    ax=ax[2], color="C4", ls="--"
+)
+ax[2].set_ylabel("Isothermal $S²$")
+ax[2].set_title("")
+ax[2].set_xlabel("")
+
+dcpy.plots.concise_date_formatter(ax[2], minticks=8, maxticks=12)
+[tt.set_rotation(0) for tt in ax[2].get_xticklabels()]
+dcpy.plots.label_subplots(ax, x=0.03, y=0.1)
+
+ax[2].ticklabel_format(axis="y", scilimits=(0,0))
+
+f.savefig("images/paper1/figure9-tidal-pumping.pdf")
+f.savefig("images/paper1/png/figure9-tidal-pumping.png", transparent=False)
 
 # shear = nrl5.interp_shear('bins')
 # (xfilter.lowpass((shear.sel(time=trange).shear),
@@ -1901,89 +2067,11 @@ color = 'C0'
 # ax[0].set_ylabel('$J_q^t$ [W/m²]')
 # # hjq[0].set_clip_on(False)
 # hjq[0].set_in_layout(False)
-
-(nrl5.KT.sel(time=trange).isel(depth=1).interpolate_na('time')
- .resample(time='30min', loffset='15min').mean('time')
- .plot.line(x='time', ax=ax[-2], yscale='log', ylim=[1e-8, 1e-3],
-            add_legend=False, color=color, lw=1))
-ax[0].set_ylabel('$K_T$ [m²/s]')
-
-f0 = nrl5.inertial/86400
-shear = (nrl5.vel.uz.rolling(depth=3, center=True, min_periods=1).mean())
-shear.dc.set_name_units('Zonal shear', '1/s')
-
-(shear.sel(time=trange, depth=slice(90, 300))
- .plot.contourf(yincrease=False, cmap=mpl.cm.RdYlBu_r, ax=ax[-1],
-                levels=20, vmax=0.01,
-                cbar_kwargs={'orientation': 'horizontal', 'shrink': 0.7,
-                             'ticks': np.arange(-0.01, 0.011, 0.005)}))
-
-(nrl5.ctd['T'].sel(time=trange)
- .resample(time='H', loffset='30min').mean('time')
- .plot.contour(levels=np.arange(17, 20.1, 2.5),
-               colors='w', yincrease=False, linewidths=2.5))
-hT = (nrl5.ctd['T'].sel(time=trange)
-      .resample(time='H', loffset='30min').mean('time')
-      .plot.contour(levels=np.arange(17, 20.1, 2.5),
-                    colors='k', yincrease=False, linewidths=1))
-dcpy.plots.contour_label_spines(hT, prefix='$T$=', fmt='%.1f')
-
-(nrl5.zχpod.sel(time=trange).isel(num=1)
- .plot.line(x='time', ax=ax[-1], color='w', lw=2.5,
-            add_legend=False, _labels=False))
-hz = (nrl5.zχpod.sel(time=trange).isel(num=1)
-      .plot.line(x='time', ax=ax[-1], color='k', lw=1,
-                 add_legend=False, _labels=False))
-ax[-1].set_xlim(trange.start, trange.stop)
-dcpy.plots.annotate_end(hz[0], r'$χ$pod', va='center')
-
-[aa.set_title('') for aa in ax]
-[aa.set_xlabel('') for aa in ax]
-ax[-1].set_ylabel('depth [m]')
-[tt.set_rotation(0) for tt in ax[-1].get_xticklabels()]
-[tt.set_ha('center') for tt in ax[-1].get_xticklabels()]
-ax[-1].set_ylim([250, 90])
-
-dcpy.plots.label_subplots(ax[:-1], x=0.03)
-ax[-1].text(0.03, 0.05, '(b)', transform=ax[-1].transAxes)
-
-# label timescales
-harr = ax[-1].plot((np.datetime64('2014-08-01 05:00'),
-                    np.datetime64('2014-08-01 17:25')),
-                   (205, 205), color='k')
-
-harr = ax[-2].plot((np.datetime64('2014-08-01 05:00'),
-                    np.datetime64('2014-08-01 17:25')),
-                   (2e-7, 2e-7), color='k')
-
-# harr = ax[0].plot((np.datetime64('2014-07-30 12:00'),
-#                    np.datetime64('2014-07-31 00:25')),
-#                    (5e-3, 5e-3), color='k')
-
-ax[-2].text(np.datetime64('2014-08-01 11:00'), 1.5e-7, '$M_2$',
-            ha='center', va='top')
-ax[-1].text(np.datetime64('2014-08-01 11:00'), 208, '$M_2$',
-            ha='center', va='top')
-# ax[0].text(np.datetime64('2014-07-30 18:00'), 4.9e-3, '$M_2$',
-#            ha='center', va='top')
-
-harr = ax[-1].plot((np.datetime64('2014-07-26 20:00'),
-                    np.datetime64('2014-07-30 10:10')),
-                   (205, 205), color='k')
-ax[-1].text(np.datetime64('2014-07-28 15:12'), 208, '$f_0$',
-            ha='center', va='top')
-
-ax[-1].xaxis.set_major_formatter(mpl.dates.DateFormatter('%b-%d'))
-
-f.set_size_inches((6.5, 4))
-
-f.savefig('images/paper1/nrl5-aug-niw-mixing.pdf')
-f.savefig('images/paper1/png/nrl5-aug-niw-mixing.png', transparent=False)
 #+END_SRC
 #+NAME: fig:nrl5-niw
 #+ATTR_LATEX: :float multicolumn
-#+CAPTION: An example of pumping of the near-inertial shear layers past the \(\chi\)pod by the $M_2$ tide at NRL5. The time period of focus is highlighted in white in Figure [[fig:nrl]]. Time series of (a) turbulent diffusivity $K_T$ and (b) zonal shear for a period of high mixing associated with downward propagating near-inertial energy. The depth of the \(\chi\)pod and two isotherms are shown in (b). Horizontal lines indicate the inertial period (3.79 days; labelled $f_0$) and the $M_2$ period (12.42 hours; labelled $M_2$).
-[[file:figure6-tidal-pumping.pdf]]
+#+CAPTION: An example of pumping of the near-inertial shear layers past the \(\chi\)pod by the $M_2$ tide at NRL5. The time period of focus is highlighted in white in Figure [[fig:nrl]]. Time series of (a) turbulent diffusivity $K_T$ and (b) zonal shear for a period of high mixing associated with downward propagating near-inertial energy. Also shown are the depth of the \(\chi\)pod and two isotherms (\SI{17.5}{\celsius}, \SI{19}{\celsius}). Horizontal lines indicate the inertial period (3.79 days; labelled $f_0$) and the $M_2$ period (12.42 hours; labelled $M_2$). (c) Near-inertial shear dominates near-tidal shear by an order of magnitude on the two isotherms (\SI{17.5}{\celsius}, \SI{19}{\celsius}).
+[[file:figure9-tidal-pumping.pdf]]
 
 ** Figure 10: 8°N special                                           :ignore:
 
