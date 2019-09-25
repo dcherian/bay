@@ -1137,7 +1137,7 @@ f.savefig("images/paper1/png/figure1-ppt.png")
 #+NAME: fig:ppt
 #+ATTR_LATEX: :width 33pc :float multicolumn
 #+CAPTION: Seasonal mean wind stress over the ocean from Tropflux citep:Kumar2012 and precipitation from the TRMM Multi-satellite Precipitation Analysis dataset citep:trmm over the Indian Ocean basin north of 10\(\degree\)S averaged between December, 2013 and November, 2014. Black box marks Bay of Bengal bounds shown in Figure [[fig:spatial]]. White dots mark mooring locations.
-[[file:images/paper1/figure1-ppt.pdf]]
+[[file:figure1-ppt.pdf]]
 
 ** Figure 2: spatial maps of EKE etc.                               :ignore:
 
@@ -1369,8 +1369,8 @@ f.canvas.draw()
 #pos0 = axes['big']['SW'].get_position()
 #axes['big']['SW'].set_position([pos0.x0-0.03, pos0.y0, pos0.width, pos0.height])
 
-f.savefig('images/paper1/spatial-maps.pdf', transparent=False)
-f.savefig('images/paper1/png/spatial-maps.png', transparent=False)
+f.savefig('images/paper1/figure2-spatial-maps.pdf', transparent=False)
+f.savefig('images/paper1/png/figure2-spatial-maps.png', transparent=False)
 
 # clim = (aq.sss.sel(longitude=slice(75, 98),
 #                    latitude=slice(0, 24))
@@ -1393,7 +1393,7 @@ f.savefig('images/paper1/png/spatial-maps.png', transparent=False)
 #+NAME: fig:spatial
 #+CAPTION: Seasonal cycle of forcing and circulation in the Bay of Bengal for 2014. White dots mark mooring locations used in the study. (top) Seasonal mean geostrophic eddy kinetic energy (EKE) from altimeter sea surface height (SSH) in color; vectors indicate surface currents from seasonally averaged 5-day OSCAR estimate citep:oscar,Bonjean2002. (middle) Seasonal near-inertial energy input calculated using a slab ocean mixed layer model $\Pi\slab$ (Appendix A). White contours are $\Pi=$ \SIlist{2; 4; 10}{\milli\W\per\square\metre}. (bottom) 50, 75 and 100m depth contours of the 34.75 isohaline surface from the Argo mapped climatology of subsurface temperature and salinity citep:Roemmich2009. Similar results were obtained using the North Indian Ocean Atlas of cite:Chatterjee2012. The months of March and April are separated to emphasize the basin-wide weak mean wind stress and weak near-inertial input.
 #+ATTR_LATEX: :float multicolumn
-[[file:images/paper1/spatial-maps.pdf]]
+[[file:figure2-spatial-maps.pdf]]
 
 ** Figure 3: mooring location map                                   :ignore:
 
@@ -1629,9 +1629,77 @@ ax.plot(ccw.freq_time * 86400, ccw/86400)
 #+NAME: fig:shears
 #+ATTR_LATEX: :float multicolumn
 #+CAPTION: Weekly running mean-squared shear for the three moorings (top to bottom): (a-c) total shear $S^2$; (d-f) low-frequency shear $S\low^2$; (g-i) total near-inertial shear $S\niwp^2$ (j-l) residual shear $S\res^2$. All components are normalized by the normalized by 30-day lowpass filtered $N^2_T$. χpod depths for both χpods are shown in black in all panels.
-[[file:images/paper1/ms-shear.png]]
+[[file:figure5-shears.png]]
 
-** Figure 6: vertical profiles                                      :ignore:
+** Figure 6: NRL time series                                        :ignore:
+
+#+BEGIN_SRC jupyter-python
+f5, ax = bay.plots.plot_nrl(nrl5)
+ax["depth"].set_ylim([140, 90])
+ax['N2'].set_ylim([0, 6])
+ax['KT'].set_ylim([1e-7, 1e-3])
+ax['KT'].set_yticks([1e-7, 1e-6, 1e-5, 1e-4, 1e-3])
+for child in ax["coverage"].get_children():
+    child.set_visible(False)
+f5.savefig('figure6-nrl5.pdf', bbox_inches='tight')
+
+# shear, low_shear, _, niw_shear, _, fm24 = nrl5.filter_interp_shear(
+#     'filter_field', maxgap_time=6)
+
+# samp = nrl5.sample_along_chipod(niw_shear.real.sel(time="2014-Sep"), debug=True)
+# samp = nrl5.sample_along_chipod(shear.uz.sel(time="2014-Sep"), debug=True)
+# plt.figure(); shear.uz.plot()
+# plt.figure(); samp.real.plot()
+
+
+# shear_interp = (mooring.vel.shear
+#                 .interp(time=zpod.time, depth=zpod.isel(num=1))
+#                 .interpolate_na('time'))
+# axmooring['depth'] = axx5[-1].twinx()
+
+# (mooring.zχpod.isel(num=1).resample(time='D').mean('time')
+#  .plot.line(x='time', ax=axmooring['depth'], color='C0'))
+# set_axes_color(axmooring['depth'], 'C0', spine='right')
+# axmooring['depth'].set_title('')
+
+# bpshear = mooring.calc_shear_bandpass(depth=120).to_array('band')
+# (bpshear.sel(time='2014').sel(band=['f0', 'M4'])
+#  .rolling(time=24*5).var()
+#  .plot.line(x='time', add_legend=True, ax=axx5[-1]))
+
+# bpshear2 = mooring.calc_shear_bandpass(depth=50).to_array('band')
+# (bpshear2.sel(time='2014').sel(band='f0')
+#  .rolling(time=24*5).var()
+#  .plot.line(x='time', ax=axx5[-1]))
+
+# shear = (mooring.calc_shear_bandpass(depth=120).sel(time='2014')
+#          .resample(time='D').var())
+
+# hm2 = (shear['M2']/1e-6).plot(ax=axmooring['shear'])
+# hm4 = (shear['M4']/1e-6).plot(ax=axmooring['shear'])
+# hf0 = (shear['f0']/1e-6).plot(ax=axmooring['shear'])
+# for hh in [hm2, hm4, hf0]:
+#     hh[0].set_clip_on(False)
+#     hh[0].set_in_layout(False)
+# _, htm2 = annotate_end(hm2[0], '$M_2$')
+# _, htm4 = annotate_end(hm4[0], '$M_4$', va='top')
+# _, htf0 = annotate_end(hf0[0], '$f_0$')
+# # _, hiw0 = annotate_end(hiw[0], '$> f_0$', va='center')
+
+# axra12 = plot_moor(ra12, idepth=0)
+# jqd = jq0.resample(time='D').mean()
+# axes['jq0'] = axra12['met'].twinx()
+# ra12.PlotFlux(axra12['jq0'], jqd.time.values, jqd.values)
+
+# # axes['shear'].set_ylim([0, 2.5])
+#+END_SRC
+
+#+NAME: fig:nrl
+#+ATTR_LATEX: :float multicolumn
+#+CAPTION: A year of observations at NRL5, 105m. Time series of daily averaged quantities: (a) Tropflux wind stress and wind-forced near-inertial energy flux; (b) daily averaged $K_T$ and fraction daily coverage; (c) turbulent heat and salt fluxes $J_q^t, J_s^t$; (d) Buoyancy frequency $N^2$ and temperature contribution to $N^2$, $g \alpha T_z$; (e) Weekly running mean of filtered squared WKB-scaled shear magnitude: 6.6 day low pass in black, near-inertial bandpass in green and the residual in orange; (f) Fraction of day where Richardson number $\Ri$ < 5. Background colors mark seasons; white region indicates time period that is subject of Figure [[fig:nrl5-niw]].
+[[file:figure6-nrl5.pdf]]
+
+** Figure 7: vertical profiles                                      :ignore:
 
 # (top) Basin-wide seasonal averages of daily Tropflux wind stress $\tau$, near-inertial energy input $\Pi$, daily Tropflux net surface heat flux $J_q^0$ and TRMM precipitation $P$. Wind stress variability is represented by gray ellipses with widths and heights equal to twice the standard deviation of $\tau_x$ and $\tau_y$. (bottom)
 
@@ -1763,75 +1831,7 @@ plt.savefig('images/paper1/bay-KT-vert-profile.pdf', bbox_inches='tight')
 #+NAME: fig:vert
 #+ATTR_LATEX: :float multicolumn
 #+CAPTION: \small The seasonal cycle of $K_T$ at 8°N. Vertical profile of hourly averaged $K_T$ formed by combining all estimates in density bins (Section [[sec:profile]]). PDFs as well as means and medians are shown. Bins are marked by $\rho-1000$. Orange horizontal lines mark the climatological depth of the $S=34.75$ isohaline at 8\(\degree\)N estimated using the Argo climatology. Vertical lines mark the standard deviation of measurement depths in each bin --- these lines tend to overlap each other. Each PDF is colored according to data coverage: one means that there is at least one hourly estimate for every hour in the season.
-file:figure3-profile.pdf
-
-** Figure 7: NRL time series                                        :ignore:
-
-#+BEGIN_SRC jupyter-python
-f5, ax = bay.plots.plot_nrl(nrl4)
-ax["depth"].set_ylim([140, 90])
-ax['N2'].set_ylim([0, 6])
-ax['KT'].set_ylim([1e-7, 1e-3])
-ax['KT'].set_yticks([1e-7, 1e-6, 1e-5, 1e-4, 1e-3])
-for child in ax["coverage"].get_children():
-    child.set_visible(False)
-f5.savefig('figure5-nrl.pdf', bbox_inches='tight')
-
-# shear, low_shear, _, niw_shear, _, fm24 = nrl5.filter_interp_shear(
-#     'filter_field', maxgap_time=6)
-
-# samp = nrl5.sample_along_chipod(niw_shear.real.sel(time="2014-Sep"), debug=True)
-# samp = nrl5.sample_along_chipod(shear.uz.sel(time="2014-Sep"), debug=True)
-# plt.figure(); shear.uz.plot()
-# plt.figure(); samp.real.plot()
-
-
-# shear_interp = (mooring.vel.shear
-#                 .interp(time=zpod.time, depth=zpod.isel(num=1))
-#                 .interpolate_na('time'))
-# axmooring['depth'] = axx5[-1].twinx()
-
-# (mooring.zχpod.isel(num=1).resample(time='D').mean('time')
-#  .plot.line(x='time', ax=axmooring['depth'], color='C0'))
-# set_axes_color(axmooring['depth'], 'C0', spine='right')
-# axmooring['depth'].set_title('')
-
-# bpshear = mooring.calc_shear_bandpass(depth=120).to_array('band')
-# (bpshear.sel(time='2014').sel(band=['f0', 'M4'])
-#  .rolling(time=24*5).var()
-#  .plot.line(x='time', add_legend=True, ax=axx5[-1]))
-
-# bpshear2 = mooring.calc_shear_bandpass(depth=50).to_array('band')
-# (bpshear2.sel(time='2014').sel(band='f0')
-#  .rolling(time=24*5).var()
-#  .plot.line(x='time', ax=axx5[-1]))
-
-# shear = (mooring.calc_shear_bandpass(depth=120).sel(time='2014')
-#          .resample(time='D').var())
-
-# hm2 = (shear['M2']/1e-6).plot(ax=axmooring['shear'])
-# hm4 = (shear['M4']/1e-6).plot(ax=axmooring['shear'])
-# hf0 = (shear['f0']/1e-6).plot(ax=axmooring['shear'])
-# for hh in [hm2, hm4, hf0]:
-#     hh[0].set_clip_on(False)
-#     hh[0].set_in_layout(False)
-# _, htm2 = annotate_end(hm2[0], '$M_2$')
-# _, htm4 = annotate_end(hm4[0], '$M_4$', va='top')
-# _, htf0 = annotate_end(hf0[0], '$f_0$')
-# # _, hiw0 = annotate_end(hiw[0], '$> f_0$', va='center')
-
-# axra12 = plot_moor(ra12, idepth=0)
-# jqd = jq0.resample(time='D').mean()
-# axes['jq0'] = axra12['met'].twinx()
-# ra12.PlotFlux(axra12['jq0'], jqd.time.values, jqd.values)
-
-# # axes['shear'].set_ylim([0, 2.5])
-#+END_SRC
-
-#+NAME: fig:nrl
-#+ATTR_LATEX: :float multicolumn
-#+CAPTION: A year of observations at NRL5, 105m. Time series of daily averaged quantities: (a) Tropflux wind stress and wind-forced near-inertial energy flux; (b) daily averaged $K_T$ and fraction daily coverage; (c) turbulent heat and salt fluxes $J_q^t, J_s^t$; (d) Buoyancy frequency $N^2$ and temperature contribution to $N^2$, $g \alpha T_z$; (e) Weekly running mean of filtered squared WKB-scaled shear magnitude: 6.6 day low pass in black, near-inertial bandpass in green and the residual in orange; (f) Fraction of day where Richardson number $\Ri$ < 5. Background colors mark seasons; white region indicates time period that is subject of Figure [[fig:nrl5-niw]].
-[[file:figure5-nrl.pdf]]
+file:figure7-profile.pdf
 
 ** Figure 8: OSCAR hovmoeller                                       :ignore:
 
@@ -1859,7 +1859,7 @@ dcpy.plots.concise_date_formatter(ax, axis="y", maxticks=10)
 ax.set_xticks(np.arange(82, 96.5, 4))
 ax.set_ylabel("")
 f.set_size_inches((dcpy.plots.pub_fig_width("jpo", "single column"), 6))
-f.savefig("images/paper1/oscar-hovmoeller.pdf", bbox_inches="tight")
+f.savefig("images/paper1/figure8-oscar.pdf", bbox_inches="tight")
 
 # oscar.sel(time="2014-Jan-01").plot.quiver(x="lon", y="lat", u="u", v="v", scale=1)
 
@@ -1869,7 +1869,7 @@ f.savefig("images/paper1/oscar-hovmoeller.pdf", bbox_inches="tight")
 #+NAME: fig:hov
 #+CAPTION: Hovmoeller diagram of near-surface speed at 8°N as estimated in the OSCAR product. Vertical white dashed lines indicate mooring locations.
 #+ATTR_LATEX: :width \columnwidth
-[[file:images/paper1/oscar-hovmoeller.pdf]]
+[[file:figure8-oscar.pdf]]
 
 ** Figure 9: NRL5 zoom-in                                           :ignore:
 
@@ -2015,11 +2015,11 @@ harr = ax[1].plot(
 )
 ax[1].text(np.datetime64("2014-07-28 15:12"), 208, "$f_0$", ha="center", va="top")
 
-hdl1 = (np.abs(niw.sel(time=trange).sel(T=19, method="nearest")) ** 2).plot(
+hdl1 = (np.abs(niw.sel(time=trange).sel(T=19.5, method="nearest")) ** 2).plot(
     ax=ax[2], color="C3"
 )
-dcpy.plots.annotate_end(hdl1[0], "T=19", va="top")
-hdl2 = (np.abs(m2.sel(time=trange).sel(T=19, method="nearest")) ** 2).plot(
+dcpy.plots.annotate_end(hdl1[0], "T=19.5", va="top")
+hdl2 = (np.abs(m2.sel(time=trange).sel(T=19.5, method="nearest")) ** 2).plot(
     ax=ax[2], color="C3", ls="--"
 )
 
@@ -2029,11 +2029,11 @@ hleg = ax[2].legend(
 hleg.legendHandles[0].set_color("k")
 hleg.legendHandles[1].set_color("k")
 
-hdl = (np.abs(niw.sel(time=trange).sel(T=17.5, method="nearest")) ** 2).plot(
+hdl = (np.abs(niw.sel(time=trange).sel(T=17, method="nearest")) ** 2).plot(
     ax=ax[2], color="C4"
 )
-dcpy.plots.annotate_end(hdl[0], "T=17.5", va="bottom")
-(np.abs(m2.sel(time=trange).sel(T=17.5, method="nearest")) ** 2).plot(
+dcpy.plots.annotate_end(hdl[0], "T=17.0", va="bottom")
+(np.abs(m2.sel(time=trange).sel(T=17, method="nearest")) ** 2).plot(
     ax=ax[2], color="C4", ls="--"
 )
 ax[2].set_ylabel("Isothermal $S²$")
@@ -2070,7 +2070,7 @@ f.savefig("images/paper1/png/figure9-tidal-pumping.png", transparent=False)
 #+END_SRC
 #+NAME: fig:nrl5-niw
 #+ATTR_LATEX: :float multicolumn
-#+CAPTION: An example of pumping of the near-inertial shear layers past the \(\chi\)pod by the $M_2$ tide at NRL5. The time period of focus is highlighted in white in Figure [[fig:nrl]]. Time series of (a) turbulent diffusivity $K_T$ and (b) zonal shear for a period of high mixing associated with downward propagating near-inertial energy. Also shown are the depth of the \(\chi\)pod and two isotherms (\SI{17.5}{\celsius}, \SI{19}{\celsius}). Horizontal lines indicate the inertial period (3.79 days; labelled $f_0$) and the $M_2$ period (12.42 hours; labelled $M_2$). (c) Near-inertial shear dominates near-tidal shear by an order of magnitude on the two isotherms (\SI{17.5}{\celsius}, \SI{19}{\celsius}).
+#+CAPTION: An example of pumping of the near-inertial shear layers past the \(\chi\)pod by the $M_2$ tide at NRL5. The time period of focus is highlighted in white in Figure [[fig:nrl]]. Time series of (a) turbulent diffusivity $K_T$ and (b) zonal shear for a period of high mixing associated with downward propagating near-inertial energy. Also shown are the depth of the \(\chi\)pod and two isotherms (\SI{17}{\celsius}, \SI{19.5}{\celsius}). Horizontal lines indicate the inertial period (3.79 days; labelled $f_0$) and the $M_2$ period (12.42 hours; labelled $M_2$). (c) Near-inertial shear dominates near-tidal shear by an order of magnitude on the two isotherms (\SI{17.0}{\celsius}, \SI{19.5}{\celsius}). The two time series are obtained by first interpolating total shear to isothermal space and then filtering as in Section [[sec:results]][[sec:shears]].
 [[file:figure9-tidal-pumping.pdf]]
 
 ** Figure 10: 8°N special                                           :ignore:
@@ -2317,7 +2317,7 @@ f.savefig('figure8-8n.pdf', bbox_to_inches='tight')
 #+NAME: fig:8njs
 #+ATTR_LATEX: :float multicolumn
 #+CAPTION: Turbulent salt flux $J_s^t$ at 8N. (a, b) Scatter plots of hourly averaged $J_s^t$ in depth and salinity spaces respectively. Points with larger $J_s^t$ are plotted over points with lower $J_q^t$ so that high flux events are prominent. (c) Monthly averaged turbulent $J_s^t$ through salinity surfaces $S=34.25, 34.75$ and $35.5$. These are estimated by bin averaging the values in (b) in bins with edges [34, 34.5, 35, 36]. Bins with less than one instrument-month of data are not shown. Those with less than two instrument months of data are grayed out. (d) Monthly averaged surface salinity flux $S_0 (E-P)$ estimated using evaporation from OAFlux and precipitation from TRMM. $S_0$ is assumed to be 32. In orange is $J_s^t$ through $S=34.75$ from (c) with bootstrap error bars.
-[[file:figure8-8n.pdf]]
+[[file:figure10-8n.pdf]]
 
 ** old figures :noexport:
 
