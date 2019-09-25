@@ -1510,93 +1510,110 @@ with plt.rc_context(
 import xrft
 import xfilter
 
-with plt.rc_context({"font.size": 10}):
-    f, axx = plt.subplots(3, 1, sharex=True, sharey=True)
-    ax = dict(zip(['NRL3', 'NRL4', 'NRL5'], axx))
 
-for m in [nrl3, nrl4, nrl5]:
-    shear = (m.interp_shear('depth').shear)
-    #shear = xfilter.lowpass(shear, coord='time', freq=4, cycles_per='D')
-    shear = shear.dropna('time').sel(time=slice('2013-12-01', '2014-12-01'))
-    # shear = ((m.vel.uz + 1j * m.vel.vz)
-    #          .sel(time='2014', depth=125, method='nearest'))
-    f0 = m.inertial
-    f0m = 1/9; f0 / 2
+def plot_spectrum(ax, shear):
+
+    f0 = 0.27
+    fflo = 1 / 9
+    f0m = f0 / 2
     f0p = f0 * 2
     M2m = 0.95 * (1.93 - f0)
     M2p = 1.05 * (1.93 + f0)
 
     fft = xrft.power_spectrum(shear)
-    lo = np.sum(fft.where(np.abs(fft.freq_time) < f0m/86400) * fft.freq_time_spacing)
-    niw = np.sum(fft.where((np.abs(fft.freq_time) < f0p/86400)
-                           & (np.abs(fft.freq_time) > f0m/86400))
-                 ,* fft.freq_time_spacing)
-    M2 = np.sum(fft.where((np.abs(fft.freq_time) > M2m/86400)
-                          & (np.abs(fft.freq_time) < M2p/86400))
-                ,* fft.freq_time_spacing)
+    lo = np.sum(fft.where(np.abs(fft.freq_time) < flo / 86400) * fft.freq_time_spacing)
+    niw = np.sum(
+        fft.where(
+            (np.abs(fft.freq_time) < f0p / 86400)
+            & (np.abs(fft.freq_time) > f0m / 86400)
+        )
+        ,* fft.freq_time_spacing
+    )
+    M2 = np.sum(
+        fft.where(
+            (np.abs(fft.freq_time) > M2m / 86400)
+            & (np.abs(fft.freq_time) < M2p / 86400)
+        )
+        ,* fft.freq_time_spacing
+    )
 
     total = np.var(shear)
 
-    hdl, _ = dcpy.ts.PlotSpectrum(shear,
-                                  ax=ax[m.name],
-                                  # multitaper=False,
-                                  # decimate=False,
-                                  twoside=False,
-                                  preserve_area=True)
+    hdl, _ = dcpy.ts.PlotSpectrum(shear, ax=ax, twoside=False, preserve_area=False)
 
-    for hh in hdl:
-        hh.set_clip_on(False)
-        hh.set_in_layout(False)
+    # for hh in hdl:
+    #     hh.set_clip_on(False)
+    #     hh.set_in_layout(False)
 
-    hdl[0].set_color('k')
-    hdl[1].set_color('C3')
-    [hh.set_linewidth(0.9) for hh in hdl]
+    hdl[0].set_color("k")
+    hdl[1].set_color("C3")
+    [hh.set_linewidth(0.7) for hh in hdl]
 
-    y0 = 1.2
-    text_kwargs = dict(transform=ax[m.name].get_xaxis_transform(), va='top')
-    ax[m.name].text(0.01, y0, f'lowpass: {(lo/total).values*100:.1f}%',
-                    ,**text_kwargs, color='k')
-    ax[m.name].text(0.14, y0, f'near-inertial: {(niw/total).values*100:.1f}%',
-                    ,**text_kwargs, color='C2')
-    ax[m.name].text(1.3, y0, f'$M_2$: {(M2/total).values*100:.1f}%',
-                    ,**text_kwargs, color='C1')
+    y0 = 1.1
+    text_kwargs = dict(transform=ax.get_xaxis_transform(), va="top")
+    ax.text(0.01, y0, f"{(lo/total).values*100:.1f}%", **text_kwargs, color="k")
+    ax.text(0.14, y0, f"{(niw/total).values*100:.1f}%", **text_kwargs, color="C2")
+    ax.text(1.3, y0, f"{(M2/total).values*100:.1f}%", **text_kwargs, color="C1")
 
-    fill_kwargs = dict(transform=ax[m.name].get_xaxis_transform(),
-                       alpha=0.1, zorder=-10)
-    ax[m.name].fill_betweenx([0, 1],
-                             plt.gca().get_xlim()[0],
-                             f0m, color='k',
-                             ,**fill_kwargs)
-    ax[m.name].fill_betweenx([0, 1],
-                             f0m, f0p,
-                             color='C2',
-                             ,**fill_kwargs)
-    ax[m.name].fill_betweenx([0, 1],
-                             M2m, M2p, color='C1',
-                             ,**fill_kwargs)
-    ax[m.name].get_legend().set_visible(False)
+    fill_kwargs = dict(transform=ax.get_xaxis_transform(), alpha=0.1, zorder=-10)
+    ax.fill_betweenx([0, 1], plt.gca().get_xlim()[0], flo, color="k", **fill_kwargs)
+    ax.fill_betweenx([0, 1], f0m, f0p, color="C2", **fill_kwargs)
+    ax.fill_betweenx([0, 1], M2m, M2p, color="C1", **fill_kwargs)
+    ax.get_legend().set_visible(False)
+
+    return hdl
+
+
+with plt.rc_context({"font.size": 10}):
+    f, axx = plt.subplots(3, 2, sharex=True, sharey=True, constrained_layout=True)
+    ax = dict(zip(["NRL3", "NRL4", "NRL5"], axx))
+
+for idx, m in enumerate([vel3["iso"], vel4["iso"], vel5["iso"]]):
+    shear = m.shear.sel(T=19, method="nearest").sel(time="2014").interpolate_na("time")
+    plot_spectrum(axx[idx, 1], shear)
+
+for idx, m in enumerate([nrl3, nrl4, nrl5]):
+    shear = (
+        m.smooth_full_shear()
+        .sel(time=slice("2013-12-01", "2014-12-01"))
+        .shear.sel(depth=144, method="nearest")
+    )
+    hdl = plot_spectrum(axx[idx, 0], shear)
+
+    # shear = shear.interpolate_na("time").sel(time="2014")
+    # shear = ((m.vel.uz + 1j * m.vel.vz)
+    #          .rolling(depth=4, min_periods=2, center=True)
+    #          .mean()
+    #         .sel(time='2014', depth=128, method='nearest')
+    #         .interpolate_na("time"))
+
 
 # dcpy.plots.linex([f0, 1, 1.93, 2, 1-f0, 1+f0, 1.93-f0, 1.93 + f0], ax=list(ax.values()))
-dcpy.plots.linex([f0, 1, 1.93, 1.93-f0, 1.93 + f0], ax=list(ax.values()))
+dcpy.plots.linex([f0, 1, 1.93, 1.93 - f0, 1.93 + f0], ax=list(axx.flat), lw=0.5)
 
-[ax.set_xlabel('') for ax in axx[:-1]]
-[ax.set_title('') for ax in axx]
-[ax.set_yticks(np.arange(0, 1.6e-5, 0.5e-5)) for ax in axx]
-axx[0].set_ylim([0, 1.5e-5])
-f.legend(handles=hdl, labels=['CW', 'CCW'], loc='upper right')
+[ax.set_xlabel("") for ax in axx.flat[:-2]]
+[ax.set_title("") for ax in axx.flat]
+[ax.set_ylabel("") for ax in axx.flat]
+# [ax.set_yticks(np.arange(0, 1.6e-5, 0.5e-5)) for ax in axx]
+axx[0, 0].set_ylim([None, 5e-4])
+axx[0, 1].legend(handles=hdl, labels=["CW", "CCW"], loc="lower left")
+[ax.set_ylabel("PSD($S_{total}$)") for ax in axx[:, 0]]
+# hdl.set_in_layout(False)
+axx[0, 0].set_title("depth = 144m")
 
-plt.tight_layout()
+axx[0, 0].set_title(f"depth = {shear.depth.values}m", pad=20)
+axx[0, 1].set_title("T = 19°C", pad=20)
+f.set_size_inches((dcpy.plots.pub_fig_width("jpo", "medium 2"), 5.8))
 
-f.set_size_inches((dcpy.plots.pub_fig_width("jpo", "medium 2"), 4.5))
-f.suptitle(f"depth = {shear.depth.values}m", y=1.01)
+dcpy.plots.label_subplots(axx.flat, y=0.9)
 
-f.savefig('images/paper1/figure-xx-nrl-spectra.pdf', bbox_inches="tight")
+f.savefig('images/paper1/figure4-nrl-spectra.pdf', bbox_inches="tight")
 #+END_SRC
 
 #+NAME: fig:nrlspectra
 #+ATTR_LATEX: :float multicolumn :width 39pc
 #+CAPTION: Variance preserving rotary spectra of shear at 128-m at all three moorings (top to bottom). Lowpass, near-inertial and $M_2$ bands (shading) as well as percentage of total shear variance in each band (text) are shown. Vertical lines mark $f_0$, the diurnal frequency, $ω_{M2} - f_0$ and $ω_{M2} + f_0$. Clockwise and counter-clockwise spectra are in black and red respectively.
-[[file:images/paper1/figure-xx-nrl-spectra.pdf]]
+[[file:figure4-nrl-spectra.pdf]]
 
 **** check parsevals :noexport:
 
