@@ -1495,13 +1495,13 @@ with plt.rc_context(
 
     # plt.subplots_adjust(wspace=0.1)
     f.canvas.draw()
-    # f.savefig("images/paper1/map.pdf", bbox_inches="tight")
-    # f.savefig("images/paper1/png/map.png", bbox_inches="tight")
+    f.savefig("images/paper1/figure3-map.pdf", bbox_inches="tight")
+    f.savefig("images/paper1/png/figure3-map.png", bbox_inches="tight")
 #+END_SRC
 #+NAME: fig:map
 #+ATTR_LATEX: :float multicolumn
-#+CAPTION: 2014 \(\chi\)pod deployment at 8\(\degree\)N. (a) Locations of moorings. (b--i) Seasonal mean temperature (b--e) and salinity (f--i) profiles from the Argo climatology, averaged between 85.5\(\degree\)E and 88.5\(\degree\)E. These moorings experienced significant blowdown. Horizontal lines and shading mark median and interquartile range of each \(\chi\)pod's depth. The black dot marks $S=34.75$ psu. Temperature and salinity axes (lower and upper x-axes) are scaled such that axis limits represent equal jumps in density so panels (b--i) indicate that the mean stratification at the χpod depth levels is dominated by temperature in the long-term mean.
-[[file:figure2-map.pdf]]
+#+CAPTION: 2014 \(\chi\)pod deployment at 8\(\degree\)N. (a) Locations of moorings. (b--i) Seasonal mean temperature (b--e) and salinity (f--i) profiles from the Argo climatology, averaged between 85.5\(\degree\)E and 88.5\(\degree\)E. These moorings experienced significant blowdown during the SW monsoon and the postmonsoon SWNE period. Horizontal lines and shading mark median and interquartile range of each \(\chi\)pod's depth for these two seasons. The black dot marks $S=34.75$ psu. Temperature and salinity axes (lower and upper x-axes) are scaled such that axis limits represent equal jumps in density; panels (b--i) indicate that the mean stratification at the χpod depth levels is dominated by temperature in the long-term mean.
+[[file:figure3-map.pdf]]
 
 ** Figure 4: NRL spectra                                            :ignore:
 
