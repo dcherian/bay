@@ -1665,11 +1665,207 @@ ax.plot(ccw.freq_time * 86400, ccw/86400)
 
 ** Figure 5: NRL shears                                             :ignore:
 
+#+CALL: read-nrl345()
+#+NAME: calc-shears
+#+BEGIN_SRC jupyter-python :results none
+import dcpy
+import xfilter
+import xarray as xr
+
+moor_shears = dict()
+for m in [nrl3, nrl4, nrl5]:
+    print(m.name)
+    shears = xr.Dataset()
+    full, shears["low"], _, shears["niw"], _, shears["fM24"] = m.filter_interp_shear(
+        "filter_field", maxgap_time="12H", num_discard=0
+    )
+    shears["full"] = full.shear
+    # shears["N2"] = full.N2
+    Tz = -1 * (
+        m.ctd.T.interp(depth2=m.vel.depth.values, time=m.vel.time)
+        .rename({"depth2": "depth"})
+        .differentiate("depth")
+    )
+    shears["N2"] = 9.81 * 1.7e-4 * Tz
+    shears["res"] = shears.full - shears.low - shears.niw - shears["fM24"]
+    shears["u"] = full.u
+    shears["v"] = full.v
+
+    # shears = shears.where(m.vel.u)
+    moor_shears[m.name] = shears
+
+all_shears = xr.concat(
+    [
+        shears.reset_coords(drop=True).expand_dims(moor=[name])
+        for name, shears in moor_shears.items()
+    ],
+    dim="moor",
+)
+all_shears["niwfm"] = all_shears["niw"] + all_shears["fM24"]
+
+shear = (
+    all_shears.drop(["niw", "N2", "u", "v"])[["full", "low", "niwfm", "res"]]
+    .to_array()
+    .interpolate_na("time", max_gap="3H")
+    .rename({"variable": "shear"})
+    .chunk({"moor": 1, "depth": 5, "shear": 1})
+    .assign_coords(shear=["$S²_{total}$", "$S²_{low}$", "$S²_{in+}$", "$S²_{res}$"])
+)
+
+msshear = dcpy.util.ms(
+    shear.rolling(time=7 * 24, center=True).construct("window"), "window"
+).compute()
+
+# msshear = dcpy.util.ms(
+#     shear.rolling(time=7 * 24, center=True).construct("window"), "window"
+# ).compute()
+#+END_SRC
+
+#+CALL: read-nrl345()
+#+CALL: calc-shears()
+#+BEGIN_SRC jupyter-python :results none
+import matplotlib as mpl
+import matplotlib.pyplot as plt
+import numpy as np
+
+NT2 = xfilter.lowpass(
+    all_shears.N2.interpolate_na("time"),
+    freq=1 / 30,
+    cycles_per="D",
+    coord="time",
+    num_discard=0,
+)
+
+
+S2N2 = msshear.where(all_shears.u.notnull()) / np.abs(NT2.where(NT2 > 1e-5))
+
+g = S2N2.sel(time=slice("2013-12-01", "2014-12-01")).plot(
+    x="time",
+    y="depth",
+    row="shear",
+    col="moor",
+    ylim=[220, 30],
+    cmap=mpl.cm.Reds,
+    vmin=0,
+    robust=True,
+    add_colorbar=False,
+)
+
+g.set_titles("{value}")
+g.set_xlabels("")
+g.fig.set_size_inches((dcpy.plots.pub_fig_width("jpo", "two column") * 1.2, 7))
+plt.subplots_adjust(wspace=0.05)
+
+import matplotlib.dates as mdates
+
+for ax in g.axes[-1, :]:
+    locator = mdates.AutoDateLocator(minticks=3, maxticks=7)
+    formatter = mdates.ConciseDateFormatter(
+        locator,
+        formats=["%Y", "%b", "%d", "%H:%M", "%H:%M", "%S.%f"],
+        zero_formats=["", "%b", "%b", "%b-%d", "%H:%M", "%H:%M"],
+    )
+    ax.xaxis.set_major_locator(locator)
+    ax.xaxis.set_major_formatter(formatter)
+
+g.fig.colorbar(
+    g._mappables[-1],
+    ax=g.axes,
+    ,**{
+        "orientation": "horizontal",
+        "aspect": 40,
+        "shrink": 0.8,
+        "label": "Weekly mean squared shear / 30-day low pass filtered $N_T²$",
+        "extend": "max",
+    }
+),
+
+g.map_dataarray(
+    xr.plot.contour,
+    x="time",
+    y="depth",
+    colors="w",
+    levels=[0.75, 1.25],
+    add_colorbar=False,
+    linewidths=0.5,
+    yincrease=False,
+)
+
+for index, name in enumerate(["NRL3", "NRL4", "NRL5"]):
+    mooring = locals()[name.lower()]
+    [mooring.PlotχpodDepth(ax=ax, color="w", lw=0.5) for ax in g.axes[:, index]]
+    [mooring.PlotχpodDepth(ax=ax, color="k", lw=0.25) for ax in g.axes[:, index]]
+
+dcpy.plots.label_subplots(g.axes.flat, x=0.025, y=0.1)
+
+g.fig.savefig("images/paper1/figure5-shears.png")
+
+# f, axx = plt.subplots(5, 3, sharex=True, sharey="row", constrained_layout=True)
+# rows = ["tot", "low", "niwp", "res", "KT"]
+# cols = ["NRL3", "NRL4", "NRL5"]
+
+# ax = dict()
+# for idx, cc in enumerate(cols):
+#     ax[cc] = dict(zip(rows, axx[:, idx]))
+
+# for mooring in msshear.moor:
+#     for ishear, _ in enumerate(msshear.shear):
+#         subset = (
+#             (msshear / NT2)
+#             .where(all_shears.u.notnull())
+#             .sel(moor=mooring, time=slice("2013-12-01", "2014-12-01"))
+#             .isel(shear=ishear)
+#         )
+#         subset.plot(
+#             ax=ax[str(mooring.values)][rows[ishear]],
+#             x="time",
+#             y="depth",
+#             ylim=[220, 30],
+#             cmap=mpl.cm.Reds,
+#             vmin=0,
+#             vmax=0.0018,
+#             add_colorbar=False,
+#             add_labels=False,
+#         )
+
+#         subset.plot.contour(
+#             ax=ax[str(mooring.values)][rows[ishear]],
+#             x="time",
+#             y="depth",
+#             colors="w",
+#             levels=[0.002, 0.004, 0.006],
+#             add_colorbar=False,
+#             linewidths=0.5,
+#             yincrease=False,
+#             add_labels=False,
+#         )
+
+# for index, name in enumerate(["NRL3", "NRL4", "NRL5"]):
+#     mooring = locals()[name.lower()]
+#     [mooring.PlotχpodDepth(ax=ax, color="w", lw=0.5) for ax in axx[:-1, index]]
+#     [mooring.PlotχpodDepth(ax=ax, color="k", lw=0.25) for ax in axx[:-1, index]]
+
+
+# for m in [nrl3, nrl4, nrl5]:
+#     m.KT.resample(time="D").mean("time").plot.line(
+#         ax=ax[m.name]["KT"],
+#         x="time",
+#         lw=0.5,
+#         yscale="log",
+#         add_legend=False,
+#         _labels=False,
+#     )
+
+# dcpy.plots.label_subplots(axx.flat, x=0.025, y=0.1)
+# f.set_size_inches((dcpy.plots.pub_fig_width("jpo", "two column") * 1.2, 7))
+# # plt.subplots_adjust(wspace=0.05)
+#+END_SRC
+
 # Weekly running mean-squared filtered shear components averaged between \SI{50}{m} and \SI{150}{m} for the three moorings (top to bottom). All components are normalized by the normalized by 30-day lowpass filtered $N$.
 #+NAME: fig:shears
 #+ATTR_LATEX: :float multicolumn
 #+CAPTION: Weekly running mean-squared shear for the three moorings (top to bottom): (a-c) total shear $S^2$; (d-f) low-frequency shear $S\low^2$; (g-i) total near-inertial shear $S\niwp^2$ (j-l) residual shear $S\res^2$. All components are normalized by the normalized by 30-day lowpass filtered $N^2_T$. χpod depths for both χpods are shown in black in all panels.
-[[file:figure5-shears.png]]
+[[file:images/paper1/figure5-shears.png]]
 
 ** Figure 6: NRL time series                                        :ignore:
 
@@ -2085,7 +2281,7 @@ dcpy.plots.annotate_end(hdl[0], "T=17.0", va="bottom")
 (np.abs(m2.sel(time=trange).sel(T=17, method="nearest")) ** 2).plot(
     ax=ax[2], color="C4", ls="--"
 )
-ax[2].set_ylabel("Isothermal $S²$")
+ax[2].set_ylabel("Isothermal $S²$ [s$^{-2}$]")
 ax[2].set_title("")
 ax[2].set_xlabel("")
 
@@ -2095,8 +2291,8 @@ dcpy.plots.label_subplots(ax, x=0.03, y=0.1)
 
 ax[2].ticklabel_format(axis="y", scilimits=(0, 0))
 
-# f.savefig("images/paper1/figure9-tidal-pumping.pdf")
-# f.savefig("images/paper1/png/figure9-tidal-pumping.png", transparent=False)
+f.savefig("images/paper1/figure9-tidal-pumping.pdf")
+f.savefig("images/paper1/png/figure9-tidal-pumping.png", transparent=False)
 
 # shear = nrl5.interp_shear('bins')
 # (xfilter.lowpass((shear.sel(time=trange).shear),
@@ -2323,7 +2519,7 @@ ax[-2].set_yticklabels(["34.25", "34.75", "35.25"])
 [tt.set_visible(False) for tt in ax[-2].get_xticklabels()]
 [tt.set_rotation(0) for tt in ax[-2].get_yticklabels()]
 ax[-2].set_ylim([3.5, 0])
-ax[-2].set_ylabel("$S$")
+ax[-2].set_ylabel("$S$ [psu]")
 
 ax[-1].cla()
 EP = (

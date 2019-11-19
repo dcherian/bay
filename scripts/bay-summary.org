@@ -3303,7 +3303,11 @@ import matplotlib.dates as mdates
 
 for ax in g.axes[-1, :]:
     locator = mdates.AutoDateLocator(minticks=3, maxticks=7)
-    formatter = mdates.ConciseDateFormatter(locator)
+    formatter = mdates.ConciseDateFormatter(
+        locator,
+        formats=["%Y", "%b", "%d", "%H:%M", "%H:%M", "%S.%f"],
+        zero_formats=["", "%b", "%b", "%b-%d", "%H:%M", "%H:%M"],
+    )
     ax.xaxis.set_major_locator(locator)
     ax.xaxis.set_major_formatter(formatter)
 
@@ -3337,7 +3341,7 @@ for index, name in enumerate(["NRL3", "NRL4", "NRL5"]):
 
 dcpy.plots.label_subplots(g.axes.flat, x=0.025, y=0.1)
 
-# g.fig.savefig("images/paper1/figure5-shears.png")
+g.fig.savefig("images/paper1/figure5-shears.png")
 
 # f, axx = plt.subplots(5, 3, sharex=True, sharey="row", constrained_layout=True)
 # rows = ["tot", "low", "niwp", "res", "KT"]
