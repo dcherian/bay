@@ -2972,6 +2972,462 @@ plt.gcf().set_size_inches((8, 5))
 
 #+END_SRC
 
+* NRL5 m2 isothermal space
+
+#+BEGIN_SRC jupyter-python
+vel5 = bay.adcp.read_adcp("nrl5")
+#+END_SRC
+
+#+BEGIN_SRC jupyter-python
+import xfilter
+
+niw = xfilter.bandpass(
+    vel5["iso"].shear,
+    freq=[2 * nrl5.inertial.values, 1 / 2 * nrl5.inertial.values],
+    cycles_per="D",
+    coord="time",
+)
+
+m2 = xfilter.bandpass(
+    vel5["iso"].shear,
+    freq=[0.95 * (1.93 - nrl5.inertial.values), 1.05 * (1.93 + nrl5.inertial.values)],
+    cycles_per="D",
+    coord="time",
+)
+
+plt.figure();
+(np.abs(niw.sel(T=19, method="nearest"))**2).plot()
+(np.abs(m2.sel(T=19, method="nearest"))**2).plot()
+(np.abs(niw.sel(T=17.5, method="nearest"))**2).plot()
+(np.abs(m2.sel(T=17.5, method="nearest"))**2).plot()
+#+END_SRC
+
+* EBoB 8N filtered shear fields
+
+#+CALL: read-nrl345()
+#+NAME: calc-shears
+#+BEGIN_SRC jupyter-python :results none
+import dcpy
+import xfilter
+
+moor_shears = dict()
+for m in [nrl3, nrl4, nrl5]:
+    print(m.name)
+    shears = xr.Dataset()
+    full, shears["low"], _, shears["niw"], _, shears["fM24"] = m.filter_interp_shear(
+        "filter_field", maxgap_time="3H", num_discard=0
+    )
+    shears["full"] = full.shear
+    # shears["N2"] = full.N2
+    Tz = (
+        m.ctd.T.interp(depth2=m.vel.depth.values, time=m.vel.time)
+        .interpolate_na("depth2")
+        .rename({"depth2": "depth"})
+    )
+    shears["N2"] = 9.81 * 1.7e-4 * Tz
+    shears["res"] = shears.full - shears.low - shears.niw - shears["fM24"]
+    shears["u"] = full.u
+    shears["v"] = full.v
+
+    shears = shears.where(m.vel.u)
+    moor_shears[m.name] = shears
+
+all_shears = xr.concat(
+    [
+        shears.reset_coords(drop=True).expand_dims(moor=[name])
+        for name, shears in moor_shears.items()
+    ],
+    dim="moor",
+)
+all_shears["niwfm"] = all_shears["niw"] + all_shears["fM24"]
+
+shear = (
+    all_shears.drop(["niw", "N2", "u", "v"])[["full", "low", "niwfm", "res"]]
+    .to_array()
+    .chunk({"moor": 1, "depth": 5})
+    .rename({"variable": "shear"})
+    .assign_coords(shear=["$S²_{total}$", "$S²_{low}$", "$S²_{in+}$", "$S²_{res}$"])
+)
+
+msshear = dcpy.util.ms(
+    shear.rolling(time=7 * 24).construct("window"), "window"
+).compute()
+#+END_SRC
+
+** test figures
+#+BEGIN_SRC jupyter-python
+kwargs = dict(twoside=True)
+_, ax = dcpy.ts.PlotSpectrum(full.shear.sel(depth=150, method='nearest'), **kwargs)
+dcpy.ts.PlotSpectrum(shears['low'].sel(depth=150, method='nearest'), ax=ax, **kwargs)
+dcpy.ts.PlotSpectrum(shears['niw'].sel(depth=150, method='nearest'), ax=ax, **kwargs)
+dcpy.ts.PlotSpectrum((shears['low'] + shears['niw']).sel(depth=150, method='nearest'), ax=ax, **kwargs)
+
+dcpy.ts.PlotSpectrum((shears['low'] + shears['niw'] + shears['fM24']).sel(depth=150, method='nearest'), ax=ax, **kwargs)
+
+#+END_SRC
+
+#+RESULTS:
+| (<matplotlib.lines.Line2D at 0x7f981563b978> <matplotlib.lines.Line2D at 0x7f98156659b0>) | array | ((<matplotlib.axes._subplots.AxesSubplot object at 0x7f98156bf860> <matplotlib.axes._subplots.AxesSubplot object at 0x7f9815690e10>) dtype=object) |
+
+#+BEGIN_SRC jupyter-python
+S2 = (np.abs(all_shears) ** 2)[["full", "low", "niwfm"]].to_array("shear")
+
+S2.groupby(S2.time.monsoon.labels).mean(["time"]).sel(depth=slice(40, 250)).plot(
+    hue="shear", col="monsoon", y="depth", yincrease=False, row="moor",
+)
+#+END_SRC
+
+#+BEGIN_SRC jupyter-python
+g = (
+    np.abs(all_shears[["low", "niwfm", "res"]].to_array()**2)
+    .sel(time=slice("2013-12-01", "2014-11-30"))
+    .plot(
+        x="time",
+        y="depth",
+        row="variable",
+        col="moor",
+        robust=True,
+        ylim=[220, 30],
+        cmap=mpl.cm.RdYlBu_r,
+        cbar_kwargs={
+            "orientation": "horizontal",
+            "aspect": 40,
+            "shrink": 0.8,
+            "label": "Squared shear [1/s]",
+        },
+    )
+)
+
+g.set_titles("{value}")
+g.set_xlabels("")
+g.fig.set_size_inches((dcpy.plots.pub_fig_width("jpo", "two column"), 8))
+g.fig.savefig("images/paper1/shear-time-series.png", bbox_inches="tight")
+#+END_SRC
+
+#+RESULTS:
+: <xarray.plot.facetgrid.FacetGrid at 0x7f933893a208>
+
+** paper shear time series image
+#+CALL: read-nrl345()
+#+CALL: calc-shears()
+#+BEGIN_SRC jupyter-python
+import matplotlib as mpl
+
+zrange = slice(75, 150)
+N2 = xfilter.lowpass(
+    all_shears.N2.sel(depth=zrange).mean("depth").interpolate_na("time"),
+    coord="time",
+    freq=1 / 30,
+    cycles_per="D",
+    num_discard=0,
+)
+
+# monthly_rms = (
+#     shear.sel(depth=zrange)
+#     .mean("depth")
+#     .resample(time="2W", loffset="7D")
+#     .apply(dcpy.util.rms)
+# )
+
+ms = (msshear).sel(depth=zrange).mean("depth") # / (N2)  # .mean("depth")
+g = (ms).sel(time=slice("2013-12-01", "2014-12-31")).plot.line(x="time", hue="shear", row="moor", sharey=True)
+[
+    m.MarkSeasonsAndEvents(events=False, ax=ax[0])
+    for m, ax in zip([nrl3, nrl4, nrl5], g.axes)
+]
+
+for axis in g.axes[:, 0]:
+    axis.set_title("")
+    for handle in axis.get_children():
+        if isinstance(handle, mpl.lines.Line2D):
+            handle.set_clip_on(False)
+            handle.set_in_layout(False)
+dcpy.plots.label_subplots(g.axes.flat, labels=["NRL3", "NRL4", "NRL5"], y=0.8)
+g.axes[1][0].set_ylim([0, 2e-3])
+g.axes[1][0].set_xlim([None, "2015-01-01"])
+g.axes[1][0].set_ylabel(
+    "(Weekly running mean squared shear) / (30-day lowpass filtered $N²_T$)"
+)
+g.fig.set_size_inches((7, 5))
+
+g.fig.savefig("images/paper1/figure-xx-filtered-shears.png", bbox_inches="tight")
+
+g = (msshear).plot(
+    row="shear",
+    col="moor",
+    x="time",
+    y="depth",
+    vmin=0,
+    cmap=mpl.cm.Reds,
+    yincrease=False,
+    ylim=[200, 0],
+    cbar_kwargs=dict(
+        orientation="horizontal",
+        shrink=0.8,
+        aspect=40,
+        label="Weekly running RMS shear [$s^{-1}$]",
+    ),
+)
+
+for m, axes in zip([nrl3, nrl4, nrl5], g.axes.transpose()):
+    [m.PlotχpodDepth(ax=ax, color="k") for ax in axes]
+
+g.set_titles("{value}")
+g.set_xlabels("")
+
+g.fig.set_size_inches((8, 5))
+
+g.fig.savefig("images/paper1/figure-xx-filtered-shears-zt.png", bbox_inches="tight")
+
+# region = dict(depth=100, method='nearest')
+# f, ax = plt.subplots(1, 2, constrained_layout=True)
+# kwargs = dict(ax=ax, twoside=True)
+# dcpy.ts.PlotSpectrum(shears.full.sel(**region), **kwargs)
+# dcpy.ts.PlotSpectrum(shears.low.sel(**region), **kwargs)
+# dcpy.ts.PlotSpectrum(shears.niw.sel(**region), **kwargs)
+# dcpy.ts.PlotSpectrum(shears.res.sel(**region), **kwargs)
+#+END_SRC
+
+#+RESULTS:
+: /home/deepak/miniconda3/envs/dcpy/lib/python3.7/site-packages/dask/array/numpy_compat.py:41: RuntimeWarning: invalid value encountered in true_divide
+:   x = np.divide(x1, x2, out)
+: /home/deepak/work/python/xarray/xarray/core/nanops.py:140: RuntimeWarning: Mean of empty slice
+:   return np.nanmean(a, axis=axis, dtype=dtype)
+: /home/deepak/work/python/xarray/xarray/core/nanops.py:140: RuntimeWarning: Mean of empty slice
+:   return np.nanmean(a, axis=axis, dtype=dtype)
+: /home/deepak/work/python/moor/moor/moor.py:1449: FutureWarning: This DataArray contains multi-dimensional coordinates. In the future, these coordinates will be transposed as well unless you specify transpose_coords=False.
+:   self.χ.z.transpose().pipe(xfilter, kind='mean', flen=86400),
+
+
+1. Looks like a seasonal cycle in residual shear?
+2. But is this M4? No, it is not.
+
+#+BEGIN_SRC jupyter-python
+
+m = nrl5
+
+# full, low, loni, niw, high, fM24 = m.filter_interp_shear(kind="filter_field", maxgap_time=3)
+
+full = m.smooth_full_shear(maxgap_time=3, preserve_gap=True)
+kwargs = dict(vmin=-0.025, vmax=0.025, cmap=mpl.cm.RdBu_r, add_colorbar=True,
+yincrease=False, ylim=[220, 0])
+
+f, ax = plt.subplots(2, 1, sharex=True, sharey=True)
+m.vel.uz.plot(**kwargs, ax=ax[0])
+full.uz.plot(**kwargs, ax=ax[1])
+
+vel = m.vel.copy()
+mask = vel.depth <= m.zχpod.isel(num=0).interp(time=vel.time)
+upper = vel.where(mask).rolling(depth=5, min_periods=3, center=True).mean()
+lower = vel.where(~mask).rolling(depth=3, min_periods=2, center=True).mean()
+# lower = vel.where(~mask).rolling(depth=3, min_periods=2, center=True)
+vel = vel.where(~mask, upper)
+vel = vel.where(mask, lower)
+
+f, ax = plt.subplots(2, 1, sharex=True, sharey=True)
+m.vel.uz.plot(ax=ax[0], **kwargs)
+vel.uz.plot(ax=ax[1], **kwargs)
+# xfilter.lowpass(m.vel.uz, coord='time', freq=8, cycles_per='D').plot(ax=ax[1], **kwargs)
+# xfilter.lowpass(m.vel.uz, coord='time', freq=4, cycles_per='D').plot(ax=ax[2], **kwargs)
+
+ax[0].set_ylim([200, 0])
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+#+begin_example
+/home/deepak/miniconda3/envs/dcpy/lib/python3.7/site-packages/bottleneck/slow/move.py:149: FutureWarning: Using a non-tuple sequence for multidimensional indexing is deprecated; use `arr[tuple(seq)]` instead of `arr[seq]`. In the future this will be interpreted as an array index, `arr[np.array(seq)]`, which will result either in an error or a different result.
+  nidx1 = n[idx1]
+/home/deepak/miniconda3/envs/dcpy/lib/python3.7/site-packages/bottleneck/slow/move.py:150: FutureWarning: Using a non-tuple sequence for multidimensional indexing is deprecated; use `arr[tuple(seq)]` instead of `arr[seq]`. In the future this will be interpreted as an array index, `arr[np.array(seq)]`, which will result either in an error or a different result.
+  nidx1 = nidx1 - n[idx2]
+/home/deepak/miniconda3/envs/dcpy/lib/python3.7/site-packages/bottleneck/slow/move.py:152: FutureWarning: Using a non-tuple sequence for multidimensional indexing is deprecated; use `arr[tuple(seq)]` instead of `arr[seq]`. In the future this will be interpreted as an array index, `arr[np.array(seq)]`, which will result either in an error or a different result.
+  idx[idx1] = nidx1 < min_count
+/home/deepak/miniconda3/envs/dcpy/lib/python3.7/site-packages/bottleneck/slow/move.py:153: FutureWarning: Using a non-tuple sequence for multidimensional indexing is deprecated; use `arr[tuple(seq)]` instead of `arr[seq]`. In the future this will be interpreted as an array index, `arr[np.array(seq)]`, which will result either in an error or a different result.
+  idx[idx3] = n[idx3] < min_count
+/home/deepak/miniconda3/envs/dcpy/lib/python3.7/site-packages/bottleneck/slow/move.py:149: FutureWarning: Using a non-tuple sequence for multidimensional indexing is deprecated; use `arr[tuple(seq)]` instead of `arr[seq]`. In the future this will be interpreted as an array index, `arr[np.array(seq)]`, which will result either in an error or a different result.
+  nidx1 = n[idx1]
+/home/deepak/miniconda3/envs/dcpy/lib/python3.7/site-packages/bottleneck/slow/move.py:150: FutureWarning: Using a non-tuple sequence for multidimensional indexing is deprecated; use `arr[tuple(seq)]` instead of `arr[seq]`. In the future this will be interpreted as an array index, `arr[np.array(seq)]`, which will result either in an error or a different result.
+  nidx1 = nidx1 - n[idx2]
+/home/deepak/miniconda3/envs/dcpy/lib/python3.7/site-packages/bottleneck/slow/move.py:152: FutureWarning: Using a non-tuple sequence for multidimensional indexing is deprecated; use `arr[tuple(seq)]` instead of `arr[seq]`. In the future this will be interpreted as an array index, `arr[np.array(seq)]`, which will result either in an error or a different result.
+  idx[idx1] = nidx1 < min_count
+/home/deepak/miniconda3/envs/dcpy/lib/python3.7/site-packages/bottleneck/slow/move.py:153: FutureWarning: Using a non-tuple sequence for multidimensional indexing is deprecated; use `arr[tuple(seq)]` instead of `arr[seq]`. In the future this will be interpreted as an array index, `arr[np.array(seq)]`, which will result either in an error or a different result.
+  idx[idx3] = n[idx3] < min_count
+#+end_example
+| 200 | 0 |
+:END:
+
+** paper shear images
+
+#+CALL: read-nrl345()
+#+CALL: calc-shears()
+#+BEGIN_SRC jupyter-python
+NT2 = xfilter.lowpass(
+    all_shears.N2.interpolate_na("time"), freq=1 / 7, cycles_per="D", coord="time"
+)
+
+g = (
+    (msshear.where(all_shears.u.notnull()) / NT2)
+    .sel(time=slice("2013-12-01", "2014-12-01"))
+    .plot(
+        x="time",
+        y="depth",
+        row="shear",
+        col="moor",
+        ylim=[220, 30],
+        cmap=mpl.cm.Reds,
+        vmin=0,
+        vmax=0.0018,
+        add_colorbar=False,
+    )
+)
+
+g.set_titles("{value}")
+g.set_xlabels("")
+g.fig.set_size_inches((dcpy.plots.pub_fig_width("jpo", "two column") * 1.2, 7))
+plt.subplots_adjust(wspace=0.05)
+
+import matplotlib.dates as mdates
+
+for ax in g.axes[-1, :]:
+    locator = mdates.AutoDateLocator(minticks=3, maxticks=7)
+    formatter = mdates.ConciseDateFormatter(locator)
+    ax.xaxis.set_major_locator(locator)
+    ax.xaxis.set_major_formatter(formatter)
+
+g.fig.colorbar(
+    g._mappables[-1],
+    ax=g.axes,
+    ,**{
+        "orientation": "horizontal",
+        "aspect": 40,
+        "shrink": 0.8,
+        "label": "Weekly mean squared shear / 30-day low pass filtered $N²$",
+        "extend": "max",
+    }
+),
+
+g.map_dataarray(
+    xr.plot.contour,
+    x="time",
+    y="depth",
+    colors="w",
+    levels=[0.002, 0.004, 0.006],
+    add_colorbar=False,
+    linewidths=0.5,
+    yincrease=False,
+)
+
+for index, name in enumerate(["NRL3", "NRL4", "NRL5"]):
+    mooring = locals()[name.lower()]
+    [mooring.PlotχpodDepth(ax=ax, color="w", lw=0.5) for ax in g.axes[:, index]]
+    [mooring.PlotχpodDepth(ax=ax, color="k", lw=0.25) for ax in g.axes[:, index]]
+
+dcpy.plots.label_subplots(g.axes.flat, x=0.025, y=0.1)
+
+g.fig.savefig("images/paper1/figure5-shears.png")
+
+# f, axx = plt.subplots(5, 3, sharex=True, sharey="row", constrained_layout=True)
+# rows = ["tot", "low", "niwp", "res", "KT"]
+# cols = ["NRL3", "NRL4", "NRL5"]
+
+# ax = dict()
+# for idx, cc in enumerate(cols):
+#     ax[cc] = dict(zip(rows, axx[:, idx]))
+
+# for mooring in msshear.moor:
+#     for ishear, _ in enumerate(msshear.shear):
+#         subset = (
+#             (msshear / NT2)
+#             .where(all_shears.u.notnull())
+#             .sel(moor=mooring, time=slice("2013-12-01", "2014-12-01"))
+#             .isel(shear=ishear)
+#         )
+#         subset.plot(
+#             ax=ax[str(mooring.values)][rows[ishear]],
+#             x="time",
+#             y="depth",
+#             ylim=[220, 30],
+#             cmap=mpl.cm.Reds,
+#             vmin=0,
+#             vmax=0.0018,
+#             add_colorbar=False,
+#             add_labels=False,
+#         )
+
+#         subset.plot.contour(
+#             ax=ax[str(mooring.values)][rows[ishear]],
+#             x="time",
+#             y="depth",
+#             colors="w",
+#             levels=[0.002, 0.004, 0.006],
+#             add_colorbar=False,
+#             linewidths=0.5,
+#             yincrease=False,
+#             add_labels=False,
+#         )
+
+# for index, name in enumerate(["NRL3", "NRL4", "NRL5"]):
+#     mooring = locals()[name.lower()]
+#     [mooring.PlotχpodDepth(ax=ax, color="w", lw=0.5) for ax in axx[:-1, index]]
+#     [mooring.PlotχpodDepth(ax=ax, color="k", lw=0.25) for ax in axx[:-1, index]]
+
+
+# for m in [nrl3, nrl4, nrl5]:
+#     m.KT.resample(time="D").mean("time").plot.line(
+#         ax=ax[m.name]["KT"],
+#         x="time",
+#         lw=0.5,
+#         yscale="log",
+#         add_legend=False,
+#         _labels=False,
+#     )
+
+# dcpy.plots.label_subplots(axx.flat, x=0.025, y=0.1)
+# f.set_size_inches((dcpy.plots.pub_fig_width("jpo", "two column") * 1.2, 7))
+# # plt.subplots_adjust(wspace=0.05)
+#+END_SRC
+
+#+RESULTS:
+
+** supplementary shear images
+#+BEGIN_SRC jupyter-python
+for mooring in all_shears.moor:
+    g = (
+        np.real(all_shears[["low", "niwfm", "res"]].to_array("shear"))
+        .assign_coords(
+            shear=["low-frequency", "near-inertial + near-tidal", "residual"]
+        )
+        .sel(time=slice("2013-12-01", "2015-11-30"), moor=mooring)
+        .plot(
+            x="time",
+            y="depth",
+            row="shear",
+            robust=True,
+            ylim=[220, 30],
+            vmin=-0.01,
+            vmax=0.01,
+            cmap=mpl.cm.RdBu_r,
+            cbar_kwargs={
+                "orientation": "horizontal",
+                "aspect": 40,
+                "shrink": 0.8,
+                "label": "Zonal shear [1/s]",
+            },
+        )
+    )
+
+    mooring = locals()[str(mooring.values).lower()]
+    [mooring.PlotχpodDepth(ax=axx, color="k", lw=0.6) for axx in g.axes.flat]
+
+    g.set_titles("{value}")
+    g.set_xlabels("")
+    g.fig.set_size_inches((dcpy.plots.pub_fig_width("jpo", "two column"), 8))
+    g.fig.savefig(
+        f"images/paper1/supplementary/shear-{mooring.name.lower()}.png",
+        bbox_inches="tight",
+    )
+#+END_SRC
+
 * EBoB near-inertial, lowpass climate
 ** Processing Notes
 *** Correcting for ADCP response
@@ -9090,3 +9546,187 @@ f.savefig('images/srtm-relief.png')
 | cite:Itsweire1993 | 16νN²  |                   |
 | cite:Gargett1984a | 200νN² | very conservative |
 |                   |        |                   |
+
+* server test
+
+#+BEGIN_SRC jupyter-python :session /jpy:localhost#8888/
+%matplotlib qt
+
+f, ax = plt.subplots(1, 1, constrained_layout=True)
+plt.plot([1, 2], [3,4])
+f.savefig('images/temp/imgDwV4H3.png')
+#+END_SRC
+
+#+RESULTS:
+
+#+CAPTION:
+[[file:images/temp/imgDwV4H3.png]]
+* survey paper map
+** topo
+#+BEGIN_SRC jupyter-python :session py
+import dcpy.plots
+import cartopy.crs as ccrs
+
+xlim = [72, 98]
+if 'etopo1' not in locals():
+    etopo1 = (xr.open_dataarray('~/datasets/ETOPO1_Bed_g_gmt4.grd.nc')
+              .sel(y=slice(-5, 25), x=slice(xlim[0], xlim[1]))
+              .load())
+
+toposhade = dcpy.plots.get_shade_field(etopo1, method='matplotlib',
+                                       azdeg=275, altdeg=25, vert_exag=125)
+
+f, ax = plt.subplots(1, 1, constrained_layout=True,
+                     subplot_kw={'projection':
+                                 ccrs.LambertAzimuthalEqualArea(central_latitude=12,
+                                                                central_longitude=86)})
+
+ax.set_extent([xlim[0], xlim[1], -5, 25])
+dcpy.plots.trim_map(ax, xlim, [-5, 25])
+ax.coastlines('10m', color='gray', linewidth=0.25)
+
+from cartopy import feature
+rivers = feature.NaturalEarthFeature(
+    category='physical', name='rivers_lake_centerlines',
+    scale='10m', facecolor='none', edgecolor='C0',
+    alpha=0.4, linewidths=0.5,)
+ax.add_feature(rivers)
+
+ax.plot([80.5, 85.5, 85.5, 87, 88.5, 90, 90, 90],
+        [0, 5, 8, 8, 8, 12, 15, 18],
+        '^', color='C0', fillstyle='none', transform=ccrs.PlateCarree())
+ax.plot([80.5, 80.5], [-2, 2], transform=ccrs.PlateCarree())
+
+dcpy.plots.plot_shaded_topo(toposhade.where(etopo1 > 1))
+f.savefig('images/bay-topo-mooring.pdf')
+# f.savefig('images/bay-turbulence-summary.png')
+#+END_SRC
+
+** turb time series
+#+BEGIN_SRC jupyter-python :session py
+if 'turb' not in locals():
+    turb = xr.open_dataset('../estimates/bay_merged_hourly.nc')
+
+if 'whoi65' not in locals():
+    whoi = sp.io.loadmat('../estimates/omm-whoi-18n.mat')
+    whoi_turb = whoi['Upper_ocean'][0,0]['hourly_data'][0,0]['TurbulenceData'][0,0]
+
+    whoi65 = xr.DataArray(whoi_turb['diffusivity'][-1, :],
+                          dims=['time'],
+                          coords={'time': dcpy.util.mdatenum2dt64(
+                              whoi_turb['mday'].squeeze() - 366)})
+
+def plot(KT, ax):
+    (KT.resample(time='D').mean('time')
+     .plot(ax=ax, x='time', ylim=[1e-7, 1e-2], yscale='log', _labels=False))
+    f.set_size_inches((8, 3))
+    return f
+
+
+f, ax = plt.subplots(4, 1, constrained_layout=True)
+
+plot(whoi65, ax=ax[0])
+ax[0].set_xlim(['2015-01-01', '2015-12-31'])
+[tt.set_visible(False) for tt in ax[0].get_xticklabels()]
+
+f = plot(turb.KT.sel(lat=15, lon=90, depth=15, time='2015')
+         .interpolate_na('time'), ax=ax[1])
+ax[1].set_xlim(['2015-01-01', '2015-12-31'])
+[tt.set_visible(False) for tt in ax[1].get_xticklabels()]
+
+plot(turb.KT.sel(lat=12, lon=90, depth=15, time='2014'), ax=ax[2])
+ax[2].set_xlim(['2014-01-01', '2014-12-31'])
+[tt.set_visible(False) for tt in ax[2].get_xticklabels()]
+
+f = plot(turb.KT.sel(lat=8, lon=88.5, time='2014').isel(depth=-1)
+         .interpolate_na('time'), ax=ax[3])
+ax[3].set_xlim(['2014-01-01', '2014-12-31'])
+
+ax[3].xaxis.set_major_formatter(mpl.dates.DateFormatter('%b'))
+[tt.set_rotation(0) for tt in ax[3].get_xticklabels()]
+
+f.set_size_inches(7, 6)
+f.savefig('images/survey-timeseries.pdf')
+#+END_SRC
+
+#+BEGIN_SRC jupyter-python :session py
+
+#+END_SRC
+#+CAPTION:
+[[file:images/temp/imgTBHvwp.png]]
+* NRL shear errors?
+#+BEGIN_SRC jupyter-python :file images/nrl-bad-shear-sampling.png
+f, ax = plt.subplots(3, 3, sharex=True, sharey='col', constrained_layout=True)
+
+for idx, m in enumerate([nrl3, nrl4, nrl5]):
+    for kind in ['depth', 'bins', 'interp']:
+        full, low, _, niw, _ = m.filter_interp_shear(kind)
+        (full.shear.rolling(time=4*24).reduce(dcpy.util.ms)
+         .sel(time='2014')
+         .plot(ax=ax[0, idx]))
+
+        (low.rolling(time=4*24).reduce(dcpy.util.ms)
+         .sel(time='2014')
+         .plot(ax=ax[1, idx]))
+
+        (niw.rolling(time=4*24).reduce(dcpy.util.ms)
+         .sel(time='2014')
+         .plot(ax=ax[2, idx]))
+
+    ax[0, idx].set_title(m.name)
+    ax[0, idx].text(0, 0.9, 'Total shear', transform=ax[0, idx].transAxes)
+    ax[1, idx].text(0, 0.9, 'Low frequency', transform=ax[1, idx].transAxes)
+    ax[2, idx].text(0, 0.9, 'NIW', transform=ax[2, idx].transAxes)
+
+ax[1, 1].legend(['Depth = 128m', 'Along χpod', 'interp, then sample'])
+
+[aa.set_xlabel('') for aa in ax.flat]
+[aa.set_title('') for aa in ax[1:, :].flat]
+f.suptitle('weekly mean squared shear')
+
+f
+#+END_SRC
+
+#+RESULTS:
+[[file:images/nrl-bad-shear-sampling.png]]
+
+Let's interpolate, then filter, then sample
+
+#+BEGIN_SRC jupyter-python
+
+fulli, lowi, _, niwi, _ = nrl3.filter_interp_shear('interp')
+fullb, lowb, _, niwb, _ = nrl3.filter_interp_shear('bins')
+
+bins = nrl3.sample_along_chipod(nrl3.vel['u'])
+interp = nrl3.sampole_along_chipod(nrl3.vel['u'].interpolate_na('depth'))
+
+uz = nrl3.vel.u.interpolate_na('depth').differentiate('depth')
+vz = nrl3.vel.v.interpolate_na('depth').differentiate('depth')
+shear = uz + 1j * vz
+
+import xfilter
+low = xfilter.lowpass(shear, coord='time', freq=0.1, cycles_per='D')
+niw = xfilter.bandpass(shear, coord='time', freq=[nrl3.inertial/2, nrl3.inertial*2], cycles_per='D')
+np.real(uz).plot(robust=True)
+nrl3.zχpod.isel(num=-1).rolling(time=6*24).mean().plot(color='k')
+
+kwargs = dict(vmin=-0.01, vmax=0.01, cmap=mpl.cm.RdBu_r)
+f, ax = plt.subplots(3, 1, sharex=True, sharey=True)
+np.real(uz).plot(**kwargs, ax=ax[0])
+np.real(low).plot(**kwargs, ax=ax[1])
+np.real(niw).plot(**kwargs, ax=ax[2])
+
+[nrl3.zχpod.isel(num=-1).rolling(time=6*24).mean().plot(ax=aa, color='k')
+ for aa in ax]
+ax[0].set_ylim([500, 0])
+
+bins.isel(iz=0).plot()
+interp.isel(iz=0).plot()
+
+dcpy.ts.PlotSpectrum(fulli.shear)
+dcpy.ts.PlotSpectrum(fullb.shear)
+
+#+END_SRC
+
+#+RESULTS:
+| <matplotlib.lines.Line2D | at | 0x7fbe9873ab70> |

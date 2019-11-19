@@ -88,18 +88,24 @@ def process_adcp(mooring, argo_superset=None, nsmooth_shear=4,
         vel = mooring.vel[['u', 'v']].copy()
 
     # estimate climatological N
-    if not argo_superset:
-        argo_superset = dcpy.oceans.read_argo_clim()[['Tmean', 'Smean', 'T', 'S']]
+    # if not argo_superset:
+    #     argo_superset = dcpy.oceans.read_argo_clim()[['Tmean', 'Smean', 'T', 'S']]
 
-    argo = (argo_superset
-            .sel(lat=mooring.lat, lon=mooring.lon, method='nearest')
-            .sel(time=slice(vel.time[0], vel.time[-1])))
-    argo['ρ'] = xr.DataArray(sw.pden(argo.S, argo.T, argo.pres),
-                             dims=['time', 'pres'],
-                             coords={'time': argo.time,
-                                     'pres': argo.pres})
-    argo['N2'] = argo.ρ.differentiate('pres') * 9.81/1025
-    argo['N'] = np.sqrt(argo.N2)
+    # argo = (argo_superset
+    #         .sel(lat=mooring.lat, lon=mooring.lon, method='nearest')
+    #         .sel(time=slice(vel.time[0], vel.time[-1])))
+    # argo['ρ'] = xr.DataArray(sw.pden(argo.S, argo.T, argo.pres),
+    #                          dims=['time', 'pres'],
+    #                          coords={'time': argo.time,
+    #                                  'pres': argo.pres})
+    # argo['N2'] = argo.ρ.differentiate('pres') * 9.81/1025
+    # argo['N'] = np.sqrt(argo.N2)
+
+    N2 = (
+        -9.81
+        * dcpy.eos.alpha(34, nrl5.ctd.T, nrl5.ctd.depth2)
+        * mooring.ctd.T.differentiate("depth2").rename({"depth2": "depth"})
+    )
 
     vel = (vel.interpolate_na('depth')
            .interpolate_na('time')
@@ -108,11 +114,14 @@ def process_adcp(mooring, argo_superset=None, nsmooth_shear=4,
 
     vel['good_data'] = ~np.isnan(mooring.vel.u)
 
-    vel['uz'] = smooth_shear(vel.u.differentiate('depth'), nsmooth_shear)
-    vel['vz'] = smooth_shear(vel.v.differentiate('depth'), nsmooth_shear)
+    moor_shear = mooring.smooth_full_shear()
+    vel['uz'] = moor_shear.uz
+    vel['vz'] = moor_shear.vz
 
-    vel['u'].dc.set_name_units('u', 'm/s')
-    vel['v'].dc.set_name_units('v', 'm/s')
+    vel['u'].name = "u"
+    vel['u'].attrs["units"] = "m/s"
+    vel['v'].name = "v"
+    vel['v'].attrs["units"] = "m/s"
 
     # map temperature to ADCP grid
     vel['T'] = (mooring.ctd.T.rename({'depth2': 'depth'})
@@ -123,8 +132,7 @@ def process_adcp(mooring, argo_superset=None, nsmooth_shear=4,
     vel['T'].attrs['units'] = '°C'
 
     # WKB scale velocities
-    vel['Nmean'] = (argo.N.interp(pres=vel.depth.values)
-                    .rename({'pres': 'depth'}))
+    vel['Nmean'] = np.sqrt(N2).interp(depth=vel.depth)
     vel['wkb_factor'] = vel.Nmean.mean('time')/vel.Nmean.mean()
     vel['wkb_factor'].attrs['long_name'] = 'N(z) / Nmean'
     vel['wkb_factor'].attrs['description'] = 'Using annual mean N'
@@ -253,12 +261,12 @@ def read_adcp(name):
         if 'wkbu' in vel[var]:
             vel[var]['wkbw'] = vel[var].wkbu + 1j * vel[var].wkbv
 
-    vel['niw']['shear'].dc.set_name_units('NIW shear', '1/s')
-    vel['vel']['shear'].dc.set_name_units('shear', '1/s')
-    vel['iso']['shear'].dc.set_name_units('isothermal shear', '1/s')
+    # vel['niw']['shear'].dc.set_name_units('NIW shear', '1/s')
+    # vel['vel']['shear'].dc.set_name_units('shear', '1/s')
+    # vel['iso']['shear'].dc.set_name_units('isothermal shear', '1/s')
 
-    vel['niw']['w'].dc.set_name_units('NIW velocity', 'm/s')
-    vel['vel']['w'].dc.set_name_units('velocity', 'm/s')
+    # vel['niw']['w'].dc.set_name_units('NIW velocity', 'm/s')
+    # vel['vel']['w'].dc.set_name_units('velocity', 'm/s')
     # vel['iso']['w'].dc.set_name_units('isothermal velocity', 'm/s')
 
     for vv in vel:

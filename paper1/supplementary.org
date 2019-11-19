@@ -5,6 +5,7 @@
 #+LATEX: \renewcommand{\thefigure}{S\arabic{figure}}
 #+LATEX: \newcommand{\niw}{_\text{in}}
 
+* Mooring time series
 We present summary time series for all χpods on all moorings in the following figures.
 
 #+LATEX: \begin{landscape}
@@ -48,3 +49,5 @@ We present summary time series for all χpods on all moorings in the following f
 #+ATTR_LATEX: :width \linewidth :float nil
 [[file:images/summaries/summary-RAMA-15N.png]]
 #+LATEX: \end{landscape}
+
+* Depth-time maps of decomposed shear

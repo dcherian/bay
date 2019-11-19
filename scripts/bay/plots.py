@@ -1023,12 +1023,13 @@ def plot_nrl(mooring):
     niw_shear += fm24.interp(time=niw_shear.time, depth=niw_shear.depth)
     residual = shear.shear - niw_shear - low_shear
 
-    N2 = (xfilter.lowpass(mooring.N2.isel(depth=1),
-                           coord='time',
-                           freq=1/30,
-                           cycles_per='D',
-                           num_discard=0)
-                 .interp(time=niw_shear.time).interpolate_na("time"))
+    N2 = (xfilter.lowpass(mooring.N2.isel(depth=1)
+                          .interpolate_na("time"),
+                          coord='time',
+                          freq=1/30,
+                          cycles_per='D',
+                          num_discard=0)
+                 .interp(time=niw_shear.time))
 
     f5, axx5 = plt.subplots(6, 1, sharex=True, constrained_layout=True)
     f5.set_constrained_layout_pads(hspace=0.001, h_pad=0)
@@ -1090,11 +1091,11 @@ def plot_nrl(mooring):
     mooring.MarkSeasonsAndEvents(events='Storm-zoomin', ax=axx5[-1])
     # set_axes_color(axmooring['depth'], 'C0', spine='right')
 
-    axmooring['input'] = axmooring['met'].twinx()
-    axmooring['input'].plot(mooring.niw.time, mooring.niw.true_flux*1000,
-                            color='C0')
-    axmooring['input'].set_ylabel('Near-inertial input\n$\Pi$[mW/m²]')
-    set_axes_color(axmooring['input'], 'C0', spine='right')
+    # axmooring['input'] = axmooring['met'].twinx()
+    # axmooring['input'].plot(mooring.niw.time, mooring.niw.true_flux*1000,
+    #                         color='C0')
+    # axmooring['input'].set_ylabel('Near-inertial input\n$\Pi$[mW/m²]')
+    # set_axes_color(axmooring['input'], 'C0', spine='right')
 
     dcpy.plots.label_subplots(axx5, x=0.025, y=0.83)
 
