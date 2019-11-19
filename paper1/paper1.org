@@ -1514,18 +1514,30 @@ with plt.rc_context(
 
 #+CALL: read-nrl345()
 #+BEGIN_SRC jupyter-python
+import dcpy
+import matplotlib.pyplot as plt
+import numpy as np
+import xarray as xr
 import xrft
 import xfilter
 
+if "vel3" not in locals():
+    vel3 = bay.adcp.read_adcp("nrl3")
+    vel4 = bay.adcp.read_adcp("nrl4")
+    vel5 = bay.adcp.read_adcp("nrl5")
+
+f0 = 0.27
 
 def plot_spectrum(ax, shear):
 
     f0 = 0.27
-    fflo = 1 / 9
+    flo = 1 / 9
     f0m = f0 / 2
     f0p = f0 * 2
     M2m = 0.95 * (1.93 - f0)
     M2p = 1.05 * (1.93 + f0)
+
+    shear["time"] = shear.time.dt.round("H")
 
     fft = xrft.power_spectrum(shear)
     lo = np.sum(fft.where(np.abs(fft.freq_time) < flo / 86400) * fft.freq_time_spacing)
@@ -1576,14 +1588,14 @@ with plt.rc_context({"font.size": 10}):
     ax = dict(zip(["NRL3", "NRL4", "NRL5"], axx))
 
 for idx, m in enumerate([vel3["iso"], vel4["iso"], vel5["iso"]]):
-    shear = m.shear.sel(T=19, method="nearest").sel(time="2014").interpolate_na("time")
-    plot_spectrum(axx[idx, 1], shear)
+    shear = m.shear.sel(T=18, method="nearest").sel(time="2014")
+    plot_spectrum(axx[idx, 1], shear.interpolate_na("time"))
 
 for idx, m in enumerate([nrl3, nrl4, nrl5]):
     shear = (
         m.smooth_full_shear()
         .sel(time=slice("2013-12-01", "2014-12-01"))
-        .shear.sel(depth=144, method="nearest")
+        .shear.sel(depth=152, method="nearest")
     )
     hdl = plot_spectrum(axx[idx, 0], shear)
 
@@ -1606,13 +1618,17 @@ axx[0, 0].set_ylim([None, 5e-4])
 axx[0, 1].legend(handles=hdl, labels=["CW", "CCW"], loc="lower left")
 [ax.set_ylabel("PSD($S_{total}$)") for ax in axx[:, 0]]
 # hdl.set_in_layout(False)
-axx[0, 0].set_title("depth = 144m")
+axx[0, 0].set_title("depth = 152m")
 
 axx[0, 0].set_title(f"depth = {shear.depth.values}m", pad=20)
-axx[0, 1].set_title("T = 19°C", pad=20)
+axx[0, 1].set_title("T = 18°C", pad=20)
 f.set_size_inches((dcpy.plots.pub_fig_width("jpo", "medium 2"), 5.8))
 
 dcpy.plots.label_subplots(axx.flat, y=0.9)
+
+h = axx[0,0].text(0.02, 2.5e-4, "$S_{low}$", color='k', va="center")
+h = axx[0,0].text(0.2, 2.5e-4, "$S_{in}$", color='C2', va="center")
+h = axx[0,0].text(2.5, 2.5e-4, "$S_{M2}$", color='C1', va="center")
 
 f.savefig('images/paper1/figure4-nrl-spectra.pdf', bbox_inches="tight")
 #+END_SRC
@@ -1665,10 +1681,10 @@ ax['KT'].set_ylim([1e-7, 1e-3])
 ax['KT'].set_yticks([1e-7, 1e-6, 1e-5, 1e-4, 1e-3])
 for child in ax["coverage"].get_children():
     child.set_visible(False)
-f5.savefig('figure6-nrl5.pdf', bbox_inches='tight')
+f5.savefig('images/paper1/figure6-nrl5.pdf', bbox_inches='tight')
 
 # shear, low_shear, _, niw_shear, _, fm24 = nrl5.filter_interp_shear(
-#     'filter_field', maxgap_time=6)
+#     'filter_field', maxgap_time="6H")
 
 # samp = nrl5.sample_along_chipod(niw_shear.real.sel(time="2014-Sep"), debug=True)
 # samp = nrl5.sample_along_chipod(shear.uz.sel(time="2014-Sep"), debug=True)
@@ -1861,6 +1877,7 @@ file:figure7-profile.pdf
 
 #+BEGIN_SRC jupyter-python
 import dcpy
+import matplotlib as mpl
 
 if "oscar" not in locals():
     oscar = dcpy.oceans.read_oscar()
@@ -1874,15 +1891,24 @@ oscar.speed.sel(lat=8, method="nearest").sel(
 ).plot(
     x="lon",
     y="time",
+    vmin=0,
     robust=True,
     cmap=mpl.cm.Reds,
-    cbar_kwargs={"label": "OSCAR surface speed [m/s]", "orientation": "horizontal", "aspect": 40},
+    cbar_kwargs={
+        "label": "OSCAR surface speed at 8°N [m/s]",
+        "orientation": "horizontal",
+        "aspect": 40,
+    },
 )
 dcpy.plots.linex([85.5, 87, 88.5], color="w", lw=2, zorder=2)
 dcpy.plots.concise_date_formatter(ax, axis="y", maxticks=10)
 ax.set_xticks(np.arange(82, 96.5, 4))
 ax.set_ylabel("")
 f.set_size_inches((dcpy.plots.pub_fig_width("jpo", "single column"), 6))
+
+ax.set_xlabel("Longitude [°E]")
+ax.set_title("")
+
 f.savefig("images/paper1/figure8-oscar.pdf", bbox_inches="tight")
 
 # oscar.sel(time="2014-Jan-01").plot.quiver(x="lon", y="lat", u="u", v="v", scale=1)
@@ -1917,7 +1943,6 @@ if "vel5" not in locals():
         cycles_per="D",
         coord="time",
     )
-
 
 trange = slice(nrl5.events["Storm-zoomin"][0], nrl5.events["Storm-zoomin"][1])
 
@@ -2068,10 +2093,10 @@ dcpy.plots.concise_date_formatter(ax[2], minticks=8, maxticks=12)
 [tt.set_rotation(0) for tt in ax[2].get_xticklabels()]
 dcpy.plots.label_subplots(ax, x=0.03, y=0.1)
 
-ax[2].ticklabel_format(axis="y", scilimits=(0,0))
+ax[2].ticklabel_format(axis="y", scilimits=(0, 0))
 
-f.savefig("images/paper1/figure9-tidal-pumping.pdf")
-f.savefig("images/paper1/png/figure9-tidal-pumping.png", transparent=False)
+# f.savefig("images/paper1/figure9-tidal-pumping.pdf")
+# f.savefig("images/paper1/png/figure9-tidal-pumping.png", transparent=False)
 
 # shear = nrl5.interp_shear('bins')
 # (xfilter.lowpass((shear.sel(time=trange).shear),
@@ -2845,7 +2870,7 @@ for season, aa in zip(['NE', 'SW'], ax):
                             region['latitude'].stop, 4))
 #+END_SRC
 
-* Supplementary Information
+* Supplementary Information :noexport:
 
 Figure 11-13 are supplementary figures showing filtered shear components
 # Figures S1, S2, S3 present time series of daily averaged quantities as in Figure [[fig:nrl]] for moorings NRL3 and NRL4.
