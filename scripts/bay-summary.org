@@ -3009,27 +3009,28 @@ plt.figure();
 #+BEGIN_SRC jupyter-python :results none
 import dcpy
 import xfilter
+import xarray as xr
 
 moor_shears = dict()
 for m in [nrl3, nrl4, nrl5]:
     print(m.name)
     shears = xr.Dataset()
     full, shears["low"], _, shears["niw"], _, shears["fM24"] = m.filter_interp_shear(
-        "filter_field", maxgap_time="3H", num_discard=0
+        "filter_field", maxgap_time="12H", num_discard=0
     )
     shears["full"] = full.shear
     # shears["N2"] = full.N2
-    Tz = (
+    Tz = -1 * (
         m.ctd.T.interp(depth2=m.vel.depth.values, time=m.vel.time)
-        .interpolate_na("depth2")
         .rename({"depth2": "depth"})
+        .differentiate("depth")
     )
     shears["N2"] = 9.81 * 1.7e-4 * Tz
     shears["res"] = shears.full - shears.low - shears.niw - shears["fM24"]
     shears["u"] = full.u
     shears["v"] = full.v
 
-    shears = shears.where(m.vel.u)
+    # shears = shears.where(m.vel.u)
     moor_shears[m.name] = shears
 
 all_shears = xr.concat(
@@ -3044,14 +3045,19 @@ all_shears["niwfm"] = all_shears["niw"] + all_shears["fM24"]
 shear = (
     all_shears.drop(["niw", "N2", "u", "v"])[["full", "low", "niwfm", "res"]]
     .to_array()
-    .chunk({"moor": 1, "depth": 5})
+    .interpolate_na("time", max_gap="3H")
     .rename({"variable": "shear"})
+    .chunk({"moor": 1, "depth": 5, "shear": 1})
     .assign_coords(shear=["$S²_{total}$", "$S²_{low}$", "$S²_{in+}$", "$S²_{res}$"])
 )
 
 msshear = dcpy.util.ms(
-    shear.rolling(time=7 * 24).construct("window"), "window"
+    shear.rolling(time=7 * 24, center=True).construct("window"), "window"
 ).compute()
+
+# msshear = dcpy.util.ms(
+#     shear.rolling(time=7 * 24, center=True).construct("window"), "window"
+# ).compute()
 #+END_SRC
 
 ** test figures
@@ -3261,24 +3267,31 @@ ax[0].set_ylim([200, 0])
 #+CALL: read-nrl345()
 #+CALL: calc-shears()
 #+BEGIN_SRC jupyter-python
+import matplotlib as mpl
+import matplotlib.pyplot as plt
+import numpy as np
+
 NT2 = xfilter.lowpass(
-    all_shears.N2.interpolate_na("time"), freq=1 / 7, cycles_per="D", coord="time"
+    all_shears.N2.interpolate_na("time"),
+    freq=1 / 30,
+    cycles_per="D",
+    coord="time",
+    num_discard=0,
 )
 
-g = (
-    (msshear.where(all_shears.u.notnull()) / NT2)
-    .sel(time=slice("2013-12-01", "2014-12-01"))
-    .plot(
-        x="time",
-        y="depth",
-        row="shear",
-        col="moor",
-        ylim=[220, 30],
-        cmap=mpl.cm.Reds,
-        vmin=0,
-        vmax=0.0018,
-        add_colorbar=False,
-    )
+
+S2N2 = msshear.where(all_shears.u.notnull()) / np.abs(NT2.where(NT2 > 1e-5))
+
+g = S2N2.sel(time=slice("2013-12-01", "2014-12-01")).plot(
+    x="time",
+    y="depth",
+    row="shear",
+    col="moor",
+    ylim=[220, 30],
+    cmap=mpl.cm.Reds,
+    vmin=0,
+    robust=True,
+    add_colorbar=False,
 )
 
 g.set_titles("{value}")
@@ -3301,7 +3314,7 @@ g.fig.colorbar(
         "orientation": "horizontal",
         "aspect": 40,
         "shrink": 0.8,
-        "label": "Weekly mean squared shear / 30-day low pass filtered $N²$",
+        "label": "Weekly mean squared shear / 30-day low pass filtered $N_T²$",
         "extend": "max",
     }
 ),
@@ -3311,7 +3324,7 @@ g.map_dataarray(
     x="time",
     y="depth",
     colors="w",
-    levels=[0.002, 0.004, 0.006],
+    levels=[0.75, 1.25],
     add_colorbar=False,
     linewidths=0.5,
     yincrease=False,
@@ -3324,7 +3337,7 @@ for index, name in enumerate(["NRL3", "NRL4", "NRL5"]):
 
 dcpy.plots.label_subplots(g.axes.flat, x=0.025, y=0.1)
 
-g.fig.savefig("images/paper1/figure5-shears.png")
+# g.fig.savefig("images/paper1/figure5-shears.png")
 
 # f, axx = plt.subplots(5, 3, sharex=True, sharey="row", constrained_layout=True)
 # rows = ["tot", "low", "niwp", "res", "KT"]
@@ -3388,6 +3401,13 @@ g.fig.savefig("images/paper1/figure5-shears.png")
 #+END_SRC
 
 #+RESULTS:
+:RESULTS:
+: /home/deepak/work/python/xarray/xarray/plot/plot.py:914: UserWarning: No contour levels were found within the data range.
+:   primitive = ax.contour(x, y, z, **kwargs)
+: /home/deepak/work/python/moor/moor/moor.py:1449: FutureWarning: This DataArray contains multi-dimensional coordinates. In the future, these coordinates will be transposed as well unless you specify transpose_coords=False.
+:   self.χ.z.transpose().pipe(xfilter, kind='mean', flen=86400),
+| Text | (0.025 0.1 (a) ) | Text | (0.025 0.1 (b) ) | Text | (0.025 0.1 (c) ) | Text | (0.025 0.1 (d) ) | Text | (0.025 0.1 (e) ) | Text | (0.025 0.1 (f) ) | Text | (0.025 0.1 (g) ) | Text | (0.025 0.1 (h) ) | Text | (0.025 0.1 (i) ) | Text | (0.025 0.1 (j) ) | Text | (0.025 0.1 (k) ) | Text | (0.025 0.1 (l) ) |
+:END:
 
 ** supplementary shear images
 #+BEGIN_SRC jupyter-python

@@ -1019,7 +1019,7 @@ def plot_nrl(mooring):
     from dcpy.plots import annotate_end, set_axes_color
 
     shear, low_shear, _, niw_shear, _, fm24 = mooring.filter_interp_shear(
-        'filter_then_sample', wkb_scale=False, maxgap_time=12)
+        'filter_then_sample', wkb_scale=False, maxgap_time="12H")
     niw_shear += fm24.interp(time=niw_shear.time, depth=niw_shear.depth)
     residual = shear.shear - niw_shear - low_shear
 
