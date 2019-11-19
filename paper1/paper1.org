@@ -2125,19 +2125,29 @@ ax[2].ticklabel_format(axis="y", scilimits=(0, 0))
 ** Figure 10: 8°N special                                           :ignore:
 
 #+BEGIN_SRC jupyter-python
-if 'oaflux' not in locals():
+import seaborn as sns
+
+if "oaflux" not in locals():
     oaflux = dcpy.oceans.read_oaflux()
 
     # convert from cm/year to m/s
-    E = (oaflux.evapr.sel(lon=slice(85, 89))
-         .sel(lat=8, method='nearest').drop('lat')
-         .mean('lon')).load() * 0.01/365/86400
-    E.attrs['units'] = 'm/s'
+    E = (
+        (
+            oaflux.evapr.sel(lon=slice(85, 89))
+            .sel(lat=8, method="nearest")
+            .drop("lat")
+            .mean("lon")
+        ).load()
+        ,* 0.01
+        / 365
+        / 86400
+    )
+    E.attrs["units"] = "m/s"
 
 Si = argo8.S.interp(pres=np.arange(0, argo8.pres.max(), 1))
 # S0_depth = np.abs(Si - 34.5).argmin('pres')
 # S1_depth = np.abs(Si - 35).argmin('pres')
-S0_depth = np.abs(Si - 34.75).argmin('pres')
+S0_depth = np.abs(Si - 34.75).argmin("pres")
 
 # dSdz = xr.zeros_like(KT)
 # for ss in bay.seasons:
@@ -2146,16 +2156,20 @@ S0_depth = np.abs(Si - 34.75).argmin('pres')
 #                                   .interp(pres=S0_depth.sel(monsoon=ss)))
 
 f = plt.figure(constrained_layout=True)
-f.set_constrained_layout_pads(h_pad=1/72, wspace=0.1)
+f.set_constrained_layout_pads(h_pad=1 / 72, wspace=0.1)
 f.set_size_inches(7, 8)
 gs = f.add_gridspec(4, 1, height_ratios=[1, 1, 0.85, 1])
 ax = list()
-with mpl.style.context({'axes.facecolor': 'w',
-                        'axes.grid': True,
-                        'axes.axisbelow': False,
-                        'grid.color': 'gray',
-                        'grid.alpha': 1,
-                        'grid.linewidth': 0.3}):
+with mpl.style.context(
+    {
+        "axes.facecolor": "w",
+        "axes.grid": True,
+        "axes.axisbelow": False,
+        "grid.color": "gray",
+        "grid.alpha": 1,
+        "grid.linewidth": 0.3,
+    }
+):
     ax.append(f.add_subplot(gs[0, 0]))
     ax.append(f.add_subplot(gs[1, 0], sharex=ax[0]))
 
@@ -2167,87 +2181,109 @@ ax.append(f.add_subplot(gs[3, 0], sharex=ax[-1]))
 ############
 
 turb8 = backup
-turb8['Js'] = np.abs(turb8.Js)
+turb8["Js"] = np.abs(turb8.Js)
 # turb8['Js'] = turb8.Js.where(np.abs(turb8.Js/1000 * 1e6) < 1000)
 time = xr.broadcast(turb8.time, turb8.S)[0]
 mask = (~np.isnan(turb8.Js)).values
-kwargs = dict(alpha=1,
-              s=8.0,
-              linewidths=0.25,
-              edgecolors='darkgray',
-              norm=mpl.colors.LogNorm(vmin=1e-3, vmax=1),
-              cmap=mpl.cm.gist_heat_r,
-              rasterized=True)
+kwargs = dict(
+    alpha=1,
+    s=8.0,
+    linewidths=0.25,
+    edgecolors="darkgray",
+    norm=mpl.colors.LogNorm(vmin=1e-3, vmax=1),
+    cmap=mpl.cm.gist_heat_r,
+    rasterized=True,
+)
 
 # sort so that large Js values are easily visible
 isort = np.argsort(turb8.Js.values[mask].ravel())
 
 # jitter = sp.stats.uniform(-5, 5).rvs(len(isort))
 #               + (jitter*86400).astype('timedelta64[s]')
-ax[0].scatter(time.values[mask].ravel()[isort],
-              turb8.z.values[mask].ravel()[isort],
-              c=turb8.Js.values[mask].ravel()[isort],
-              ,**kwargs)
-ax[0].set_ylabel('depth [m]')
+ax[0].scatter(
+    time.values[mask].ravel()[isort],
+    turb8.z.values[mask].ravel()[isort],
+    c=turb8.Js.values[mask].ravel()[isort],
+    ,**kwargs
+)
+ax[0].set_ylabel("depth [m]")
 ax[0].set_ylim([150, 18])
-ax[0].set_xlim(['2014-01-01', '2015-01-01'])
-ax[0].grid(False, axis='y')
-ax[1].grid(False, axis='y')
+ax[0].set_xlim(["2014-01-01", "2015-01-01"])
+ax[0].grid(False, axis="y")
+ax[1].grid(False, axis="y")
 
-hh = ax[1].scatter(time.values[mask].ravel()[isort],
-                   turb8.S.values[mask].ravel()[isort],
-                   c=turb8.Js.values[mask].ravel()[isort],
-                   ,**kwargs)
+hh = ax[1].scatter(
+    time.values[mask].ravel()[isort],
+    turb8.S.values[mask].ravel()[isort],
+    c=turb8.Js.values[mask].ravel()[isort],
+    ,**kwargs
+)
 
 hh.set_clip_on(False)
 hh.set_in_layout(False)
 ax[1].set_ylim((35.5, 33))
 ax[1].set_yticks([33, 34, 34.5, 35, 35.5])
-ax[1].set_ylabel('$S$ [psu]')
+ax[1].set_ylabel("$S$ [psu]")
 
 ax[1].xaxis.set_major_locator(mpl.dates.MonthLocator())
 ax[1].set_xticklabels([])
-dcpy.plots.liney([34, 34.5, 35, 35.5], zorder=10, lw=1.2, color='k', ax=ax[1], ls='-')
-for tt in pd.date_range('01-Jan-2014', '01-Jan-2015', freq='MS'):
-    hl = ax[1].plot([tt, tt], [35.5, 34], lw=1.2, color='k', ls='-')
+dcpy.plots.liney([34, 34.5, 35, 35.5], zorder=10, lw=1.2, color="k", ax=ax[1], ls="-")
+for tt in pd.date_range("01-Jan-2014", "01-Jan-2015", freq="MS"):
+    hl = ax[1].plot([tt, tt], [35.5, 34], lw=1.2, color="k", ls="-")
     hl[0].set_clip_on(False)
 
 # ax[1].xaxis.set_major_formatter(mpl.dates.DateFormatter('%b'))
-f.colorbar(hh, ax=ax[:2], extend='max', shrink=0.8, aspect=30, pad=0.0,
-           orientation='vertical', label=r'hourly mean salt flux $J_s^t$')
+f.colorbar(
+    hh,
+    ax=ax[:2],
+    extend="max",
+    shrink=0.8,
+    aspect=30,
+    pad=0.0,
+    orientation="vertical",
+    label=r"hourly mean salt flux $ρ_0^{-1}$ $J_s^t$  [psu m/s]",
+)
 
 ####################
 # Labelled heatmap #
 ####################
 heatmap_kwargs = dict(
-    center=0, square=False, cbar=False, linewidths=1,
-    vmin=-1.6, vmax=1.6, cmap=mpl.cm.RdYlBu_r, annot=True, fmt='.2f')
+    center=0,
+    square=False,
+    cbar=False,
+    linewidths=1,
+    vmin=-1.6,
+    vmax=1.6,
+    cmap=mpl.cm.RdYlBu_r,
+    annot=True,
+    fmt=".2f",
+)
 
 
 def _process_df(x, count_mask):
-    ''' Pivots the reduced dataframe. '''
+    """ Pivots the reduced dataframe. """
 
-    return (x.where(count_mask)
-            .reset_index()
-            .pivot('S', 'time', 'Js'))
+    return x.where(count_mask).reset_index().pivot("S", "time", "Js")
 
-df = (turb8
-      [['Js', 'S']]
-      .to_dataframe().reset_index()
-      .drop(['depth', 'lon'], axis=1)
-      .dropna(how='any'))
 
-groupby = [pd.cut(df.S, [34, 34.5, 35, 35.5]),
-           df.time.dt.month]
-grouped = (df.groupby(groupby))
+df = (
+    turb8[["Js", "S"]]
+    .to_dataframe()
+    .reset_index()
+    .drop(["depth", "lon"], axis=1)
+    .dropna(how="any")
+)
+
+groupby = [pd.cut(df.S, [34, 34.5, 35, 35.5]), df.time.dt.month]
+grouped = df.groupby(groupby)
 mean = grouped.mean()
-count = grouped.count()['Js']
-N = 30 * 24 # number of observations per month per instrument
-count_mask = count/N > 1
-if 'ci' not in locals():
+count = grouped.count()["Js"]
+N = 30 * 24  # number of observations per month per instrument
+count_mask = count / N > 1
+if "ci" not in locals():
     ci = df.Js.groupby(groupby).apply(bs.ci, np.mean)
-Js_mean = _process_df(mean['Js']/1025 * 1e6, count_mask)
-Js_ci = _process_df(ci/1025 * 1e6, count_mask)
+Js_mean = _process_df(mean["Js"] / 1025 * 1e6, count_mask)
+Js_ci = _process_df(ci / 1025 * 1e6, count_mask)
 
 # build custom annotation
 # annot = np.zeros_like(_process_df(mean['Js'])).astype('S')
@@ -2264,28 +2300,39 @@ Js_ci = _process_df(ci/1025 * 1e6, count_mask)
 hdl = sns.heatmap(Js_mean, ax=ax[-2], **heatmap_kwargs)
 # dcpy.plots.annotate_heatmap_string(hdl.get_children()[0], annot)
 
-cmap = dcpy.plots.cmap_params([0, 1, 2, 3, 4],
-                              levels=[0, 1, 2],
-                              cmap=mpl.colors.ListedColormap
-                              ([[0.3, 0.3, 0.3, 1],
-                                [0.6, 0.6, 0.6, 0.5],
-                                [0.3, 0.3, 0.3, 0],]))
-sns.heatmap(_process_df(count / N, count_mask),
-            ,**cmap, ax=ax[-2], cbar=False, zorder=10,
-            linewidths=heatmap_kwargs['linewidths'])
-ax[-2].set_xlabel('')
-ax[-2].set_ylim([3, 0])
-ax[-2].tick_params('both', length=0)
+cmap = dcpy.plots.cmap_params(
+    [0, 1, 2, 3, 4],
+    levels=[0, 1, 2],
+    cmap=mpl.colors.ListedColormap(
+        [[0.3, 0.3, 0.3, 1], [0.6, 0.6, 0.6, 0.5], [0.3, 0.3, 0.3, 0]]
+    ),
+)
+sns.heatmap(
+    _process_df(count / N, count_mask),
+    ,**cmap,
+    ax=ax[-2],
+    cbar=False,
+    zorder=10,
+    linewidths=heatmap_kwargs["linewidths"]
+)
+ax[-2].set_xlabel("")
+ax[-2].tick_params("both", length=0)
 ax[-2].set_yticks([0.5, 1.5, 2.5])
-ax[-2].set_yticklabels(['34.25', '34.75', '35.25'])
 ax[-2].set_xticks(np.arange(1, 13) - 0.5)
-ax[-2].set_ylabel('$S$')
+ax[-2].set_yticklabels(["34.25", "34.75", "35.25"])
+[tt.set_visible(False) for tt in ax[-2].get_xticklabels()]
+[tt.set_rotation(0) for tt in ax[-2].get_yticklabels()]
+ax[-2].set_ylim([3.5, 0])
+ax[-2].set_ylabel("$S$")
 
 ax[-1].cla()
-EP = ((32 * 1e6 * (E-P8.interp(time=E.time)))
-      .sel(time='2014')
-      .groupby('time.month').mean('time'))
-EP['month'] = EP.month.astype('float') - 0.5
+EP = (
+    (32 * 1e6 * (E - P8.interp(time=E.time)))
+    .sel(time="2014")
+    .groupby("time.month")
+    .mean("time")
+)
+EP["month"] = EP.month.astype("float") - 0.5
 hep = dcpy.plots.fill_step(EP, ax=ax[-1])
 
 upper = np.zeros_like(Js_mean.values[1, :])
@@ -2295,21 +2342,32 @@ for jj in range(Js_ci.shape[1]):
     upper[jj] = Js_ci.values[1, jj][1]
 
 Jsda = Js_mean.iloc[1, :].to_xarray()
-Jsda.name = 'J_s^t'
-Jsda['time'] = Jsda['time'].astype('float') - 0.5
-dcpy.plots.fill_step(Jsda, ax=ax[-1], color='C3', zorder=0)
-herr = ax[-1].errorbar(np.arange(12) + 0.5, Js_mean.values[1, :],
-                       yerr=np.abs(np.stack([lower, upper]) - Js_mean.values[1, :]),
-                       ls='', fmt='o', color='C3')
+Jsda.name = "Js"
+Jsda["time"] = Jsda["time"].astype("float") - 0.5
+dcpy.plots.fill_step(Jsda, ax=ax[-1], color="C3", zorder=0)
+herr = ax[-1].errorbar(
+    np.arange(12) + 0.5,
+    Js_mean.values[1, :],
+    yerr=np.abs(np.stack([lower, upper]) - Js_mean.values[1, :]),
+    ls="",
+    fmt="o",
+    color="C3",
+)
 herr[2][0].set_clip_on(False)
 herr[2][0].set_in_layout(False)
 ax[-1].set_yticks([-3, -1.5, 0, 1.5, 3])
 ax[-1].set_ylim([-3.2, 3])
-ax[-1].legend(handles=[hep[1], herr],
-              labels=['$S_0 (E-P)$', '$ρ_0^{-1}$ $J_s^t$ | $S$ = 34.75'],
-              loc='lower center',
-              frameon=True, framealpha=0.4, facecolor='lightgray', ncol=2)
-dcpy.plots.liney(0, ls='-')
+ax[-1].legend(
+    handles=[hep[1], herr],
+    labels=["$S_0 (E-P)$", "$ρ_0^{-1}$ $J_s^t$ at $S$ = 34.75"],
+    loc="lower center",
+    frameon=True,
+    framealpha=0.4,
+    facecolor="lightgray",
+    ncol=2,
+)
+dcpy.plots.liney(0, ls="-")
+ax[-1].set_ylabel("$ρ_0^{-1}$ $J_s^t$  [$10^{-6}$ psu m/s]")
 
 # KT = xr.DataArray([1e-5, 1e-6, 1e-4, 1e-4],
 #                   dims=['monsoon'],
@@ -2321,20 +2379,24 @@ dcpy.plots.liney(0, ls='-')
 #           .ffill('month'))
 # dcpy.plots.fill_step(Jsclim, 'month', ax=ax[-1], color='gray', zorder=-1)
 
-ax[-1].set_ylabel('Salinity flux [$10^{-6}$ psu m/s]')
 
-ha = ax[-2].annotate("",
-                     xy=(12, 4.75), xycoords="data",
-                     xytext=(12, 1.5), textcoords="data",
-                     arrowprops=dict(
-                         arrowstyle="->",
-                         color='C3',
-                         shrinkA=5, shrinkB=5,
-                         patchA=None,
-                         patchB=None,
-                         connectionstyle='bar,fraction=-0.35',
-                         ),
-                     annotation_clip=False,)
+ha = ax[-2].annotate(
+    "",
+    xy=(12, 4.75),
+    xycoords="data",
+    xytext=(12, 1.5),
+    textcoords="data",
+    arrowprops=dict(
+        arrowstyle="->",
+        color="C3",
+        shrinkA=5,
+        shrinkB=5,
+        patchA=None,
+        patchB=None,
+        connectionstyle="bar,fraction=-0.35",
+    ),
+    annotation_clip=False,
+)
 ha.set_clip_on(False)
 ha.set_in_layout(False)
 
@@ -2347,18 +2409,21 @@ ha.set_in_layout(False)
 # ax[-1].yaxis.set_tick_params(length=0)
 # ax[-1].set_yticks([])
 
-dcpy.plots.label_subplots(ax, x=0.03, y=0.1,
-                          labels=['', '',
-                                  '$ρ_0^{-1}$ $J_s^t$ [$10^{-6}$ psu m/s]',
-                                  ''], zorder=10)
+dcpy.plots.label_subplots(
+    ax,
+    x=0.03,
+    y=0.1,
+    labels=["", "", "$ρ_0^{-1}$ $J_s^t$ [$10^{-6}$ psu m/s]", ""],
+    zorder=10,
+)
 ax[-1].set_xticks(np.arange(12) + 0.5)
-ax[-1].set_xticklabels(['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul',
-                        'Aug', 'Sep', 'Oct', 'Nov', 'Dec'])
-ax[-1].set_xlabel('2014')
-[tt.set_visible(False) for tt in ax[2].get_xticklabels()]
+ax[-1].set_xticklabels(
+    ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+)
+ax[-1].set_xlabel("2014")
 sns.despine(ax=ax[-1], trim=True)
 
-f.savefig('figure8-8n.pdf', bbox_to_inches='tight')
+f.savefig('images/paper1/figure10-8n.pdf', bbox_to_inches='tight')
 #+END_SRC
 
 #+RESULTS:
