@@ -438,12 +438,15 @@ def seasonal_mean(data, split=False):
     return (data.groupby(labels).apply(mean))
 
 
-def calc_isohaline_depth(S0=34.75, data=None, split=False):
+def calc_isohaline_depth(S0=34.75, data=None, region=None, split=False):
+
+    if region is None:
+        region = dict(lon=slice(80, 94), lat=slice(4, 24))
 
     if data is None:
         data = (dcpy.oceans.read_argo_clim()
-                [['S']]
-                .sel(**region, pres=slice(0, 400))
+                ['S']
+                .sel(**region, pres=slice(0, 800))
                 .load()
                 .rename({'pres': 'depth'}))
 
@@ -457,15 +460,16 @@ def calc_isohaline_depth(S0=34.75, data=None, split=False):
         data = (data.groupby(groupby).mean('time')
                 .transpose('lon', 'lat', 'depth', 'monsoon'))
 
-    isodepth = data.S.isel(depth=1).drop('depth').copy()
+    isodepth = dcpy.interpolate.pchip_roots(data, "depth", S0).squeeze()
     isodepth.attrs['long_name'] = 'Depth of ' + str(S0) + ' isohaline'
     isodepth.attrs['units'] = 'm'
-    zmat = xr.broadcast(data.S, data.depth)[1]
 
-    for tt in range(data.S.shape[-1]):
-        isodepth.values[:, :, tt] = dcpy.util.calc_iso_surface(
-            data.S.values[:, :, :, tt], S0, zmat.values[:, :, :, tt],
-            interp_order=3)
+    # isodepth = data.S.isel(depth=1).drop('depth').copy()
+    # zmat = xr.broadcast(data.S, data.depth)[1]
+    # for tt in range(data.S.shape[-1]):
+    #     isodepth.values[:, :, tt] = dcpy.util.calc_iso_surface(
+    #         data.S.values[:, :, :, tt], S0, zmat.values[:, :, :, tt],
+    #         interp_order=3)
 
     # isodepth = (zmat.where(np.logical_and(nio.S > S0-0.1,
     #                                       nio.S < S0+0.1))

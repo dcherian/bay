@@ -9586,7 +9586,163 @@ f.savefig('images/temp/imgDwV4H3.png')
 #+CAPTION:
 [[file:images/temp/imgDwV4H3.png]]
 * survey paper map
-** topo
+** palettes
+#+BEGIN_SRC jupyter-python
+nice = np.array([229, 235, 225])/255
+nice2 = "#F5F4EF"
+import seaborn as sns
+
+pal = sns.light_palette(nice, n_colors=200, as_cmap=True).reversed()
+#pal = mpl.cm.Greys
+
+#pal = mpl.colors.ListedColormap(["#fff8ef", "#f9f5e0", "#ebefd7", "#e1edd7", "#d1e2c5"], N=3).reversed()
+
+#pal = mpl.colors.ListedColormap(["#FFF8ef", "#f9f5e0", "#ebefd7", "#d1e2c5"]).reversed()
+
+
+#+END_SRC
+
+** topo improved
+#+BEGIN_SRC jupyter-python
+# %matplotlib qt
+
+import cartopy.crs as ccrs
+from cartopy import feature
+import dcpy
+import matplotlib as mpl
+import matplotlib.pyplot as plt
+import numpy as np
+import palettable
+import xarray as xr
+
+xlim = np.array([72, 96])
+ylim = np.array([-5, 33])
+
+moor_color = np.array([90, 119, 120]) / 256
+
+projection = (
+    ccrs.PlateCarree()
+)  # ccrs.LambertAzimuthalEqualArea(central_latitude=12, central_longitude=86)
+
+data = (
+    xr.load_dataset("~/datasets/topo/nio.nc")
+    .sortby("y")
+    .sel(x=slice(*(xlim + np.array([-3, 3]))), y=slice(*(ylim + np.array([-3, 3]))))
+)
+land = data.extract > 0
+
+f, ax = plt.subplots(1, 1, subplot_kw={"projection": projection})
+ax.set_extent([*xlim, *ylim])
+# data.hillshade.where(land).plot.imshow(
+#     levels=20,
+#     cmap=pal,
+#     vmin=-100,
+#     vmax=1000,
+#     alpha=0.4,
+#     add_colorbar=False,
+#     zorder=-1,
+#     transform=ccrs.PlateCarree(),
+# )
+
+hslope = (data.slopeshade / 255).plot.imshow(
+    robust=True, alpha=0.7, transform=ccrs.PlateCarree(),
+)  # robust is important; note no colormap
+
+landpal = palettable.cartocolors.sequential.BrwnYl_7.get_mpl_colormap()
+landpal.set_over([0, 0, 0, 0])
+landlevels = [0, 50, 100, 250, 500, 750, 1000, 6000, 9000, 12000, 20000]
+landnorm = mpl.colors.BoundaryNorm(landlevels, ncolors=len(landlevels))
+hland = data.extract.where(land).where(data.extract < 1000).plot.imshow(
+    norm=landnorm,
+    cmap=landpal,
+    alpha=0.4,
+    add_colorbar=False,
+    transform=ccrs.PlateCarree(),
+)
+
+oceanpal = palettable.cartocolors.sequential.Mint_7.get_mpl_colormap().reversed()
+hocean = data.extract.where(~land).plot.imshow(
+    levels=np.sort(np.array([0, 50, 100, 500, 1000, 2000, 3000, 4000, 5000]) * -1),
+    cmap=oceanpal,
+    alpha=0.4,
+    zorder=5,
+    add_colorbar=False,
+    transform=ccrs.PlateCarree(),
+)
+# dcpy.plots.trim_map(ax, xlim, ylim)
+
+# coastline because ax.coastlines doesn't get lakshadeep
+data.extract.plot.contour(
+    levels=[0],
+    colors="dimgray",
+    linewidths=0.4,
+    transform=ccrs.PlateCarree(),
+    zorder=6,
+)
+# ax.coastlines("10m", color="dimgray", lw=0.2)
+
+for hh in [hland, hocean, hslope]:
+    hh.set_rasterized(True)
+
+rivers = feature.NaturalEarthFeature(
+    category="physical",
+    name="rivers_lake_centerlines",
+    scale="10m",
+    facecolor="none",
+    edgecolor="teal",
+    alpha=1,
+    linewidths=0.4,
+)
+ax.add_feature(rivers)
+
+# rivers = feature.NaturalEarthFeature(
+#     category="physical",
+#     name="rivers_lake_centerlines",
+#     scale="10m",
+#     facecolor="none",
+#     edgecolor=moor_color,
+#     alpha=0.7,
+#     linewidths=0.3,
+# )
+# ax.add_feature(rivers)
+
+if "isodepth" not in locals():
+    import bay
+
+    isodepth = bay.calc_isohaline_depth(
+        34.75, region={"lat": slice(*ylim), "lon": slice(*xlim)}, split=False
+    )
+
+_ = isodepth.sel(monsoon="SW").plot.contour(
+    x="lon",
+    levels=[50, 75, 100],
+    colors="w",
+    linewidths=0.6,
+    zorder=10,
+    add_labels=False,
+    transform=ccrs.PlateCarree(),
+)
+
+ax.plot(
+    [80.5, 85.5, 85.5, 87, 88.5, 90, 90, 90],
+    [0, 5, 8, 8, 8, 12, 15, 18],
+    "^",
+    color=moor_color,
+    fillstyle="full",
+    transform=ccrs.PlateCarree(),
+    zorder=100,
+)
+ax.plot(
+    [80.5, 80.5], [-2, 2], color=moor_color, transform=ccrs.PlateCarree(), zorder=100
+)
+
+
+f.savefig("images/topo.png", dpi=500, bbox_inches="tight")
+#+END_SRC
+
+#+RESULTS:
+
+** topo OLD
 #+BEGIN_SRC jupyter-python :session py
 import dcpy.plots
 import cartopy.crs as ccrs
@@ -9673,11 +9829,6 @@ f.set_size_inches(7, 6)
 f.savefig('images/survey-timeseries.pdf')
 #+END_SRC
 
-#+BEGIN_SRC jupyter-python :session py
-
-#+END_SRC
-#+CAPTION:
-[[file:images/temp/imgTBHvwp.png]]
 * NRL shear errors?
 #+BEGIN_SRC jupyter-python :file images/nrl-bad-shear-sampling.png
 f, ax = plt.subplots(3, 3, sharex=True, sharey='col', constrained_layout=True)
