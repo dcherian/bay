@@ -9604,6 +9604,51 @@ pal = sns.light_palette(nice, n_colors=200, as_cmap=True).reversed()
 
 ** topo improved
 #+BEGIN_SRC jupyter-python
+cmap, norm = mpl.colors.from_levels_and_colors()
+
+np.sort(np.array([0, 50, 100, 500, 1000, 2000, 3000, 4000, 5000]) * -1)
+
+levels = [-4000, -3000, -2000, -1000, -500, -100, -50, 0,
+          50, 100, 250, 500, 750, 1000, 4000]
+f, ax = plt.subplots(1, 2, subplot_kw={"projection": ccrs.PlateCarree()})
+
+landpal = palettable.cartocolors.sequential.BrwnYl_7.colors
+oceanpal = list(reversed(palettable.cartocolors.sequential.Mint_7.colors))
+
+sns.palplot(np.array(oceanpal + landpal)/255)
+
+data.extract.plot(cmap=palettable.cartocolors.diverging.Earth_7.get_mpl_colormap().reversed(),
+                  levels=levels, center=100)
+data.slopeshade.plot.imshow(robust=True, alpha=0.4, zorder=10)
+data.extract.plot.contour(levels=[0], colors="gray", linewidths=0.5)
+
+landpal = palettable.cartocolors.sequential.BrwnYl_7.get_mpl_colormap()
+landpal.set_over([0, 0, 0, 0])
+landlevels = [0, 50, 100, 250, 500, 750, 1000, 6000, 9000, 12000, 20000]
+landnorm = mpl.colors.BoundaryNorm(landlevels, ncolors=len(landlevels))
+hland = data.extract.where(land).where(data.extract < 1000).plot.imshow(
+    norm=landnorm,
+    cmap=landpal,
+    alpha=0.4,
+    add_colorbar=False,
+    transform=ccrs.PlateCarree(),
+)
+
+oceanpal = palettable.cartocolors.sequential.Mint_7.get_mpl_colormap().reversed()
+hocean = data.extract.where(~land).plot.imshow(
+    levels=np.sort(np.array([0, 50, 100, 500, 1000, 2000, 3000, 4000, 5000]) * -1),
+    cmap=oceanpal,
+    alpha=0.4,
+    zorder=5,
+    add_colorbar=False,
+    transform=ccrs.PlateCarree(),
+)
+#+END_SRC
+
+#+RESULTS:
+
+
+#+BEGIN_SRC jupyter-python
 # %matplotlib qt
 
 import cartopy.crs as ccrs
@@ -9618,7 +9663,7 @@ import xarray as xr
 xlim = np.array([72, 96])
 ylim = np.array([-5, 33])
 
-moor_color = np.array([90, 119, 120]) / 256
+moor_color = np.array([46, 92, 104]) / 256
 
 projection = (
     ccrs.PlateCarree()
@@ -9644,32 +9689,55 @@ ax.set_extent([*xlim, *ylim])
 #     transform=ccrs.PlateCarree(),
 # )
 
+data.extract.plot(
+    cmap=palettable.cartocolors.diverging.Earth_7.get_mpl_colormap().reversed(),
+    levels=[
+        -4000,
+        -3000,
+        -2000,
+        -1000,
+        -500,
+        -100,
+        -50,
+        0,
+        50,
+        100,
+        250,
+        500,
+        750,
+        1000,
+        4000,
+    ],
+    center=100,
+    transform=ccrs.PlateCarree(),
+    add_colorbar=False,
+)
 hslope = (data.slopeshade / 255).plot.imshow(
-    robust=True, alpha=0.7, transform=ccrs.PlateCarree(),
+    robust=True, alpha=0.3, transform=ccrs.PlateCarree(), zorder=3,
 )  # robust is important; note no colormap
 
-landpal = palettable.cartocolors.sequential.BrwnYl_7.get_mpl_colormap()
-landpal.set_over([0, 0, 0, 0])
-landlevels = [0, 50, 100, 250, 500, 750, 1000, 6000, 9000, 12000, 20000]
-landnorm = mpl.colors.BoundaryNorm(landlevels, ncolors=len(landlevels))
-hland = data.extract.where(land).where(data.extract < 1000).plot.imshow(
-    norm=landnorm,
-    cmap=landpal,
-    alpha=0.4,
-    add_colorbar=False,
-    transform=ccrs.PlateCarree(),
-)
+# landpal = palettable.cartocolors.sequential.BrwnYl_7.get_mpl_colormap()
+# landpal.set_over([0, 0, 0, 0])
+# landlevels = [0, 50, 100, 250, 500, 750, 1000, 6000, 9000, 12000, 20000]
+# landnorm = mpl.colors.BoundaryNorm(landlevels, ncolors=len(landlevels))
+# hland = data.extract.where(land).where(data.extract < 1000).plot.imshow(
+#     norm=landnorm,
+#     cmap=landpal,
+#     alpha=0.4,
+#     add_colorbar=False,
+#     transform=ccrs.PlateCarree(),
+# )
 
-oceanpal = palettable.cartocolors.sequential.Mint_7.get_mpl_colormap().reversed()
-hocean = data.extract.where(~land).plot.imshow(
-    levels=np.sort(np.array([0, 50, 100, 500, 1000, 2000, 3000, 4000, 5000]) * -1),
-    cmap=oceanpal,
-    alpha=0.4,
-    zorder=5,
-    add_colorbar=False,
-    transform=ccrs.PlateCarree(),
-)
-# dcpy.plots.trim_map(ax, xlim, ylim)
+# oceanpal = palettable.cartocolors.sequential.Mint_7.get_mpl_colormap().reversed()
+# hocean = data.extract.where(~land).plot.imshow(
+#     levels=np.sort(np.array([0, 50, 100, 500, 1000, 2000, 3000, 4000, 5000]) * -1),
+#     cmap=oceanpal,
+#     alpha=0.4,
+#     zorder=5,
+#     add_colorbar=False,
+#     transform=ccrs.PlateCarree(),
+# )
+# # dcpy.plots.trim_map(ax, xlim, ylim)
 
 # coastline because ax.coastlines doesn't get lakshadeep
 data.extract.plot.contour(
@@ -9681,8 +9749,8 @@ data.extract.plot.contour(
 )
 # ax.coastlines("10m", color="dimgray", lw=0.2)
 
-for hh in [hland, hocean, hslope]:
-    hh.set_rasterized(True)
+# for hh in [hland, hocean, hslope]:
+#    hh.set_rasterized(True)
 
 rivers = feature.NaturalEarthFeature(
     category="physical",
@@ -9741,6 +9809,20 @@ f.savefig("images/topo.png", dpi=500, bbox_inches="tight")
 #+END_SRC
 
 #+RESULTS:
+:RESULTS:
+# [goto error]
+:
+: NameErrorTraceback (most recent call last)
+: <ipython-input-1-b1e370171d44> in <module>
+:      40
+:      41 data.extract.plot(cmap=palettable.cartocolors.diverging.Earth_7.get_mpl_colormap().reversed(),
+: ---> 42                   levels=levels, center=100)
+:      43 hslope = (data.slopeshade / 255).plot.imshow(
+:      44     robust=True, alpha=0.7, transform=ccrs.PlateCarree(),
+:
+: NameError: name 'levels' is not defined
+[[file:./.ob-jupyter/44123b770206e7769b78f37764c8606dd02e818b.png]]
+:END:
 
 ** topo OLD
 #+BEGIN_SRC jupyter-python :session py
