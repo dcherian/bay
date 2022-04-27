@@ -1870,14 +1870,29 @@ g.fig.savefig("images/paper1/figure5-shears.png")
 ** Figure 6: NRL time series                                        :ignore:
 
 #+BEGIN_SRC jupyter-python
-f5, ax = bay.plots.plot_nrl(nrl5)
+import xfilter
+N2 = xfilter.lowpass(
+    nrl5.N2.isel(depth=1).reset_coords(drop=True).interpolate_na("time"),
+    coord="time",
+    freq=1 / 30,
+    cycles_per="D",
+    num_discard=0,
+)
+N2.count()
+#+END_SRC
+
+#+BEGIN_SRC jupyter-python
+import matplotlib.pyplot as plt
+
+with plt.rc_context({"font.size": 12}):
+    f5, ax = bay.plots.plot_nrl(nrl5)
 ax["depth"].set_ylim([140, 90])
 ax['N2'].set_ylim([0, 6])
 ax['KT'].set_ylim([1e-7, 1e-3])
 ax['KT'].set_yticks([1e-7, 1e-6, 1e-5, 1e-4, 1e-3])
 for child in ax["coverage"].get_children():
     child.set_visible(False)
-f5.savefig('images/paper1/figure6-nrl5.pdf', bbox_inches='tight')
+f5.savefig('images/paper1/jim-paper1-nrl5.pdf', bbox_inches='tight')
 
 # shear, low_shear, _, niw_shear, _, fm24 = nrl5.filter_interp_shear(
 #     'filter_field', maxgap_time="6H")

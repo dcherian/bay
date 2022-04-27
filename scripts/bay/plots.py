@@ -939,7 +939,7 @@ def plot_moor_old(moor, idepth, axx, time_range='2014', events=None):
     axes['KT'].grid(True, which='both', axis='y')
 
     axes['jq'].set_ylabel('$J_q^t$ [W/m²]')
-    axes['js'].set_ylabel('$J_s^t$ \n [$10^{-1}$ [psu] kg/m²/s]')
+    axes['js'].set_ylabel('$J_s^t$ \n [$10^{-1}$ psu kg/m²/s]')
     [dcpy.plots.set_axes_color(axes[aa], 'C0', 'right')
      for aa in ['js', 'coverage']]
 
@@ -1020,16 +1020,17 @@ def plot_nrl(mooring):
 
     shear, low_shear, _, niw_shear, _, fm24 = mooring.filter_interp_shear(
         'filter_then_sample', wkb_scale=False, maxgap_time="12H")
-    niw_shear += fm24.interp(time=niw_shear.time, depth=niw_shear.depth)
+    niw_shear += fm24 #.interp(time=niw_shear.time, depth=niw_shear.depth)
     residual = shear.shear - niw_shear - low_shear
 
-    N2 = (xfilter.lowpass(mooring.N2.isel(depth=1)
-                          .interpolate_na("time"),
-                          coord='time',
-                          freq=1/30,
-                          cycles_per='D',
-                          num_discard=0)
-                 .interp(time=niw_shear.time))
+    N2 = (
+        xfilter.lowpass(mooring.N2.isel(depth=1).interpolate_na("time"),
+                        coord='time',
+                        freq=1/30,
+                        cycles_per='D',
+                        num_discard=0)
+        .interp(time=niw_shear.time.values)
+    )
 
     f5, axx5 = plt.subplots(6, 1, sharex=True, constrained_layout=True)
     f5.set_constrained_layout_pads(hspace=0.001, h_pad=0)
@@ -1044,9 +1045,9 @@ def plot_nrl(mooring):
     hres = ((residual.rolling(time=7*24, center=True).reduce(dcpy.util.ms) / N2)
             .sel(time='2014')
             .plot(ax=axx5[-2], _labels=False, color='C1', lw=1.5))
-    annotate_end(hlow[0], '$S²_{low}$', va='top')
-    annotate_end(hniw[0], '$S²_{niw+}$', va='bottom')
-    annotate_end(hres[0], '$S²_{res}$', va='center')
+    annotate_end(hlow[0], '$Sh²_{low}$', va='top')
+    annotate_end(hniw[0], '$Sh²_{niw+}$', va='bottom')
+    annotate_end(hres[0], '$Sh²_{res}$', va='center')
 
     # trgrid = axx5[-2].get_xaxis_transform('grid')
     # axx5[-2].text('2014-08-12', 0.8, 'near-inertial',
@@ -1060,7 +1061,7 @@ def plot_nrl(mooring):
     hlow[0].set_clip_on(False)
     hlow[0].set_in_layout(False)
     mooring.MarkSeasonsAndEvents(events='Storm-zoomin', ax=axx5[-2])
-    axx5[-2].set_ylabel('$S²/N²$')
+    axx5[-2].set_ylabel('$Sh²/N²$')
 
     axmooring = plot_moor_old(mooring, idepth=1,
                               axx=axx5, events='Storm-zoomin')
