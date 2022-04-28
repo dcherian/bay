@@ -102,6 +102,7 @@ venv.bak/
 
 # mypy
 .mypy_cache/
+
 ## Core latex/pdflatex auxiliary files:
 *.aux
 *.lof
@@ -354,12 +355,21 @@ TSWLatexianTemp*
 # KBibTeX
 *~[0-9]*
 
-# auto folder when using emacs and auctex
-./auto/*
-*.el
 
-# expex forward references with \gathertags
-*-tags.tex
+# flymake
+*_flymake*
 
-# standalone packages
-*.sta
+# data files
+dask-worker-space
+_build
+auto
+*.nc
+*.mat
+*.zarr
+
+.DS_Store
+.auctex-auto
+frag-master.tex
+
+datasets/
+proposal/

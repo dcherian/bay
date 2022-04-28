@@ -1,0 +1,16 @@
+{
+  "template": "/Users/dcherian/work/python/cookies/analysis_project",
+  "commit": "ad6bea8e46975867da08efdbb073cc2fa8ddff45",
+  "checkout": null,
+  "context": {
+    "cookiecutter": {
+      "project_name": "bay",
+      "project_title": "Bay of Bengal Analysis",
+      "_copy_without_render": [
+        "*.github"
+      ],
+      "_template": "/Users/dcherian/work/python/cookies/analysis_project"
+    }
+  },
+  "directory": null
+}
