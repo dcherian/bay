@@ -90,6 +90,9 @@ dependencies:
     - icecream
     - jupyter-book
     - mixsea
-    - xfilter
-    - dcpy
+    # - xfilter
+    # - dcpy
     - gsw_xarray
+    - hdf5storage
+    - git+https://github.com/fujiisoup/xr-scipy.git
+    #  - airsea

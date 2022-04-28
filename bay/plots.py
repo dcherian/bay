@@ -112,13 +112,13 @@ def make_map(pods, DX=0.6, DY=0.7, add_year=True, highlight=[],
 
             dx = 0
             dy = 0
-            if pod['ha'] is 'left':
+            if pod['ha'] == 'left':
                 dx = DX
-            elif pod['ha'] is 'right':
+            elif pod['ha'] == 'right':
                 dx = -1 * DX
-            if pod['va'] is 'bottom':
+            if pod['va'] == 'bottom':
                 dy = DY
-            elif pod['va'] is 'top':
+            elif pod['va'] == 'top':
                 dy = - DY
             if 'RAMA' in name:
                 dy += 0.75 * DY
@@ -184,7 +184,7 @@ def format_moor_names(names):
         string += 'R' + ','.join(rama)
 
     if nrl != []:
-        if string is not '':
+        if string != '':
             string += '\n'
 
         string += 'N' + ','.join(nrl)
@@ -224,7 +224,7 @@ def plot_distrib(ax, plotkind, var, zloc, zstd, width=12, percentile=False,
         if percentile:
             prc = np.percentile(var, 99.5)
 
-    if plotkind is 'violin':
+    if plotkind == 'violin':
         if percentile:
             var = var.where(var < prc)
 
@@ -261,7 +261,7 @@ def plot_distrib(ax, plotkind, var, zloc, zstd, width=12, percentile=False,
             # use percentile instead of max
             hdl['cbars'].get_paths()[0].vertices[1, 0] = prc
 
-    elif plotkind is 'hist':
+    elif plotkind == 'hist':
         hdl = ax.hist(var, bottom=zloc, density=True)
 
     # color = _get_color_from_hdl(hdl)

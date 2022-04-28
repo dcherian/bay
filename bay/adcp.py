@@ -254,7 +254,7 @@ def read_adcp(name):
 
     for var in vel:
         vel[var]['shear'] = vel[var].uz + 1j * vel[var].vz
-        if var is not 'vel' and var is not 'iso':
+        if var != 'vel' and var != 'iso':
             vel[var]['good_data'] = vel['vel'].good_data
         if 'u' in vel[var]:
             vel[var]['w'] = vel[var].u + 1j * vel[var].v
@@ -275,7 +275,7 @@ def read_adcp(name):
         for dd in vel[vv]:
             vel[vv][dd].attrs['mooring'] = name.upper()
 
-        if vv is not 'low':
+        if vv != 'low':
             vel[vv].close()
 
     return vel
