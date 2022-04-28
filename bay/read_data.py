@@ -1,3 +1,4 @@
+import os
 import importlib
 
 import chipy
@@ -70,6 +71,28 @@ def read_ra12(minimal=False, avoid_wda=False):
     ra12 = __common(ra12, minimal)
 
     return ra12
+
+
+def read_ra15_2018(minimal=False, avoid_wda=False):
+
+    ra15 = moor.moor(90, 15, "RAMA 15N", "ra15", "rama", "../rama/RAMA18/")
+    ra15.AddChipod(519, 30, "mmw", "Turb.mat", avoid_wda=avoid_wda)
+    ra15.AddChipod(523, 45, "mmw", "Turb.mat", avoid_wda=avoid_wda)
+    ra15.AddChipod(804, 55, "mmw", "Turb.mat", avoid_wda=avoid_wda)
+    ra15.AddChipod(814, 65, "mm1w", "Turb.mat", avoid_wda=avoid_wda)
+    ra15.ReadMet("../rama/data/met15n90e_10m.cdf", WindType="pmel")
+    ra15.ReadMet(FluxType="pmel")
+    ra15.ReadVel("../rama/data/cur15n90e_30m.cdf", FileType="pmel")
+
+    ra15.ReadCTD("../rama/data/", "rama")
+
+    ra15.ctd = ra15.ctd.sel(time="2018")
+
+    ra15 = _filter_wda_rama(ra15)
+
+    ra15 = __common(ra15, minimal)
+
+    return ra15
 
 
 def read_ra15(minimal=False, avoid_wda=False):
@@ -214,7 +237,7 @@ def read_nrl5(minimal=False, avoid_wda=False):
 
 def __common(mooring, minimal=False):
     mooring.calc_mld_ild_bld()
-    mooring.ReadTropflux("../tropflux/")
+    mooring.ReadTropflux(os.path.expanduser("~/datasets/tropflux/"))
     mooring.calc_niw_input()
     mooring.CombineTurb()
     if not minimal:
