@@ -1,3 +1,4 @@
+# -*- org-export-use-babel: nil -*-
 #+TITLE: Bay of Bengal notes
 #+SETUPFILE: ~/org/notebook.org
 
@@ -9910,6 +9911,13 @@ ax[3].xaxis.set_major_formatter(mpl.dates.DateFormatter('%b'))
 f.set_size_inches(7, 6)
 f.savefig('images/survey-timeseries.pdf')
 #+END_SRC
+
+* RAMA18 Notes
+- processed a bunch.
+  - 15m unit 514 is all bad
+  - 65m unit
+    - has 2week ADCP gap in august.
+    -  bad T2; once i fixed this combine_turbulence worked fine
 
 * NRL shear errors?
 #+BEGIN_SRC jupyter-python :file images/nrl-bad-shear-sampling.png
