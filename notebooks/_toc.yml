@@ -1,6 +1,6 @@
 format: jb-book
 root: intro
 parts:
-- caption: "Parts"
+- caption: "Explore"
   chapters:
-  - file: ADD_A_FILE
+  - file: rama18explore
