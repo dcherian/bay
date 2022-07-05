@@ -94,5 +94,6 @@ dependencies:
     # - dcpy
     - gsw_xarray
     - hdf5storage
+    - openpyxl
     - git+https://github.com/fujiisoup/xr-scipy.git
     #  - airsea

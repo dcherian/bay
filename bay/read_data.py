@@ -1,5 +1,5 @@
-import os
 import importlib
+import os
 
 import chipy
 import moor
@@ -73,7 +73,7 @@ def read_ra12(minimal=False, avoid_wda=False):
     return ra12
 
 
-def read_ra15_2018(minimal=False, avoid_wda=False):
+def read_ra15_2018(minimal=True, avoid_wda=False):
 
     ra15 = moor.moor(90, 15, "RAMA 15N", "ra15", "rama", "../rama/RAMA18/")
     ra15.AddChipod(519, 30, "mmw", "Turb.mat", avoid_wda=avoid_wda)
